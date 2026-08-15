@@ -33,3 +33,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+@media (max-width: 860px) {
+  .topbar-actions .share-manager {
+    display: block;
+  }
+
+  .share-manager .build-popover {
+    position: fixed;
+    top: 64px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: 420px;
+    margin-left: auto;
+  }
+}
