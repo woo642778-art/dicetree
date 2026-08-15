@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
@@ -6,6 +7,6 @@ export default defineConfig({
   webServer: { command: "npm run dev -- --host 127.0.0.1 --port 4173", port: 4173, reuseExistingServer: !process.env.CI },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["iPhone 13"] } },
+    { name: "mobile", use: { ...devices["iPhone 13"], browserName: "chromium" } },
   ],
 });
