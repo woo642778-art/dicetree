@@ -12,6 +12,39 @@
   pointer-events: none;
 }
 
+/* The real game keeps locked branches visible. V2 does the same on the
+   white canvas instead of fading unknown nodes almost into the background. */
+.confidence-unknown .token-shell {
+  stroke: #aaa7b5 !important;
+  stroke-opacity: .9 !important;
+}
+.confidence-unknown .token-face {
+  fill: #eae9ef !important;
+  stroke: #d9d7e0 !important;
+}
+.confidence-unknown .token-glyph {
+  fill: #878490 !important;
+}
+.edge-v2 {
+  stroke: #cbc8d4;
+  stroke-opacity: .76;
+}
+
+.tree-stage-v2::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(111, 91, 225, .055), transparent 27%),
+    radial-gradient(circle at 47% 54%, rgba(211, 169, 65, .025), transparent 18%);
+  mix-blend-mode: multiply;
+}
+.tree-canvas-wrap,
+.canvas-watermark {
+  z-index: 2;
+}
+
 .family-axis-dot { fill: #fff; stroke-width: 1.5; }
 .family-axis-nature { stroke: #34a86f; }
 .family-axis-chaos { stroke: #7859d6; }
