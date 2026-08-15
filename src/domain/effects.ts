@@ -14,12 +14,13 @@ function selectedDiceIds(goals: PlannerGoals) {
 function coverage(effect: EffectDefinition, context: EffectContext) {
   const selected = selectedDiceIds(context.goals);
   if (!selected.length) return 1;
-  if (effect.appliesTo === "all") return 1;
-  if (typeof effect.appliesTo === "string") {
+  const target = effect.appliesTo;
+  if (target === "all") return 1;
+  if (typeof target === "string") {
     const byId = new Map(context.dice.map((die) => [die.id, die]));
-    return selected.filter((id) => byId.get(id)?.family === effect.appliesTo).length / selected.length;
+    return selected.filter((id) => byId.get(id)?.family === target).length / selected.length;
   }
-  return selected.filter((id) => effect.appliesTo.diceIds.includes(id)).length / selected.length;
+  return selected.filter((id) => target.diceIds.includes(id)).length / selected.length;
 }
 
 export function evaluateEffect(effect: EffectDefinition, context: EffectContext): EvaluatedEffect {
