@@ -15,6 +15,13 @@ interface TreeCanvasV2Props {
 const FAMILY_COLOR: Record<DiceFamily | "core", string> = {
   core: "#6d5ce7", nature: "#34a86f", chaos: "#7859d6", order: "#d354ac", engineering: "#d69a20", magic: "#3586e7",
 };
+const FAMILY_AXIS: Array<{ family: DiceFamily; x: number; y: number; ko: string; en: string }> = [
+  { family: "nature", x: 0, y: -92, ko: "자연", en: "NATURE" },
+  { family: "chaos", x: -105, y: 8, ko: "혼돈", en: "CHAOS" },
+  { family: "order", x: 105, y: 8, ko: "질서", en: "ORDER" },
+  { family: "engineering", x: -82, y: 100, ko: "공학", en: "ENGINEERING" },
+  { family: "magic", x: 82, y: 100, ko: "마법", en: "MAGIC" },
+];
 const ICON_GLYPHS: Array<[RegExp, string]> = [
   [/snow/i, "✦"], [/vortex/i, "◉"], [/yinyang/i, "◒"], [/gear/i, "⚙"], [/lightning|bolt/i, "ϟ"],
   [/target/i, "◎"], [/clover/i, "✣"], [/speed/i, "≫"], [/flower/i, "✹"], [/clock/i, "◷"],
@@ -49,7 +56,7 @@ function touchMetrics(touches: ReactTouchEvent<SVGSVGElement>["touches"]) {
 }
 
 export function TreeCanvasV2({ nodes, selectedNodeId, plannedRanks, recommendedIds, familyFilter, query, locale, onSelect }: TreeCanvasV2Props) {
-  const [view, setView] = useState({ x: 0, y: 40, scale: 0.88 });
+  const [view, setView] = useState({ x: 0, y: 10, scale: 1 });
   const pointer = useRef<{ id: number; x: number; y: number } | null>(null);
   const touch = useRef<{ x: number; y: number; distance: number } | null>(null);
   const nodeMap = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
@@ -100,14 +107,12 @@ export function TreeCanvasV2({ nodes, selectedNodeId, plannedRanks, recommendedI
     setView((current) => ({ x: current.x + dx, y: current.y + dy, scale: clampScale(current.scale * ratio) }));
     touch.current = next;
   };
-  const touchEnd = (event: ReactTouchEvent<SVGSVGElement>) => {
-    touch.current = touchMetrics(event.touches);
-  };
-  const fit = () => setView({ x: 0, y: 40, scale: 0.88 });
+  const touchEnd = (event: ReactTouchEvent<SVGSVGElement>) => { touch.current = touchMetrics(event.touches); };
+  const fit = () => setView({ x: 0, y: 10, scale: 1 });
   const zoom = (delta: number) => setView((current) => ({ ...current, scale: clampScale(current.scale + delta) }));
 
   return <div className="tree-canvas-wrap">
-    <svg className="tree-canvas-v2" data-testid="tree-canvas" viewBox="-720 -920 1440 1840" role="tree"
+    <svg className="tree-canvas-v2" data-testid="tree-canvas" viewBox="-1100 -930 2200 1860" role="tree"
       aria-label={locale === "ko" ? "랜덤다이스2 다이스 트리" : "Random Dice 2 Dice Tree"}
       onWheel={wheel} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}
       onTouchStart={touchStart} onTouchMove={touchMove} onTouchEnd={touchEnd} onTouchCancel={touchEnd}>
@@ -125,6 +130,12 @@ export function TreeCanvasV2({ nodes, selectedNodeId, plannedRanks, recommendedI
           return <line key={`${parentId}-${node.id}`} x1={parent.position.x} y1={parent.position.y} x2={node.position.x} y2={node.position.y}
             className={`edge-v2 ${planned ? "is-planned" : ""} ${recommended ? "is-recommended" : ""} ${dim ? "is-dim" : ""}`} />;
         }))}
+        <g className="family-axis-labels" aria-hidden="true">
+          {FAMILY_AXIS.map((axis) => <g key={axis.family} transform={`translate(${axis.x} ${axis.y})`}>
+            <circle r="15" className={`family-axis-dot family-axis-${axis.family}`} />
+            <text textAnchor="middle" dominantBaseline="central">{locale === "ko" ? axis.ko : axis.en.slice(0, 2)}</text>
+          </g>)}
+        </g>
         {nodes.map((node) => {
           const selected = node.id === selectedNodeId;
           const planned = Boolean(plannedRanks[node.id]);
