@@ -83,6 +83,7 @@ export function TreeCanvas({ nodes, ranks, selectedNodeId, onSelect, recommendat
                 aria-label={t(node.localizationKey)}
                 data-testid={`node-${node.id}`}
                 className={`tree-node family-${node.family} ${rank ? "is-invested" : ""} ${isSelected ? "is-selected" : ""} ${isRecommended ? "is-recommended" : ""} ${isUnverified ? "is-unverified" : ""} ${!isMatch ? "is-dim" : ""}`}
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => { event.stopPropagation(); onSelect(node.id); }}
                 onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onSelect(node.id); }}
                 style={{ "--family-color": colors[node.family] } as React.CSSProperties}
