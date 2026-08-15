@@ -12,6 +12,7 @@ test("V2 planner plans, shares and restores the same semantic build", async ({ p
   await page.goto("/dicetree/");
   await expect(page.getByText(/랜덤다이스2 트리/).first()).toBeVisible();
   await expect(page.getByTestId("tree-canvas")).toBeVisible();
+  await page.screenshot({ path: `test-results/qa-v2-tree-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
   await page.getByTestId("node-global-bullet-observed-next").click();
   await expect(page.getByTestId("node-panel")).toContainText("3,000 골드");
@@ -24,7 +25,7 @@ test("V2 planner plans, shares and restores the same semantic build", async ({ p
   await expect(page.getByTestId("share-popover")).toBeVisible();
   const url = await page.getByTestId("share-url").inputValue();
   expect(url).toContain("/dicetree/#b=v2.");
-  await page.screenshot({ path: `test-results/qa-v2-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+  await page.screenshot({ path: `test-results/qa-v2-share-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
   const context = await browser.newContext();
   const shared = await context.newPage();
@@ -57,8 +58,6 @@ test("mobile V2 canvas supports real touch pan and bounded layout", async ({ pag
   const before = await transform.getAttribute("transform");
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
-  // Start in a deliberately empty corner so this test measures canvas panning,
-  // while the shared-build scenario above independently verifies mobile node taps.
   const x = box!.x + box!.width * .14;
   const y = box!.y + box!.height * .16;
   const cdp = await page.context().newCDPSession(page);
