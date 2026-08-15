@@ -57,11 +57,13 @@ test("mobile V2 canvas supports real touch pan and bounded layout", async ({ pag
   const before = await transform.getAttribute("transform");
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
-  const x = box!.x + box!.width * .53;
-  const y = box!.y + box!.height * .46;
+  // Start in a deliberately empty corner so this test measures canvas panning,
+  // while the shared-build scenario above independently verifies mobile node taps.
+  const x = box!.x + box!.width * .14;
+  const y = box!.y + box!.height * .16;
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + 44, y: y + 34 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + 52, y: y + 42 }] });
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect(transform).not.toHaveAttribute("transform", before ?? "");
 
