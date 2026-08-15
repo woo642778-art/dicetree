@@ -33,7 +33,11 @@ export function encodePlannerState(state: PlannerStateV1): string {
 const roles = new Set<PlannerRole>(["dealer", "support", "balanced"]);
 const profiles = new Set<SpendingProfile>(["f2p", "light", "spender"]);
 
-export function decodePlannerState(encoded: string, validNodeIds: Set<string>): DecodeResult {
+export function decodePlannerState(
+  encoded: string,
+  validNodeIds: Set<string>,
+  maxRanks?: ReadonlyMap<string, number>,
+): DecodeResult {
   try {
     if (!encoded.startsWith("v1.")) return { state: null, warnings: [], error: "unsupported-schema" };
     const raw = JSON.parse(fromBase64Url(encoded.slice(3)));
@@ -49,7 +53,8 @@ export function decodePlannerState(encoded: string, validNodeIds: Set<string>): 
         warnings.push(`unknown-node:${nodeId}`);
         continue;
       }
-      if (!Number.isInteger(rank) || rank < 0 || rank > 999) {
+      const maximum = maxRanks?.get(nodeId) ?? 999;
+      if (!Number.isInteger(rank) || rank < 0 || rank > maximum) {
         warnings.push(`invalid-rank:${nodeId}`);
         continue;
       }
@@ -61,8 +66,12 @@ export function decodePlannerState(encoded: string, validNodeIds: Set<string>): 
   }
 }
 
-export function loadSharedStateFromHash(hash: string, validNodeIds: Set<string>): DecodeResult | null {
+export function loadSharedStateFromHash(
+  hash: string,
+  validNodeIds: Set<string>,
+  maxRanks?: ReadonlyMap<string, number>,
+): DecodeResult | null {
   const match = hash.match(/(?:^#|&)b=([^&]+)/);
   if (!match) return null;
-  return decodePlannerState(decodeURIComponent(match[1]), validNodeIds);
+  return decodePlannerState(decodeURIComponent(match[1]), validNodeIds, maxRanks);
 }
