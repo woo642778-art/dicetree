@@ -34,6 +34,13 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: End-to-end tests
         run: npm run test:e2e -- --project=chromium --project=mobile
+      - name: Upload visual QA screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-screenshots
+          path: test-results/qa-*.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Configure Pages
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v6
