@@ -1,0 +1,16 @@
+.recommend-orbit {
+  animation: orbit-dash 2.4s linear infinite !important;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.selection-halo,
+.rank-chip,
+.cost-chip,
+.plan-check {
+  pointer-events: none;
+}
+
+@keyframes orbit-dash {
+  to { stroke-dashoffset: -36; }
+}
