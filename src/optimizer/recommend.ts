@@ -1,11 +1,18 @@
-import type { DiceDefinition, EvaluationMode, PlannerStateV1, Recommendation, TreeNodeDefinition } from "../domain/types";
-import { calculateRouteCost } from "../domain/costs";
+import type { DiceDefinition, EvaluationMode, PlannerStateV1, Recommendation, ResourceTotals, TreeNodeDefinition } from "../domain/types";
+import { calculateRouteCost, calculateSpentResources } from "../domain/costs";
 import { canIncrement } from "../domain/treeRules";
 import { evaluateEffect } from "../domain/effects";
 import { scoreCandidate } from "./scoreCandidate";
 
 export interface RecommendOptions {
   limit?: number;
+}
+
+function fitsBudget(spent: ResourceTotals, incremental: ResourceTotals, budget: PlannerStateV1["goals"]["budget"]) {
+  if (!budget) return true;
+  return (budget.gold === undefined || spent.gold + incremental.gold <= budget.gold)
+    && (budget.core === undefined || spent.core + incremental.core <= budget.core)
+    && (budget.token === undefined || spent.token + incremental.token <= budget.token);
 }
 
 export function recommendNextRoutes(
@@ -15,11 +22,15 @@ export function recommendNextRoutes(
   options: RecommendOptions = {},
 ): Recommendation[] {
   const results: Recommendation[] = [];
+  const spent = calculateSpentResources(state.ranks, definitions);
   for (const node of definitions) {
     if (!canIncrement(node.id, state.ranks, definitions)) continue;
     const nextRank = (state.ranks[node.id] ?? 0) + 1;
     const level = node.levels.find((x) => x.rank === nextRank);
     if (!level || !level.costsKnown || !level.effectsKnown) continue;
+    const route = [{ nodeId: node.id, targetRank: nextRank }];
+    const incrementalCosts = calculateRouteCost(route, state.ranks, definitions);
+    if (!fitsBudget(spent, incrementalCosts, state.goals.budget)) continue;
     const scored = scoreCandidate(node, state, dice);
     if (scored.score <= 0) continue;
     const evaluated = level.effects.map((effect) => evaluateEffect(effect, { goals: state.goals, dice }));
@@ -34,8 +45,8 @@ export function recommendNextRoutes(
     ];
     results.push({
       nodeId: node.id,
-      route: [{ nodeId: node.id, targetRank: nextRank }],
-      incrementalCosts: calculateRouteCost([{ nodeId: node.id, targetRank: nextRank }], state.ranks, definitions),
+      route,
+      incrementalCosts,
       score: scored.score,
       confidence: scored.confidence,
       reasons,
