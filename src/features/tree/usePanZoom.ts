@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 export interface ViewTransform { x: number; y: number; scale: number }
 
-export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.72 }) {
+export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 }) {
   const [view, setView] = useState(initial);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const lastPan = useRef<{ x: number; y: number } | null>(null);
