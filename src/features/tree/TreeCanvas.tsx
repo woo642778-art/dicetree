@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { DiceFamily, Recommendation, TreeNodeDefinition } from "../../domain/types";
 import { useI18n } from "../../i18n/I18nContext";
+import { strings } from "../../i18n/strings";
 import { usePanZoom } from "./usePanZoom";
 
 const colors: Record<DiceFamily, string> = {
@@ -31,7 +32,13 @@ export function TreeCanvas({ nodes, ranks, selectedNodeId, onSelect, recommendat
   const recommended = new Set(recommendations.map((item) => item.nodeId));
   const query = search.trim().toLocaleLowerCase();
   const visible = (node: TreeNodeDefinition) => familyFilter === "all" || node.family === familyFilter;
-  const matches = (node: TreeNodeDefinition) => !query || t(node.localizationKey).toLocaleLowerCase().includes(query) || node.id.includes(query);
+  const matches = (node: TreeNodeDefinition) => {
+    if (!query) return true;
+    const localizedNames = [strings.ko[node.localizationKey], strings.en[node.localizationKey]].filter(Boolean);
+    return localizedNames.some((name) => name.toLocaleLowerCase().includes(query))
+      || node.id.toLocaleLowerCase().includes(query)
+      || node.tags.some((tag) => tag.toLocaleLowerCase().includes(query));
+  };
 
   return (
     <section className="tree-stage" aria-label="Dice tree">
