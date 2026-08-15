@@ -1,33 +1,60 @@
 # Random Dice 2 Tree Planner
 
-A public, login-free Random Dice 2 tree planner for previewing upgrades, tracking simulated resource spend, comparing verified upgrade data, and sharing a complete build in the URL.
+A public, login-free Random Dice 2 Dice Tree planner focused on screenshot-sourced topology, simulated progression costs, explainable route recommendations, and shareable builds.
 
-Public URL after GitHub Pages deploy: **https://woo642778-art.github.io/dicetree/**
+Public site: **https://woo642778-art.github.io/dicetree/**
 
-## Data integrity policy
+## V2 principles
 
-This project intentionally separates what is known from what is merely visible or still hidden in-game.
+The planner does not pretend that every hidden value is known.
 
-- Verified or partially verified numeric values include an explicit source/date note.
-- Hidden tree slots are rendered as **미확인 / Unverified** and never receive invented damage, attack-speed, resource, or prerequisite values.
-- An observed upgrade may be compared as an immediate step even when its full prerequisite route is unknown. The UI labels that limitation.
-- Exact DPS is shown only when the relevant game formula has been verified. Otherwise recommendations are explicitly heuristic.
+- Tree geometry can be known even when a node's effect is not.
+- Rank, cost, effect, identity, prerequisites, and family each carry their own confidence state.
+- Clear in-game screenshots are the primary source for current Random Dice 2 numeric values.
+- Current official 111% material is preferred for game-level rules and terminology.
+- Community strategy is stored separately from canonical game facts.
+- Random Dice: Defense upgrade tables are **not** reused as Random Dice 2 progression data.
+- Exact DPS is never claimed when the Random Dice 2 formula is not verified.
 
-The initial dataset is deliberately conservative and uses user-provided in-game screenshots for the observed all-dice bullet-damage and Chaos attack-speed upgrade steps. More nodes can be promoted from `unverified` to `partial`/`verified` as reliable evidence is added.
+## What the V2 dataset currently contains
+
+- 100+ screenshot-mapped structural nodes, including grey locked/unknown slots
+- Five central family directions: Nature, Chaos, Order, Engineering, Magic
+- Four observed tree resources: Gold plus the blue-card, red-card, and prism/cube-like resources
+- Screenshot-observed node costs including 2,000 through 100,000 Gold and mixed-resource gates
+- Screenshot-observed rank examples such as 5/100, 17/50, and 1/15 where the labels can be associated safely
+- Earlier detail evidence for the all-dice bullet-damage and Chaos attack-speed upgrade steps
+- Separate community strategy notes for Devour, Corruption, Taeguk, early Magic utility, and Engineering routes
+
+The non-Gold resource icons are real observed resources, but their official current-game names are not yet verified. The UI therefore uses neutral labels rather than inventing names.
+
+## Rank-by-rank cost policy
+
+A photographed price is stored as the **observed next-step cost at that photographed rank**. It is not repeated across all remaining ranks.
+
+For example, if a screenshot confirms a node at 5/100 and shows the next cost, that creates one evidence point. If another current screenshot later shows the same node at 6/100, the second point can be added. Over time this produces a real cost ladder rather than an inferred one.
+
+See:
+
+- `docs/data/cost-evidence-matrix.md`
+- `docs/data/random-dice-2-v2-source-notes.md`
+- `docs/data/community-research-2026-08-15.md`
 
 ## Features
 
-- Pan/zoom SVG tree on desktop and mobile
-- Five family filters and search
-- Virtual node investment with live resource totals
-- Primary/secondary die focus and dealer/support/balanced goals
-- F2P, light-spender, and spender recommendation profiles
-- Explainable deterministic recommendations, never opaque AI scores
-- Korean default UI with English toggle
-- Local named builds via `localStorage`
-- Login-free share URLs using `#b=v1...` state payloads
-- Safe handling of removed/unknown nodes in older links
-- GitHub Actions validation and Pages deployment
+- White-first responsive game-companion UI
+- Screenshot-calibrated SVG Dice Tree with locked structural slots
+- Mouse pan/wheel zoom and mobile touch pan/pinch
+- Family filters and search
+- Virtual next-step investment planning
+- Four-resource inventory/spend/remaining calculations
+- Focus-die and progression-profile recommendation weighting
+- Separate canonical facts and community strategy notes
+- Korean default UI and English toggle
+- Login-free V2 share URLs
+- Safe malformed/older-state handling
+- Reduced-motion accessibility support
+- Automated unit/component, production build, desktop/mobile browser, console-error, and screenshot QA in GitHub Actions
 
 ## Development
 
@@ -44,14 +71,18 @@ npm run test:e2e
 
 The Vite base path is `/dicetree/` for GitHub Pages.
 
-## Adding verified data
+## Adding current-game data
 
-Edit `src/tree-data/nodes.ts` and `src/tree-data/dice.ts`. Every numeric level must carry verification metadata and explicit `costsKnown` / `effectsKnown` values. Run:
+Canonical current-game data lives under `src/tree-data-v2/`.
 
-```bash
-npm run lint:data
-npm test
-npm run build
-```
+A new numeric field should include:
 
-Do not infer hidden ranks, prerequisite chains, or formulas from visual similarity alone.
+1. the exact value visible in the source,
+2. the specific node/rank context when known,
+3. a `SourceRef`,
+4. field-level confidence,
+5. no extrapolation beyond what the source proves.
+
+Community opinions belong under `src/strategy/` and must not mutate canonical costs/effects.
+
+Before merging data changes, run the full validation suite and browser QA. The repository workflow also stores desktop/mobile screenshots as Actions artifacts for manual visual review.
