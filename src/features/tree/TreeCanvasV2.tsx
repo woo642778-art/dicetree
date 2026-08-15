@@ -87,12 +87,10 @@ export function TreeCanvasV2({ nodes, selectedNodeId, plannedRanks, recommendedI
     if (event.pointerType !== "touch" && pointer.current?.id === event.pointerId) pointer.current = null;
   };
   const touchStart = (event: ReactTouchEvent<SVGSVGElement>) => {
-    event.preventDefault();
     const metrics = touchMetrics(event.touches);
     if (metrics) touch.current = metrics;
   };
   const touchMove = (event: ReactTouchEvent<SVGSVGElement>) => {
-    event.preventDefault();
     const next = touchMetrics(event.touches);
     const previous = touch.current;
     if (!next || !previous) return;
@@ -103,7 +101,6 @@ export function TreeCanvasV2({ nodes, selectedNodeId, plannedRanks, recommendedI
     touch.current = next;
   };
   const touchEnd = (event: ReactTouchEvent<SVGSVGElement>) => {
-    event.preventDefault();
     touch.current = touchMetrics(event.touches);
   };
   const fit = () => setView({ x: 0, y: 40, scale: 0.88 });
