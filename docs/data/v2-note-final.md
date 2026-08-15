@@ -1,0 +1,1 @@
+No numerical value is promoted from legacy Random Dice material into Random Dice 2 canonical data.
