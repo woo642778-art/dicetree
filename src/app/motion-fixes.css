@@ -1,0 +1,76 @@
+.recommend-orbit {
+  animation: orbit-dash 2.4s linear infinite !important;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.selection-halo,
+.rank-chip,
+.cost-chip,
+.plan-check,
+.family-axis-labels {
+  pointer-events: none;
+}
+
+/* The real game keeps locked branches visible. V2 does the same on the
+   white canvas instead of fading unknown nodes almost into the background. */
+.confidence-unknown .token-shell {
+  stroke: #aaa7b5 !important;
+  stroke-opacity: .9 !important;
+}
+.confidence-unknown .token-face {
+  fill: #eae9ef !important;
+  stroke: #d9d7e0 !important;
+}
+.confidence-unknown .token-glyph {
+  fill: #878490 !important;
+}
+.edge-v2 {
+  stroke: #cbc8d4;
+  stroke-opacity: .76;
+}
+
+.tree-stage-v2::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(111, 91, 225, .055), transparent 27%),
+    radial-gradient(circle at 47% 54%, rgba(211, 169, 65, .025), transparent 18%);
+  mix-blend-mode: multiply;
+}
+.tree-canvas-wrap,
+.canvas-watermark {
+  z-index: 2;
+}
+
+.family-axis-dot { fill: #fff; stroke-width: 1.5; }
+.family-axis-nature { stroke: #34a86f; }
+.family-axis-chaos { stroke: #7859d6; }
+.family-axis-order { stroke: #d354ac; }
+.family-axis-engineering { stroke: #d69a20; }
+.family-axis-magic { stroke: #3586e7; }
+.family-axis-labels text { fill: #6f6d7b; font-size: 7px; font-weight: 900; letter-spacing: -.03em; }
+
+@media (max-width: 820px) {
+  .v2-header-actions .planner-pill {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    min-width: 34px;
+    padding: 0 !important;
+    font-size: 0 !important;
+  }
+  .v2-header-actions .planner-pill::after {
+    content: "SET";
+    font-size: 7px;
+    font-weight: 900;
+    letter-spacing: .04em;
+  }
+}
+
+@keyframes orbit-dash {
+  to { stroke-dashoffset: -36; }
+}
