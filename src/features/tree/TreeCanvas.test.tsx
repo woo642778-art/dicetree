@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nContext";
 import { treeNodes } from "../../tree-data/nodes";
 import { TreeCanvas } from "./TreeCanvas";
@@ -23,6 +23,7 @@ function renderCanvas(search = "") {
 
 describe("TreeCanvas", () => {
   beforeEach(() => localStorage.clear());
+  afterEach(cleanup);
 
   it("marks unknown tree slots as unverified and keeps them inspectable", () => {
     const onSelect = renderCanvas();
