@@ -1,7 +1,9 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "../i18n/I18nContext";
 import { App } from "./App";
+
+afterEach(() => cleanup());
 
 describe("V2 planner shell", () => {
   beforeEach(() => {
