@@ -1,0 +1,1 @@
+The V2 branch remains isolated from main until unit tests, production build, desktop/mobile E2E, and visual QA are green.
