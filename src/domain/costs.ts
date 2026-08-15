@@ -1,4 +1,10 @@
-import type { ResourceTotals, RouteStep, TreeNodeDefinition } from "./types";
+import type {
+  ResourceCostV2,
+  ResourceInventory,
+  ResourceTotals,
+  RouteStep,
+  TreeNodeDefinition,
+} from "./types";
 
 export const EMPTY_RESOURCES: ResourceTotals = { gold: 0, core: 0, token: 0 };
 
@@ -45,4 +51,49 @@ export function formatResources(total: ResourceTotals): string {
   if (total.core) parts.push(`${total.core} Core`);
   if (total.token) parts.push(`${total.token} Token`);
   return parts.join(" · ");
+}
+
+export const EMPTY_RESOURCES_V2: ResourceInventory = {
+  gold: 0,
+  blueCard: 0,
+  redCard: 0,
+  prismCube: 0,
+};
+
+export function sumV2Costs(costs: ResourceCostV2[]): ResourceInventory {
+  const total = { ...EMPTY_RESOURCES_V2 };
+  for (const cost of costs) {
+    total.gold += cost.gold ?? 0;
+    total.blueCard += cost.blueCard ?? 0;
+    total.redCard += cost.redCard ?? 0;
+    total.prismCube += cost.prismCube ?? 0;
+  }
+  return total;
+}
+
+export function addV2Resources(a: ResourceInventory, b: ResourceCostV2): ResourceInventory {
+  return {
+    gold: a.gold + (b.gold ?? 0),
+    blueCard: a.blueCard + (b.blueCard ?? 0),
+    redCard: a.redCard + (b.redCard ?? 0),
+    prismCube: a.prismCube + (b.prismCube ?? 0),
+  };
+}
+
+export function subtractV2Resources(inventory: ResourceInventory, cost: ResourceCostV2): ResourceInventory {
+  return {
+    gold: inventory.gold - (cost.gold ?? 0),
+    blueCard: inventory.blueCard - (cost.blueCard ?? 0),
+    redCard: inventory.redCard - (cost.redCard ?? 0),
+    prismCube: inventory.prismCube - (cost.prismCube ?? 0),
+  };
+}
+
+export function canAffordV2(inventory: ResourceInventory, cost: ResourceCostV2): boolean {
+  return (
+    inventory.gold >= (cost.gold ?? 0) &&
+    inventory.blueCard >= (cost.blueCard ?? 0) &&
+    inventory.redCard >= (cost.redCard ?? 0) &&
+    inventory.prismCube >= (cost.prismCube ?? 0)
+  );
 }

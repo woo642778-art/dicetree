@@ -1,0 +1,72 @@
+import type { SourceRef } from "../domain/types";
+
+export const sourceRegistry: SourceRef[] = [
+  {
+    id: "user-tree-full-a",
+    kind: "userScreenshot",
+    label: "User-provided Random Dice 2 full-tree screenshot A",
+    observedAt: "2026-08-15",
+    notes: "Primary topology, family-direction, visible rank, resource, and cost reference.",
+  },
+  {
+    id: "user-tree-full-b",
+    kind: "userScreenshot",
+    label: "User-provided Random Dice 2 full-tree screenshot B",
+    observedAt: "2026-08-15",
+    notes: "Secondary topology reference showing the same central graph at a different viewport.",
+  },
+  {
+    id: "user-prior-stat-details",
+    kind: "userScreenshot",
+    label: "Earlier user-provided Random Dice 2 stat detail screenshots",
+    observedAt: "2026-08-15",
+    notes: "Confirms specific next-rank values discussed in this conversation: global bullet damage and Chaos attack speed.",
+  },
+  {
+    id: "user-node-detail-reference",
+    kind: "userScreenshot",
+    label: "User-provided tree detail UI reference",
+    observedAt: "2026-08-15",
+    notes: "Confirms the game uses node rank, next effect, prerequisite, and acquisition-state detail fields.",
+  },
+  {
+    id: "appstore-rd2-2026",
+    kind: "official",
+    label: "Random Dice 2 — Apple App Store",
+    url: "https://apps.apple.com/kr/app/random-dice-2/id6748432502",
+    observedAt: "2026-08-15",
+    notes: "111% product description confirming the custom growth-path progression concept.",
+  },
+  {
+    id: "googleplay-rd2-2026",
+    kind: "official",
+    label: "Random Dice 2 — Google Play",
+    url: "https://play.google.com/store/apps/details?id=com.percent.aos.randomdice2",
+    observedAt: "2026-08-15",
+    notes: "111% product listing confirming the strategy-focused custom growth path.",
+  },
+  {
+    id: "community-dc-engineering-317",
+    kind: "community",
+    label: "Random Dice 2 community lead: Engineering tree share",
+    url: "https://m.dcinside.com/board/randomdice2/317",
+    observedAt: "2026-08-15",
+    notes: "Community lead retained for manual cross-checking. Numerical claims are not promoted unless reverified.",
+  },
+  {
+    id: "community-dc-devour-653",
+    kind: "community",
+    label: "Random Dice 2 community lead: Devour operation",
+    url: "https://m.dcinside.com/board/randomdice2/653",
+    observedAt: "2026-08-15",
+    notes: "Community strategy lead, not an official rules source.",
+  },
+  {
+    id: "community-dc-f2p-1517",
+    kind: "community",
+    label: "Random Dice 2 community lead: early resource-efficient route",
+    url: "https://m.dcinside.com/board/randomdice2/1517",
+    observedAt: "2026-08-15",
+    notes: "Community strategy lead, not an official rules source.",
+  },
+];

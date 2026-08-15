@@ -121,3 +121,94 @@ export interface Recommendation {
   mode: EvaluationMode;
   exactPercent?: number;
 }
+
+/**
+ * V2 data types keep provenance on each field so a node can have a verified
+ * position and observed cost while its effect text is still unknown.
+ */
+export type Confidence = "verified" | "observed" | "partial" | "inferred" | "unknown";
+export type SourceKind = "userScreenshot" | "official" | "community" | "legacy";
+
+export interface SourceRef {
+  id: string;
+  kind: SourceKind;
+  label: string;
+  url?: string;
+  observedAt: string;
+  notes?: string;
+}
+
+export interface SourcedField<T> {
+  value?: T;
+  confidence: Confidence;
+  sourceIds: string[];
+  notes?: string;
+}
+
+export interface LocalizedText {
+  ko: string;
+  en: string;
+}
+
+export type ResourceId = "gold" | "blueCard" | "redCard" | "prismCube";
+export type ResourceCostV2 = Partial<Record<ResourceId, number>>;
+export type ResourceInventory = Record<ResourceId, number>;
+
+export type TreeNodeKind = "core" | "dice" | "stat" | "milestone" | "capstone" | "connector";
+
+export interface TreeNodeV2 {
+  id: string;
+  family: DiceFamily | "core";
+  kind: TreeNodeKind;
+  position: { x: number; y: number };
+  prerequisites: Array<{ nodeId: string; minRank: number }>;
+  visualParentIds?: string[];
+  name: SourcedField<LocalizedText>;
+  iconKey?: SourcedField<string>;
+  maxRank: SourcedField<number>;
+  displayedRank?: SourcedField<{ current: number; max: number }>;
+  costsByRank?: Array<SourcedField<ResourceCostV2>>;
+  observedNextCost?: SourcedField<ResourceCostV2>;
+  observedNextCostFromRank?: number;
+  effectSummary?: SourcedField<LocalizedText>;
+  affectedDice?: SourcedField<string[]>;
+  tags: string[];
+  sourceIds: string[];
+  fieldConfidence: Record<string, Confidence>;
+  investable: boolean;
+}
+
+export interface DiceDefinitionV2 {
+  id: string;
+  family: DiceFamily;
+  name: SourcedField<LocalizedText>;
+  iconKey?: SourcedField<string>;
+  roles: PlannerRole[];
+  tags: string[];
+  sourceIds: string[];
+}
+
+export type ProgressionProfile = "conservative" | "balanced" | "ceiling";
+
+export interface PlannerGoalsV2 {
+  primaryDieId?: string;
+  secondaryDieIds: string[];
+  role: PlannerRole;
+  progressionProfile: ProgressionProfile;
+  routeTargetNodeId?: string;
+}
+
+export interface PlannerStateV2 {
+  schemaVersion: 2;
+  dataVersion: string;
+  ranks: Record<string, number>;
+  inventory: ResourceInventory;
+  goals: PlannerGoalsV2;
+}
+
+export interface ResourceDefinitionV2 {
+  id: ResourceId;
+  name: SourcedField<LocalizedText>;
+  iconKey: string;
+  accent: string;
+}
