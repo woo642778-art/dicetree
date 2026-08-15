@@ -8,7 +8,7 @@ import { canIncrement, getRollbackSet } from "../domain/treeRules";
 import { createPlannerHistory, plannerReducer } from "../planner/plannerReducer";
 import { selectInvestedCount, selectSpentResources } from "../planner/selectors";
 import { recommendNextRoutes } from "../optimizer/recommend";
-import { loadSharedStateFromHash } from "../share/codec";
+import { encodePlannerState, loadSharedStateFromHash } from "../share/codec";
 import { useI18n } from "../i18n/I18nContext";
 import { GoalPanel } from "../features/planner/GoalPanel";
 import { TreeCanvas } from "../features/tree/TreeCanvas";
@@ -25,6 +25,8 @@ const blankState = (): PlannerStateV1 => ({
   goals: { primaryDieId: "devourer", secondaryDieIds: ["corruption"], role: "dealer", spendingProfile: "f2p" },
 });
 
+type ShareIssue = "invalid" | "partial" | null;
+
 export function App() {
   const { t, locale, setLocale } = useI18n();
   const [history, dispatch] = useReducer((state: ReturnType<typeof createPlannerHistory>, action: Parameters<typeof plannerReducer>[1]) => plannerReducer(state, action, treeNodes), createPlannerHistory(blankState()));
@@ -33,16 +35,21 @@ export function App() {
   const [search, setSearch] = useState("");
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
+  const [shareIssue, setShareIssue] = useState<ShareIssue>(null);
   const state = history.present;
   const validation = useMemo(() => validateDataset(treeNodes, diceDefinitions), []);
   const selectedNode = treeNodes.find((node) => node.id === selectedNodeId);
   const recommendations = useMemo(() => recommendNextRoutes(state, treeNodes, diceDefinitions, { limit: 4 }), [state]);
   const spent = useMemo(() => selectSpentResources(state, treeNodes), [state]);
+  const semanticBuild = useMemo(() => encodePlannerState(state), [state]);
   const investedCount = selectInvestedCount(state);
 
   useEffect(() => {
     const result = loadSharedStateFromHash(window.location.hash, new Set(treeNodes.map((node) => node.id)));
-    if (result?.state) dispatch({ type: "load", state: result.state });
+    if (!result) return;
+    if (result.state) dispatch({ type: "load", state: result.state });
+    if (result.error) setShareIssue("invalid");
+    else if (result.warnings.length) setShareIssue("partial");
   }, []);
 
   const increment = () => selectedNode && dispatch({ type: "increment", nodeId: selectedNode.id });
@@ -72,6 +79,12 @@ export function App() {
         <button type="button" className="mobile-only" onClick={() => setRightOpen(true)}>{t("action.analysis")}</button>
       </div>
     </header>
+
+    {shareIssue && <div className="notice warning" data-testid="share-warning">
+      {t(shareIssue === "invalid" ? "share.invalid" : "share.partial")}
+      <button type="button" onClick={() => setShareIssue(null)} aria-label={t("action.close")}>×</button>
+    </div>}
+    <output hidden aria-hidden="true" data-testid="semantic-build-hash">{semanticBuild}</output>
 
     <main className="workspace">
       <div className={`mobile-scrim ${leftOpen || rightOpen ? "show" : ""}`} onClick={() => { setLeftOpen(false); setRightOpen(false); }} />
