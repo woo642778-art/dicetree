@@ -43,3 +43,18 @@ it("does not recommend an upgrade that exceeds the configured total gold budget"
   const result = recommendNextRoutes(budgeted, [make("fits", 4000, 1), make("too-expensive", 6000, 10)], dice);
   expect(result.map((item) => item.nodeId)).toEqual(["fits"]);
 });
+
+it("includes verified prerequisite investments in a destination route and cost", () => {
+  const prerequisite = make("prerequisite", 1000, 0.2);
+  const destination: TreeNodeDefinition = {
+    ...make("destination", 2000, 8),
+    prerequisites: [{ nodeId: "prerequisite", minRank: 1 }],
+  };
+  const result = recommendNextRoutes(state, [prerequisite, destination], dice);
+  const recommendation = result.find((item) => item.nodeId === "destination");
+  expect(recommendation?.route).toEqual([
+    { nodeId: "prerequisite", targetRank: 1 },
+    { nodeId: "destination", targetRank: 1 },
+  ]);
+  expect(recommendation?.incrementalCosts.gold).toBe(3000);
+});
