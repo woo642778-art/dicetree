@@ -78,7 +78,7 @@ export function TreeCanvas({ nodes, ranks, selectedNodeId, onSelect, recommendat
                 onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onSelect(node.id); }}
                 style={{ "--family-color": colors[node.family] } as React.CSSProperties}
               >
-                {isRecommended && <circle r="32" className="recommend-ring" />}
+                {isRecommended && <circle r="32" className="recommend-ring" aria-hidden="true" pointerEvents="none" style={{ animation: "none" }} />}
                 <circle r="24" className="node-shell" />
                 <circle r="18" className="node-inner" />
                 <text textAnchor="middle" y="5" className="node-symbol">{isUnverified ? "?" : node.tags.includes("attack-speed") ? "≫" : "◆"}</text>
