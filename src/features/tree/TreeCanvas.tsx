@@ -11,6 +11,9 @@ const colors: Record<DiceFamily, string> = {
   nature: "#5ee69a",
 };
 
+const VIEWBOX_MIN = -1100;
+const VIEWBOX_SIZE = 2200;
+
 interface Props {
   nodes: TreeNodeDefinition[];
   ranks: Record<string, number>;
@@ -36,7 +39,13 @@ export function TreeCanvas({ nodes, ranks, selectedNodeId, onSelect, recommendat
         <span>{t("tree.zoomHelp")}</span>
         <button type="button" className="icon-button" onClick={resetView} aria-label="Reset view">⌖</button>
       </div>
-      <svg className="tree-canvas" {...bind} data-testid="tree-canvas">
+      <svg
+        className="tree-canvas"
+        {...bind}
+        data-testid="tree-canvas"
+        viewBox={`${VIEWBOX_MIN} ${VIEWBOX_MIN} ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
+        preserveAspectRatio="xMidYMid meet"
+      >
         <defs>
           <pattern id="dot-grid" width="28" height="28" patternUnits="userSpaceOnUse">
             <circle cx="1" cy="1" r="1" fill="rgba(255,255,255,.08)" />
@@ -46,8 +55,8 @@ export function TreeCanvas({ nodes, ranks, selectedNodeId, onSelect, recommendat
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-        <rect width="100%" height="100%" fill="url(#dot-grid)" />
-        <g transform={`translate(50% 50%) translate(${view.x} ${view.y}) scale(${view.scale})`}>
+        <rect x={VIEWBOX_MIN} y={VIEWBOX_MIN} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="url(#dot-grid)" />
+        <g transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
           <circle r="86" className="tree-core-ring" />
           <circle r="54" className="tree-core" />
           <text y="6" textAnchor="middle" className="tree-core-text">DICE</text>
