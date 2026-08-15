@@ -1,1 +1,0 @@
-V2 work is validated incrementally through the repository's pull-request workflow before merge.

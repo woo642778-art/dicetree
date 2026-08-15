@@ -1,1 +1,0 @@
-Canonical numeric fields require a clear current-game screenshot or corroborated current source. Community opinions remain strategy metadata and legacy Random Dice tables are excluded from Random Dice 2 calculations.
