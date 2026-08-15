@@ -25,7 +25,7 @@ export function ShareButton({ state }: { state: PlannerStateV1 }) {
     await copyUrl(url);
   };
 
-  return <div className="build-manager">
+  return <div className="build-manager share-manager">
     <button type="button" className="top-action primary" onClick={share} data-testid="share-button">{copied ? t("action.copied") : t("action.share")}</button>
     {shareUrl && <div className="build-popover" data-testid="share-popover">
       <div className="popover-head"><strong>{t("action.share")}</strong><button type="button" onClick={() => setShareUrl("")} aria-label={t("action.close")}>×</button></div>
