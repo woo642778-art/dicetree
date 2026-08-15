@@ -20,6 +20,7 @@ test("planner shares and restores the same semantic build across locales", async
   expect(semanticBuild).toBeTruthy();
 
   await page.getByTestId("share-button").click();
+  await expect(page.getByTestId("share-popover")).toBeVisible();
   const shareUrl = await page.getByTestId("share-url").inputValue();
   expect(shareUrl).toContain("/dicetree/#b=v1.");
   await page.screenshot({ path: `test-results/qa-share-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
@@ -74,6 +75,7 @@ test("mobile canvas supports node investment, real touch pan, sharing and bounde
 
   await expect(page.getByTestId("share-button")).toBeVisible();
   await page.getByTestId("share-button").click();
+  await expect(page.getByTestId("share-popover")).toBeVisible();
   await expect(page.getByTestId("share-url")).toHaveValue(/\/dicetree\/#b=v1\./);
   await page.screenshot({ path: "test-results/qa-mobile-tree.png", fullPage: false });
 
