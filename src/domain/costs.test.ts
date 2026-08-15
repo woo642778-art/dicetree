@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { calculateSpentResources, canAffordV2, sumV2Costs } from "./costs";
-import { sampleTree } from "../test/fixtures";
+import { fixtureNodes } from "../test/fixtures";
 
 describe("calculateSpentResources", () => {
   it("sums only purchased known levels", () => {
-    expect(calculateSpentResources({ "test-node": 1 }, sampleTree)).toEqual({ gold: 100, core: 0, token: 0 });
+    expect(calculateSpentResources({ a: 1 }, fixtureNodes)).toEqual({ gold: 1000, core: 0, token: 0 });
   });
 });
 
