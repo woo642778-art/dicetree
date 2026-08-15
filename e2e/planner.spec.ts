@@ -49,10 +49,17 @@ test("V2 malformed share state fails safely", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("mobile V2 canvas supports real touch pan and bounded layout", async ({ page, isMobile }) => {
+test("mobile V2 canvas supports touch pan, setup access and bounded layout", async ({ page, isMobile }) => {
   test.skip(!isMobile, "mobile project only");
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
+
+  const setup = page.getByRole("button", { name: "내 조건" });
+  await expect(setup).toBeVisible();
+  await setup.click();
+  await expect(page.getByText("현재 보유 재화")).toBeVisible();
+  await page.getByRole("button", { name: "적용" }).click();
+
   const canvas = page.getByTestId("tree-canvas");
   const transform = page.getByTestId("tree-transform");
   const before = await transform.getAttribute("transform");
