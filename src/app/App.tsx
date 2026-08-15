@@ -45,7 +45,10 @@ export function App() {
   const investedCount = selectInvestedCount(state);
 
   useEffect(() => {
-    const result = loadSharedStateFromHash(window.location.hash, new Set(treeNodes.map((node) => node.id)));
+    const shareableNodes = treeNodes.filter((node) => node.investable && node.verification.status !== "unverified");
+    const validNodeIds = new Set(shareableNodes.map((node) => node.id));
+    const maxRanks = new Map(shareableNodes.map((node) => [node.id, node.maxRank]));
+    const result = loadSharedStateFromHash(window.location.hash, validNodeIds, maxRanks);
     if (!result) return;
     if (result.state) dispatch({ type: "load", state: result.state });
     if (result.error) setShareIssue("invalid");
