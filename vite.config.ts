@@ -5,6 +5,7 @@ export default defineConfig({
   base: "/dicetree/",
   plugins: [react()],
   test: {
+    include: ["src/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     css: true,
