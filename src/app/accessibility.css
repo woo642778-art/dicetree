@@ -35,6 +35,15 @@
 }
 
 @media (max-width: 860px) {
+  .topbar {
+    z-index: 60;
+  }
+
+  .brand h1,
+  .brand p {
+    display: none;
+  }
+
   .topbar-actions .share-manager {
     display: block;
   }
