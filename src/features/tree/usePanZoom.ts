@@ -8,7 +8,7 @@ export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.72 })
   const lastPan = useRef<{ x: number; y: number } | null>(null);
   const lastPinch = useRef<number | null>(null);
 
-  const clampScale = (scale: number) => Math.min(2.4, Math.max(0.28, scale));
+  const clampScale = (scale: number) => Math.min(2.5, Math.max(0.35, scale));
 
   const onWheel = useCallback((event: React.WheelEvent<SVGSVGElement>) => {
     event.preventDefault();
