@@ -1,0 +1,60 @@
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.app-shell > .notice.warning {
+  margin: 0;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-left: 0;
+  border-bottom: 1px solid rgba(255, 113, 130, 0.24);
+  z-index: 20;
+}
+
+.app-shell > .notice.warning button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.build-popover .save-row input[readonly] {
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    z-index: 60;
+  }
+
+  .brand h1,
+  .brand p {
+    display: none;
+  }
+
+  .topbar-actions .share-manager {
+    display: block;
+  }
+
+  .share-manager .build-popover {
+    position: fixed;
+    top: 64px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: 420px;
+    margin-left: auto;
+  }
+}
