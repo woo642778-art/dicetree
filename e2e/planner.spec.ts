@@ -10,7 +10,8 @@ function captureBrowserErrors(page: Page) {
 test("planner shares and restores the same semantic build across locales", async ({ page, browser, isMobile }) => {
   const browserErrors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await expect(page.getByRole("heading", { name: /랜덤다이스2/ })).toBeVisible();
+  if (isMobile) await expect(page.getByText("RD²", { exact: true })).toBeVisible();
+  else await expect(page.getByRole("heading", { name: /랜덤다이스2/ })).toBeVisible();
 
   await page.getByTestId("node-global-bullet-observed-next").click();
   await page.getByTestId("node-panel").getByRole("button", { name: "+" }).click();
@@ -33,7 +34,8 @@ test("planner shares and restores the same semantic build across locales", async
   await expect(sharedPage.getByTestId("semantic-build-hash")).toHaveText(semanticBuild!);
 
   await sharedPage.getByRole("button", { name: "EN" }).click();
-  await expect(sharedPage.getByRole("heading", { name: "Random Dice 2 Tree Planner" })).toBeVisible();
+  if (isMobile) await expect(sharedPage.getByRole("button", { name: "KO" })).toBeVisible();
+  else await expect(sharedPage.getByRole("heading", { name: "Random Dice 2 Tree Planner" })).toBeVisible();
   await expect(sharedPage.getByTestId("semantic-build-hash")).toHaveText(semanticBuild!);
   expect(browserErrors).toEqual([]);
   expect(sharedErrors).toEqual([]);
