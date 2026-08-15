@@ -7,9 +7,18 @@
 .selection-halo,
 .rank-chip,
 .cost-chip,
-.plan-check {
+.plan-check,
+.family-axis-labels {
   pointer-events: none;
 }
+
+.family-axis-dot { fill: #fff; stroke-width: 1.5; }
+.family-axis-nature { stroke: #34a86f; }
+.family-axis-chaos { stroke: #7859d6; }
+.family-axis-order { stroke: #d354ac; }
+.family-axis-engineering { stroke: #d69a20; }
+.family-axis-magic { stroke: #3586e7; }
+.family-axis-labels text { fill: #6f6d7b; font-size: 7px; font-weight: 900; letter-spacing: -.03em; }
 
 @keyframes orbit-dash {
   to { stroke-dashoffset: -36; }
