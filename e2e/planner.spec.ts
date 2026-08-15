@@ -34,7 +34,7 @@ test("malformed shared state fails safely", async ({ page }) => {
   await expect(page.getByTestId("resource-summary")).toContainText("0");
 });
 
-test("mobile canvas supports node investment, touch pan and bounded layout", async ({ page, isMobile }) => {
+test("mobile canvas supports node investment, real touch pan, sharing and bounded layout", async ({ page, isMobile }) => {
   test.skip(!isMobile, "mobile project only");
   await page.goto("/dicetree/");
   const canvas = page.getByTestId("tree-canvas");
@@ -42,15 +42,24 @@ test("mobile canvas supports node investment, touch pan and bounded layout", asy
 
   const transform = canvas.locator(":scope > g").first();
   const beforePan = await transform.getAttribute("transform");
-  await canvas.dispatchEvent("pointerdown", { pointerId: 11, pointerType: "touch", clientX: 180, clientY: 380, buttons: 1 });
-  await canvas.dispatchEvent("pointermove", { pointerId: 11, pointerType: "touch", clientX: 220, clientY: 420, buttons: 1 });
-  await canvas.dispatchEvent("pointerup", { pointerId: 11, pointerType: "touch", clientX: 220, clientY: 420, buttons: 0 });
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const x = box!.x + box!.width * 0.55;
+  const y = box!.y + box!.height * 0.55;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + 45, y: y + 35 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect(transform).not.toHaveAttribute("transform", beforePan ?? "");
 
   await page.getByTestId("node-global-bullet-observed-next").click();
   await expect(page.getByTestId("node-panel")).toBeVisible();
   await page.getByTestId("node-panel").getByRole("button", { name: "+" }).click();
   await expect(page.getByTestId("resource-summary")).toContainText("3,000");
+
+  await expect(page.getByTestId("share-button")).toBeVisible();
+  await page.getByTestId("share-button").click();
+  await expect(page.getByTestId("share-url")).toHaveValue(/\/dicetree\/#b=v1\./);
 
   const widths = await page.evaluate(() => ({
     viewport: document.documentElement.clientWidth,
