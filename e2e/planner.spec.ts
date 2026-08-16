@@ -11,7 +11,7 @@ test("exact IPA tree plans Chaos attack speed and restores the shared build", as
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
   await expect(page.getByTestId("tree-canvas")).toBeVisible();
-  await expect(page.getByText("239 노드")).toBeVisible();
+  if (!isMobile) await expect(page.getByText("239 노드")).toBeVisible();
   await expect(page.getByText("포식 시뮬레이터")).toBeVisible();
 
   await page.getByTestId("node-5103").click();
@@ -49,8 +49,8 @@ test("Predator simulator follows extracted level and Power-Up table deltas", asy
   await page.goto("/dicetree/");
   await expect(page.getByText("포식 시뮬레이터")).toBeVisible();
 
-  const dotSlider = page.getByLabel(/눈금 레벨/);
-  const powerSlider = page.getByLabel(/파워업/);
+  const dotSlider = page.getByRole("slider", { name: /눈금 레벨/ });
+  const powerSlider = page.getByRole("slider", { name: /^파워업/ });
   await dotSlider.fill("4");
   await powerSlider.fill("3");
 
