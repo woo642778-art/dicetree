@@ -17,7 +17,7 @@ function Price({ product, locale }: { product: PurchaseProduct; locale: "ko" | "
   return <div className="v41-price">
     {product.officialKrw
       ? <><strong>₩{product.officialKrw.toLocaleString()}</strong><small>{locale === "ko" ? "현재 한국 App Store 표시가" : "Current Korean App Store price"}</small></>
-      : <><strong>${product.priceUsd.toFixed(2)}</strong><small>{locale === "ko" ? "IPA 상품표 기준가" : "IPA table price"}</small></>}
+      : <><strong>${product.priceUsd.toFixed(2)}</strong><small>{locale === "ko" ? "게임 내 기준가" : "In-game reference price"}</small></>}
   </div>;
 }
 
@@ -31,13 +31,13 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
   return <main className="v41-shop" data-testid="v41-purchase-efficiency">
     <header className="v41-shop-hero">
       <div>
-        <small>DICE TREE VALUE LAB / CLIENT 1.0.1</small>
+        <small>DICE TREE VALUE LAB</small>
         <h1>{locale === "ko" ? "내 과금에 맞는 구매 효율" : "Purchase value for your budget"}</h1>
-        <p>{locale === "ko" ? "게임 클라이언트가 선언한 패키지 효율과 실제 보상 구성을 분리해서 비교합니다." : "Compare client-declared package efficiency separately from reward composition."}</p>
+        <p>{locale === "ko" ? "게임 내 패키지 효율과 실제 보상 구성을 분리해서 비교합니다." : "Compare in-game package efficiency separately from reward composition."}</p>
       </div>
       <aside className="v41-source-card" data-testid="v41-purchase-source">
-        <strong>{locale === "ko" ? "근거 상태" : "Evidence"}</strong>
-        <span>IPA 1.0.1 · ShopProductTable · SpecialPackageTable · RewardTable</span>
+        <strong>{locale === "ko" ? "데이터 기준" : "Data basis"}</strong>
+        <span>{locale === "ko" ? "게임 내 상품 구성 · 패키지 효율 · 보상 정보" : "In-game product contents, package efficiency and rewards"}</span>
         <a href={OFFICIAL_APP_STORE_KR_URL} target="_blank" rel="noreferrer">{locale === "ko" ? "한국 App Store 가격 확인" : "Check Korean App Store prices"}</a>
       </aside>
     </header>
@@ -57,7 +57,7 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
           <option value="redesign">{locale === "ko" ? "트리 재설계" : "Tree redesign"}</option>
         </select>
       </label>
-      <p>{locale === "ko" ? "효율 수치는 게임 클라이언트의 Efficiency 필드이며 할인율이나 수익률을 뜻하지 않습니다." : "Efficiency is a client data field, not a discount or financial return."}</p>
+      <p>{locale === "ko" ? "효율 수치는 게임 내부의 패키지 효율 지표이며 할인율이나 수익률을 뜻하지 않습니다." : "The value is an in-game package-efficiency metric, not a discount or financial return."}</p>
     </section>
 
     {top && <section className="v41-top-pick" data-testid="v41-top-pick">
@@ -67,14 +67,14 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
         <h2>{top.nameKo}</h2>
         <div className="v41-rewards">{rewardText(top, locale).map((reward) => <span key={reward}>{reward}</span>)}</div>
       </div>
-      <div className="v41-efficiency"><small>{locale === "ko" ? "클라이언트 효율" : "Client efficiency"}</small><strong>{top.clientEfficiency}</strong></div>
+      <div className="v41-efficiency"><small>{locale === "ko" ? "패키지 효율" : "Package efficiency"}</small><strong>{top.clientEfficiency}</strong></div>
       <Price product={top} locale={locale} />
     </section>}
 
     <section className="v41-ranking" aria-label={locale === "ko" ? "패키지 효율 순위" : "Package value ranking"}>
       {ranking.slice(0, 5).map((product, index) => <article key={product.id} data-testid={`v41-package-${product.id}`}>
         <b>{String(index + 1).padStart(2, "0")}</b>
-        <div><small>{product.id}</small><h3>{product.nameKo}</h3><div className="v41-rewards">{rewardText(product, locale).map((reward) => <span key={reward}>{reward}</span>)}</div></div>
+        <div><h3>{product.nameKo}</h3><div className="v41-rewards">{rewardText(product, locale).map((reward) => <span key={reward}>{reward}</span>)}</div></div>
         <div className="v41-efficiency"><small>{locale === "ko" ? "효율" : "Efficiency"}</small><strong>{product.clientEfficiency}</strong></div>
         <Price product={product} locale={locale} />
       </article>)}
@@ -83,7 +83,7 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
     {intro && <section className="v41-intro-offer" data-testid="v41-intro-offer">
       <div><small>{locale === "ko" ? "별도 비교" : "Separate comparison"}</small><h2>{locale === "ko" ? "최소 진입 비용" : "Lowest entry price"}</h2><p>{intro.nameKo} · {rewardText(intro, locale).join(" · ")}</p></div>
       <Price product={intro} locale={locale} />
-      <p>{locale === "ko" ? "이 상품에는 Efficiency 값이 없어 위 순위에 섞지 않았습니다." : "This offer has no Efficiency value, so it is excluded from the ranking."}</p>
+      <p>{locale === "ko" ? "이 상품에는 패키지 효율 지표가 없어 위 순위에 섞지 않았습니다." : "This offer has no package-efficiency metric, so it is excluded from the ranking."}</p>
     </section>}
 
     <footer>{locale === "ko" ? "구매는 사이트에서 이루어지지 않습니다. 가격과 판매 여부는 변경될 수 있으므로 결제 전 게임과 App Store에서 최종 확인하세요." : "No purchase occurs on this site. Confirm current availability and price in-game and in the App Store before paying."}</footer>

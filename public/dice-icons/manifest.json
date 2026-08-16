@@ -1,0 +1,332 @@
+{
+  "fire": {
+    "file": "fire.webp",
+    "sourceSprite": "Dice_fire3",
+    "width": 256,
+    "height": 256
+  },
+  "ice": {
+    "file": "ice.webp",
+    "sourceSprite": "Dice_ICE3",
+    "width": 256,
+    "height": 256
+  },
+  "electric": {
+    "file": "electric.webp",
+    "sourceSprite": "Dice_Electric3",
+    "width": 256,
+    "height": 256
+  },
+  "wind": {
+    "file": "wind.webp",
+    "sourceSprite": "Dice_Wind3",
+    "width": 256,
+    "height": 256
+  },
+  "iron": {
+    "file": "iron.webp",
+    "sourceSprite": "Dice_iron_3",
+    "width": 256,
+    "height": 256
+  },
+  "light": {
+    "file": "light.webp",
+    "sourceSprite": "Dice_Light3",
+    "width": 256,
+    "height": 256
+  },
+  "poison": {
+    "file": "poison.webp",
+    "sourceSprite": "Dice_Poison3",
+    "width": 256,
+    "height": 256
+  },
+  "lock": {
+    "file": "lock.webp",
+    "sourceSprite": "Dice_Lock3",
+    "width": 256,
+    "height": 256
+  },
+  "mine": {
+    "file": "mine.webp",
+    "sourceSprite": "Dice_Mine3",
+    "width": 256,
+    "height": 256
+  },
+  "trap": {
+    "file": "trap.webp",
+    "sourceSprite": "Dice_Thorn3",
+    "width": 256,
+    "height": 256
+  },
+  "decay": {
+    "file": "decay.webp",
+    "sourceSprite": "Dice_Crack3",
+    "width": 256,
+    "height": 256
+  },
+  "energy": {
+    "file": "energy.webp",
+    "sourceSprite": "Dice_Energy3",
+    "width": 256,
+    "height": 256
+  },
+  "joker": {
+    "file": "joker.webp",
+    "sourceSprite": "Dice_Joker3",
+    "width": 256,
+    "height": 256
+  },
+  "shuriken": {
+    "file": "shuriken.webp",
+    "sourceSprite": "Dice_shuriken3",
+    "width": 256,
+    "height": 256
+  },
+  "stone": {
+    "file": "stone.webp",
+    "sourceSprite": "Dice_Rock3",
+    "width": 256,
+    "height": 256
+  },
+  "switch": {
+    "file": "switch.webp",
+    "sourceSprite": "Dice_Switch3",
+    "width": 256,
+    "height": 256
+  },
+  "brokengrowth": {
+    "file": "brokengrowth.webp",
+    "sourceSprite": "Dice_BrokenGrowth3",
+    "width": 256,
+    "height": 256
+  },
+  "gear": {
+    "file": "gear.webp",
+    "sourceSprite": "Dice_Gear3",
+    "width": 256,
+    "height": 256
+  },
+  "element": {
+    "file": "element.webp",
+    "sourceSprite": "Dice_Element3",
+    "width": 256,
+    "height": 256
+  },
+  "combo": {
+    "file": "combo.webp",
+    "sourceSprite": "Dice_Combo3",
+    "width": 256,
+    "height": 256
+  },
+  "adjust": {
+    "file": "adjust.webp",
+    "sourceSprite": "Dice_Adjust3",
+    "width": 256,
+    "height": 256
+  },
+  "spgemstone": {
+    "file": "spgemstone.webp",
+    "sourceSprite": "spgemstone1",
+    "width": 256,
+    "height": 256
+  },
+  "altar": {
+    "file": "altar.webp",
+    "sourceSprite": "altar1",
+    "width": 256,
+    "height": 256
+  },
+  "summon": {
+    "file": "summon.webp",
+    "sourceSprite": "Dice_summon3",
+    "width": 256,
+    "height": 256
+  },
+  "hammer": {
+    "file": "hammer.webp",
+    "sourceSprite": "dice_hammer3",
+    "width": 256,
+    "height": 256
+  },
+  "neon": {
+    "file": "neon.webp",
+    "sourceSprite": "Dice_Neon3",
+    "width": 256,
+    "height": 256
+  },
+  "sawblade": {
+    "file": "sawblade.webp",
+    "sourceSprite": "Dice_SawBlade3",
+    "width": 256,
+    "height": 256
+  },
+  "potion": {
+    "file": "potion.webp",
+    "sourceSprite": "Dice_Potion3",
+    "width": 256,
+    "height": 256
+  },
+  "ray": {
+    "file": "ray.webp",
+    "sourceSprite": "Dice_Ray3",
+    "width": 256,
+    "height": 256
+  },
+  "punch": {
+    "file": "punch.webp",
+    "sourceSprite": "Dice_Punch3",
+    "width": 256,
+    "height": 256
+  },
+  "germ": {
+    "file": "germ.webp",
+    "sourceSprite": "Dice_Germ3",
+    "width": 256,
+    "height": 256
+  },
+  "pillar": {
+    "file": "pillar.webp",
+    "sourceSprite": "Dice_Pillar3",
+    "width": 256,
+    "height": 256
+  },
+  "burn": {
+    "file": "burn.webp",
+    "sourceSprite": "Burn_Icon",
+    "width": 256,
+    "height": 256
+  },
+  "slow": {
+    "file": "slow.webp",
+    "sourceSprite": "Dice_Slow3",
+    "width": 256,
+    "height": 256
+  },
+  "royal": {
+    "file": "royal.webp",
+    "sourceSprite": "Dice_ROYAL3",
+    "width": 256,
+    "height": 256
+  },
+  "ax": {
+    "file": "ax.webp",
+    "sourceSprite": "Dice_Ax3",
+    "width": 256,
+    "height": 256
+  },
+  "flow": {
+    "file": "flow.webp",
+    "sourceSprite": "Dice_FLOW3",
+    "width": 256,
+    "height": 256
+  },
+  "bubble": {
+    "file": "bubble.webp",
+    "sourceSprite": "Dice_BUBBLE3",
+    "width": 256,
+    "height": 256
+  },
+  "speedgun": {
+    "file": "speedgun.webp",
+    "sourceSprite": "Dice_SPEEDGUN3",
+    "width": 256,
+    "height": 256
+  },
+  "bomb": {
+    "file": "bomb.webp",
+    "sourceSprite": "dice_bomb3",
+    "width": 256,
+    "height": 256
+  },
+  "death": {
+    "file": "death.webp",
+    "sourceSprite": "Dice_DEATH1",
+    "width": 256,
+    "height": 256
+  },
+  "box": {
+    "file": "box.webp",
+    "sourceSprite": "Box_1_icon",
+    "width": 256,
+    "height": 256
+  },
+  "bingo": {
+    "file": "bingo.webp",
+    "sourceSprite": "Dice_BINGO3",
+    "width": 256,
+    "height": 256
+  },
+  "sniper": {
+    "file": "sniper.webp",
+    "sourceSprite": "Dice_Sniper3",
+    "width": 256,
+    "height": 256
+  },
+  "executioner": {
+    "file": "executioner.webp",
+    "sourceSprite": "Dice_Executioner3",
+    "width": 256,
+    "height": 256
+  },
+  "alignment": {
+    "file": "alignment.webp",
+    "sourceSprite": "Dice_Alignment3",
+    "width": 256,
+    "height": 256
+  },
+  "solitude": {
+    "file": "solitude.webp",
+    "sourceSprite": "Dice_Solitude_3",
+    "width": 256,
+    "height": 256
+  },
+  "fear": {
+    "file": "fear.webp",
+    "sourceSprite": "Runenode_Fear_0",
+    "width": 256,
+    "height": 256
+  },
+  "tyrant": {
+    "file": "tyrant.webp",
+    "sourceSprite": "Dice_Tyrant3",
+    "width": 256,
+    "height": 256
+  },
+  "predator": {
+    "file": "predator.webp",
+    "sourceSprite": "Dice_Predator3",
+    "width": 256,
+    "height": 256
+  },
+  "mutation": {
+    "file": "mutation.webp",
+    "sourceSprite": "Dice_Mutation3",
+    "width": 256,
+    "height": 256
+  },
+  "resonance": {
+    "file": "resonance.webp",
+    "sourceSprite": "Dice_Resonance3",
+    "width": 256,
+    "height": 256
+  },
+  "blessing": {
+    "file": "blessing.webp",
+    "sourceSprite": "Dice_Blessing3",
+    "width": 256,
+    "height": 256
+  },
+  "doom": {
+    "file": "doom.webp",
+    "sourceSprite": "Dice_Doom3",
+    "width": 256,
+    "height": 256
+  },
+  "flower": {
+    "file": "flower.webp",
+    "sourceSprite": "Dice_Flower3",
+    "width": 256,
+    "height": 256
+  }
+}

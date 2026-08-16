@@ -47,6 +47,7 @@ describe("TreeCanvasV3", () => {
     expect(screen.getByTestId("v3-edge-root-locked")).toBeInTheDocument();
     expect(screen.getByTestId("v41-cost-root")).toHaveTextContent("200");
     expect(screen.getByTestId("v41-cost-root")).toHaveTextContent("1");
+    expect(screen.getByTestId("v3-node-locked").querySelector('image[data-dice-id="predator"]')).toHaveAttribute("href", "/dice-icons/predator.webp");
   });
 
   it("separates owned, simulated, reachable, locked and maxed state", () => {

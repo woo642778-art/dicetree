@@ -41,6 +41,8 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await expect(page.locator("body")).not.toContainText("파란 재화");
   await expect(page.locator("body")).not.toContainText("빨간 재화");
   await expect(page.locator("body")).not.toContainText("프리즘 재화");
+  await expect(page.locator("body")).not.toContainText(/IPA/i);
+  await expect(page.locator('image[data-dice-id]').first()).toBeAttached();
   await page.screenshot({ path: `test-results/qa-v3-tree-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
   await page.getByRole("spinbutton", { name: "보유 골드" }).fill("9999999");
@@ -111,6 +113,8 @@ test("V3 Simulator exposes dice-specific conditions and partial-safe Predator ou
   await expect(page.getByTestId("v3-condition-controls")).toBeVisible();
   await expect(page.getByTestId("v3-condition-controls")).toContainText("포식 스택");
   await expect(page.getByTestId("v3-condition-controls")).not.toContainText("sim_condition_");
+  await expect(page.locator('img[data-dice-id="predator"]')).toHaveCount(2);
+  await expect(page.locator("img[data-dice-id='predator']").first()).toHaveJSProperty("complete", true);
   await expect(page.getByTestId("v3-stat-panel")).toContainText(/부분 계산|Partial/);
   await page.screenshot({ path: `test-results/qa-v3-predator-simulator-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
@@ -189,8 +193,10 @@ test("V4 Deck Lab keeps live meta claims source-gated and opens its primary deal
   await page.getByRole("button", { name: "덱 연구소" }).click();
   await expect(page.getByTestId("v4-deck-lab")).toBeVisible();
   await expect(page.getByTestId("v4-meta-status")).toContainText("라이브 메타 미검증");
-  await expect(page.getByTestId("v4-meta-status")).toContainText("랭킹·사용률 데이터가 없습니다");
+  await expect(page.getByTestId("v4-meta-status")).toContainText("현재 랭킹과 사용률은 검증된 실시간 자료가 없어");
   for (let index = 1; index <= 5; index += 1) await expect(page.getByTestId(`deck-slot-${index}`)).toBeVisible();
+  await expect(page.locator(".v4-deck-grid img[data-dice-id]")).toHaveCount(5);
+  await expect(page.locator("body")).not.toContainText(/IPA/i);
   await page.getByLabel("플레이 역할").selectOption("support");
   await page.getByLabel("투자 성향").selectOption("invested");
   await page.screenshot({ path: `test-results/qa-v4-deck-lab-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
@@ -200,12 +206,13 @@ test("V4 Deck Lab keeps live meta claims source-gated and opens its primary deal
   expect(errors).toEqual([]);
 });
 
-test("V4.1 Purchase Value ranks IPA packages by profile and goal without inventing live prices", async ({ page, isMobile }) => {
+test("V4.2 Purchase Value ranks game packages by profile and goal without inventing live prices", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
   await page.getByRole("button", { name: "구매 효율" }).click();
   await expect(page.getByTestId("v41-purchase-efficiency")).toBeVisible();
-  await expect(page.getByTestId("v41-purchase-source")).toContainText("SpecialPackageTable");
+  await expect(page.getByTestId("v41-purchase-source")).toContainText("게임 내 상품 구성");
+  await expect(page.locator("body")).not.toContainText(/IPA/i);
   await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 재설계 보따리");
   await expect(page.getByTestId("v41-top-pick")).toContainText("400");
 
@@ -220,6 +227,21 @@ test("V4.1 Purchase Value ranks IPA packages by profile and goal without inventi
   await expect(page.getByTestId("v41-top-pick")).toContainText("₩12,000");
   await expect(page.getByTestId("v41-intro-offer")).toContainText("₩3,300");
   await page.screenshot({ path: `test-results/qa-v41-purchase-value-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
+  expect(errors).toEqual([]);
+});
+
+test("V4.2 Simulator and Purchase Value allow document scrolling", async ({ page }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  for (const label of ["시뮬레이터", "구매 효율"]) {
+    await page.getByRole("button", { name: label }).click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const dimensions = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, viewport: innerHeight }));
+    expect(dimensions.height).toBeGreaterThan(dimensions.viewport);
+    await page.mouse.wheel(0, 900);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
   expect(errors).toEqual([]);
 });
 

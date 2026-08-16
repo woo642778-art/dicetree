@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { CanonicalGameData, DiceFamilyV3 } from "../../../game-data/types";
+import { DiceIcon } from "../shared/DiceIcon";
 
 export interface DiceSelectorProps {
   data: CanonicalGameData;
@@ -52,7 +53,7 @@ export function DiceSelector({ data, locale, selectedDiceId, onSelect }: DiceSel
         className={dice.id === selectedDiceId ? "is-selected" : ""}
         onClick={() => onSelect(dice.id)}
       >
-        <span className={`v3-dice-token family-${dice.family ?? "unknown"}`}>{name.slice(0, 1)}</span>
+        <span className={`v3-dice-token family-${dice.family ?? "unknown"}`}><DiceIcon diceId={dice.id} label={name} /></span>
         <span><strong>{name}</strong><small>{dice.family ? FAMILY_LABEL[dice.family][locale] : dice.id}</small></span>
       </button>)}
     </div>
