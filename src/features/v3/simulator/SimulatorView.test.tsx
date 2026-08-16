@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CanonicalGameData } from "../../../game-data/types";
@@ -69,16 +69,18 @@ describe("SimulatorView", () => {
   it("shows only the selected dice mechanic conditions and resets them on dice change", () => {
     render(<Harness />);
     expect(screen.queryByText("주변 기어 주사위 수")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("option", { name: /기어/ }));
+    const list = screen.getByRole("listbox", { name: "주사위 목록" });
+    fireEvent.click(within(list).getByRole("option", { name: /기어/ }));
     expect(screen.getByText("주변 기어 주사위 수")).toBeInTheDocument();
     expect(screen.getByTestId("v3-condition-controls")).toHaveTextContent("주변 기어 주사위 수");
   });
 
-  it("supports all canonical dice search and editable enemy inputs", () => {
+  it("supports canonical dice search and editable enemy inputs", () => {
     render(<Harness />);
     fireEvent.change(screen.getByRole("textbox", { name: "주사위 검색" }), { target: { value: "기어" } });
-    expect(screen.getAllByRole("option")).toHaveLength(1);
-    expect(screen.getByRole("option", { name: /기어/ })).toBeInTheDocument();
+    const list = screen.getByRole("listbox", { name: "주사위 목록" });
+    expect(within(list).getAllByRole("option")).toHaveLength(1);
+    expect(within(list).getByRole("option", { name: /기어/ })).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole("spinbutton", { name: "적 HP" }), { target: { value: "2000" } });
     expect(screen.getByTestId("v3-damage-graph")).toHaveTextContent("40s");
