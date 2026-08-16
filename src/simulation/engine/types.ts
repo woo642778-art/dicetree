@@ -55,8 +55,17 @@ export interface CalculationTraceStepV3 {
 
 export interface SimulationResultV3 {
   diceId: string;
+  /** Exact stats after verified operations only. */
   stats: Record<string, number>;
+  /**
+   * Client-table projection that additionally applies direct LvAdd/UpAdd
+   * deltas. These values are useful for visualizing level progression but
+   * remain non-authoritative until runtime operation order is verified.
+   */
+  projectedStats?: Record<string, number>;
   basicAttackDps: number | null;
+  /** Basic attack DPS from projected LvAdd/UpAdd stats when no other unresolved attack path is present. */
+  projectedBasicAttackDps?: number | null;
   practicalDps: number | null;
   confidence: CalculationConfidence;
   trace: CalculationTraceStepV3[];
