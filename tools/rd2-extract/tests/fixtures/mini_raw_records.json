@@ -1,0 +1,57 @@
+{
+  "DefenderTable": [
+    {
+      "DefenderType": "Predator",
+      "DefenderGroupType": "Invader",
+      "TargetingType": "RangeFront",
+      "DefenderAttackType": "Bullet",
+      "Attack": "1000",
+      "Attack_LvAdd": "0",
+      "Attack_UpAdd": "0",
+      "Range": "1.2",
+      "Range_LvAdd": "0.05",
+      "Range_UpAdd": "",
+      "AttackInterval": "2.7",
+      "AttackInterval_UpAdd": "-0.08",
+      "BossAttackPer": "100",
+      "BossAttackPer_UpAdd": "0",
+      "CoolTime": "",
+      "CoolTime_LvAdd": "",
+      "ProjectileAbilityId": "Predator",
+      "DefenderSkillKind": "Predator",
+      "Local_Name": "dice_predator_name",
+      "Local_Desc": "dice_predator_desc"
+    }
+  ],
+  "DiceTreeNodeTable": [
+    {
+      "Id": "5001",
+      "Position": "0|-600",
+      "NodeType": "DICE_RUNE",
+      "KindId": "1",
+      "NextNodes": "",
+      "RankUpGoldArr": "2000|3000",
+      "RankUpStoneArr": "0|1"
+    }
+  ],
+  "PlayerPassiveTable": [],
+  "RuneTable": [
+    {
+      "Id": "1",
+      "Kind": "PredatorDmgPerStack",
+      "Grade": "Common",
+      "MaxRank": "2",
+      "Value1": "5",
+      "Value1_RankAdd": "5",
+      "Value2": "",
+      "Value2_RankAdd": "",
+      "Duration": "",
+      "Duration_RankAdd": "",
+      "Local_Name": "PredatorDmgPerStack_Predator_name",
+      "Local_Desc": "PredatorDmgPerStack_desc",
+      "DefenderType": "Predator"
+    }
+  ],
+  "MinionTable": [],
+  "PerkActionTable": []
+}
