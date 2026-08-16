@@ -46,7 +46,12 @@ export function recommendTreeInvestmentsV3(
     .map((node) => withRouteCost(evaluate(input, data, node.id)));
 
   const verified = evaluated
-    .filter((entry) => entry.confidence === "verified" && entry.percentGain !== undefined)
+    .filter((entry) => (
+      entry.confidence === "verified"
+      && entry.percentGain !== undefined
+      && entry.absoluteGain !== undefined
+      && entry.absoluteGain > 0
+    ))
     .sort(verifiedOrder)
     .slice(0, options.limit ?? 6);
 
