@@ -41,6 +41,19 @@ test("V2 planner plans, shares and restores the same semantic build", async ({ p
   await context.close();
 });
 
+test("V2 sourced cost research stays explicit about incomplete ladders", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByTestId("cost-research-open").click();
+  await expect(page.getByRole("dialog", { name: "비용 데이터" })).toBeVisible();
+  await expect(page.getByTestId("cost-research-table")).toContainText("17 → 18");
+  await expect(page.getByTestId("cost-research-table")).toContainText("4,000 골드");
+  await expect(page.getByText("0").filter({ visible: true }).last()).toBeVisible();
+  await expect(page.getByText(/전체 1→100 표가 아직 없나요/)).toBeVisible();
+  await page.screenshot({ path: `test-results/qa-v2-cost-research-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+  expect(errors).toEqual([]);
+});
+
 test("V2 malformed share state fails safely", async ({ page }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/#b=v2.not-valid");
