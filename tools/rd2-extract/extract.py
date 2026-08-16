@@ -9,7 +9,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from rd2_extract.archive import discover_client_files
-from rd2_extract.compact import compact_dataset
+from rd2_extract.compact import chunk_list, chunk_mapping, compact_dataset
 from rd2_extract.fingerprint import EXPECTED_101_SHA256, assert_client_fingerprint, sha256_file
 from rd2_extract.normalize import generate_canonical_data
 from rd2_extract.unity_assets import read_member
@@ -35,6 +35,28 @@ def _write_json(path: Path, value: object) -> None:
     )
 
 
+def _clear_numbered_chunks(emit_dir: Path, stem: str) -> None:
+    for existing in emit_dir.glob(f"{stem}.*.json"):
+        existing.unlink()
+
+
+def _write_list_chunks(emit_dir: Path, stem: str, values: list[object], chunk_size: int) -> None:
+    _clear_numbered_chunks(emit_dir, stem)
+    for index, part in enumerate(chunk_list(values, chunk_size), 1):
+        _write_json(emit_dir / f"{stem}.{index:02d}.json", part)
+
+
+def _write_mapping_chunks(
+    emit_dir: Path,
+    stem: str,
+    values: dict[str, object],
+    chunk_size: int,
+) -> None:
+    _clear_numbered_chunks(emit_dir, stem)
+    for index, part in enumerate(chunk_mapping(values, chunk_size), 1):
+        _write_json(emit_dir / f"{stem}.{index:02d}.json", part)
+
+
 def _emit_dataset(ipa_path: Path, emit_dir: Path, source_sha256: str) -> None:
     resources = read_member(ipa_path, "/Data/resources.assets")
     metadata = read_member(ipa_path, "/Data/Managed/Metadata/global-metadata.dat")
@@ -50,12 +72,12 @@ def _emit_dataset(ipa_path: Path, emit_dir: Path, source_sha256: str) -> None:
     emit_dir.mkdir(parents=True, exist_ok=True)
     _write_json(emit_dir / "manifest.json", data["manifest"])
     _write_json(emit_dir / "dice.compact.json", compact["dice"])
-    _write_json(emit_dir / "tree.compact.json", compact["tree"])
-    _write_json(emit_dir / "passives.compact.json", compact["passives"])
-    _write_json(emit_dir / "runes.compact.json", compact["runes"])
-    _write_json(emit_dir / "enemies.compact.json", compact["enemies"])
-    _write_json(emit_dir / "localization.compact.json", compact["localization"])
-    _write_json(emit_dir / "mechanics.compact.json", compact["mechanics"])
+    _write_list_chunks(emit_dir, "tree.compact", compact["tree"], 45)
+    _write_list_chunks(emit_dir, "passives.compact", compact["passives"], 60)
+    _write_list_chunks(emit_dir, "runes.compact", compact["runes"], 40)
+    _write_mapping_chunks(emit_dir, "localization.compact", compact["localization"], 120)
+    _write_json(emit_dir / "enemies.json", data["enemies"])
+    _write_json(emit_dir / "mechanic-evidence.json", data["mechanicEvidence"])
     _write_json(emit_dir / "waves.json", data["waves"])
 
 
