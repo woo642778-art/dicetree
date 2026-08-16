@@ -9,6 +9,7 @@ import type { MarginalNodeResultV3 } from "../../../simulation/marginal/evaluate
 import { runeNumberAtRank } from "../../../simulation/mechanics/runeValues";
 import { canIncrementNodeV3 } from "./TreeCanvasV3";
 import { CalculationDetails } from "./CalculationDetails";
+import { DiceIcon } from "../shared/DiceIcon";
 
 export interface NodeDetailSheetProps {
   node: DiceTreeNodeV3;
@@ -156,6 +157,7 @@ export function NodeDetailSheet({
 
   return <aside className="v3-node-detail-sheet" data-testid="v3-node-detail-sheet" aria-label={name}>
     <header>
+      {node.kind === "dice" && node.targetId && <DiceIcon diceId={node.targetId} label={name} className="v42-detail-dice" loading="eager" />}
       <div>
         <small>{locale === "ko" ? "다이스 트리" : "Dice Tree"}</small>
         <h2>{name}</h2>

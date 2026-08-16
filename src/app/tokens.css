@@ -17,6 +17,7 @@
 }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; width: 100%; min-height: 100%; }
-body { overflow: hidden; background: var(--pearl); }
+html { overflow-x: hidden; }
+body { overflow-x: hidden; overflow-y: auto; background: var(--pearl); }
 button, input, select { font: inherit; }
 button { color: inherit; }

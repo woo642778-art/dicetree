@@ -9,9 +9,14 @@ describe("DeckLabView", () => {
   it("separates client synergy from unverified live meta and renders five slots", () => {
     render(<DeckLabView data={gameDataV3} locale="ko" goal="balanced" spendProfile="free" onGoalChange={vi.fn()} onSpendProfileChange={vi.fn()} onSimulate={vi.fn()} />);
     expect(screen.getByTestId("v4-meta-status")).toHaveTextContent("라이브 메타 미검증");
-    expect(screen.getByTestId("v4-meta-status")).toHaveTextContent("랭킹·사용률 데이터가 없습니다");
-    for (let index = 1; index <= 5; index += 1) expect(screen.getByTestId(`deck-slot-${index}`)).toBeInTheDocument();
+    expect(screen.getByTestId("v4-meta-status")).toHaveTextContent("현재 랭킹과 사용률은 검증된 실시간 자료가 없어");
+    for (let index = 1; index <= 5; index += 1) {
+      const slot = screen.getByTestId(`deck-slot-${index}`);
+      expect(slot).toBeInTheDocument();
+      expect(slot.querySelector("img[data-dice-id]")).toBeInTheDocument();
+    }
     expect(screen.queryByText(/<tag>|\{0\}/)).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/IPA/i);
   });
 
   it("changes profiles and opens the selected primary dealer in the simulator", () => {

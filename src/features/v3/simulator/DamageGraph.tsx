@@ -33,11 +33,11 @@ export function DamageGraph({ outcome, basicAttackOutcome, basicAttackOutcomeKin
       ? (locale === "ko" ? "특수효과 제외 기본 공격 피해" : "Basic attack damage excluding special effects")
       : (locale === "ko" ? "실전 피해" : "Practical damage")}</h3>
     {baseline && <p>{basicAttackOutcomeKind === "tree-excluded-projected"
-      ? (locale === "ko" ? "현재 트리 효과를 제외하고 IPA LvAdd/UpAdd 표를 적용한 기준선입니다. 특수효과도 포함하지 않습니다." : "A projected IPA LvAdd/UpAdd baseline excluding current tree and special effects.")
+      ? (locale === "ko" ? "현재 트리 효과를 제외하고 레벨 및 전투 강화 성장치를 적용한 기준선입니다. 특수효과도 포함하지 않습니다." : "A projected level and battle-upgrade baseline excluding current tree and special effects.")
       : basicAttackOutcomeKind === "tree-excluded-verified"
         ? (locale === "ko" ? "현재 트리 효과와 미복원 특수효과를 제외한 검증 기본 공격 기준선입니다." : "A verified basic-attack baseline excluding current tree and unresolved special effects.")
         : basicAttackOutcomeKind === "projected"
-          ? (locale === "ko" ? "IPA LvAdd/UpAdd 표를 적용한 예상값이며, 특수효과는 포함하지 않습니다." : "Projected from IPA LvAdd/UpAdd tables; special effects are excluded.")
+          ? (locale === "ko" ? "레벨 및 전투 강화 성장치를 적용한 예상값이며, 특수효과는 포함하지 않습니다." : "Projected from level and battle-upgrade growth; special effects are excluded.")
           : (locale === "ko" ? "검증된 기본 공격만 계산했습니다. 미복원 특수효과는 포함하지 않습니다." : "Uses verified basic attacks only; unresolved special effects are excluded.")}</p>}
     <svg viewBox="0 0 400 170" role="img" aria-label={locale === "ko" ? "시간별 누적 피해 그래프" : "Cumulative damage over time graph"}>
       <line x1="20" y1="150" x2="380" y2="150" className="v3-graph-axis" />

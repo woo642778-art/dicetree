@@ -6,6 +6,7 @@ import { resolveEnemyPresetV3 } from "../../../simulation/enemies/presets";
 import { mechanicConditionDefinitionsV3 } from "../../../simulation/mechanics/registry";
 import { runScenarioV3 } from "../../../simulation/scenario/runScenario";
 import { CalculationDetails } from "../tree/CalculationDetails";
+import { DiceIcon } from "../shared/DiceIcon";
 import { ConditionControls } from "./ConditionControls";
 import { DamageGraph } from "./DamageGraph";
 import { DiceSelector } from "./DiceSelector";
@@ -64,9 +65,11 @@ export function SimulatorView({ data, state, locale, onScenarioChange }: Simulat
 
     <section className="v3-simulator-controls">
       <header>
-        <small>{locale === "ko" ? "전투 시뮬레이터" : "Combat simulator"}</small>
-        <h1>{selectedName}</h1>
-        <p>{locale === "ko" ? `${investedNodes}개 트리 노드의 현재 가상 랭크를 적용합니다.` : `Applies current simulated ranks from ${investedNodes} tree nodes.`}</p>
+        <DiceIcon diceId={scenario.diceId} label={selectedName} className="v42-simulator-dice" loading="eager" />
+        <div><small>{locale === "ko" ? "전투 시뮬레이터" : "Combat simulator"}</small>
+          <h1>{selectedName}</h1>
+          <p>{locale === "ko" ? `${investedNodes}개 트리 노드의 현재 가상 랭크를 적용합니다.` : `Applies current simulated ranks from ${investedNodes} tree nodes.`}</p>
+        </div>
       </header>
 
       <section className="v3-growth-controls">

@@ -152,7 +152,7 @@ export function V3Shell() {
     <header className="v3-header">
       <button className="v3-brand" type="button" onClick={() => setTab("tree")} aria-label="Random Dice 2 V3">
         <span className="v3-brand-mark"><b>RD</b><i>2</i></span>
-        <span><strong>RANDOM DICE 2</strong><small>{locale === "ko" ? "IPA 기반 다이스 트리" : "IPA-backed Dice Tree"}</small></span>
+        <span><strong>RANDOM DICE 2</strong><small>{locale === "ko" ? "다이스 트리 연구소" : "Dice Tree Lab"}</small></span>
       </button>
       <nav className="v3-nav" aria-label={locale === "ko" ? "주요 화면" : "Primary views"}>
         {(["tree", "simulator", "decks", "compare", "shop"] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>

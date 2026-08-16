@@ -1,5 +1,6 @@
 import type { CSSProperties, KeyboardEvent } from "react";
 import type { DiceTreeNodeV3, TreeCost } from "../../../game-data/types";
+import { diceIconUrl } from "../shared/DiceIcon";
 
 const FAMILY_COLOR: Record<DiceTreeNodeV3["family"], string> = {
   core: "#6f5de7",
@@ -30,7 +31,6 @@ function compactCost(value: number) {
 }
 
 function glyphFor(node: DiceTreeNodeV3) {
-  if (node.kind === "dice") return "◆";
   if (node.kind === "perk") return "P";
   if (node.kind === "milestone") return "✦";
   if (node.kind === "connector") return "•";
@@ -118,7 +118,19 @@ export function TreeNodeV3({
     {square
       ? <rect className="v3-node-face" x={-radius + 8} y={-radius + 8} width={(radius - 8) * 2} height={(radius - 8) * 2} rx="20" />
       : <circle className="v3-node-face" r={Math.max(10, radius - 8)} />}
-    <text className="v3-node-glyph" textAnchor="middle" dominantBaseline="central" aria-hidden="true">{glyphFor(node)}</text>
+    {node.kind === "dice" && node.targetId
+      ? <image
+        className="v42-tree-dice-icon"
+        href={diceIconUrl(node.targetId)}
+        x={-radius + 9}
+        y={-radius + 9}
+        width={(radius - 9) * 2}
+        height={(radius - 9) * 2}
+        preserveAspectRatio="xMidYMid meet"
+        data-dice-id={node.targetId}
+        aria-hidden="true"
+      />
+      : <text className="v3-node-glyph" textAnchor="middle" dominantBaseline="central" aria-hidden="true">{glyphFor(node)}</text>}
     {rank > 0 && <g className="v3-rank-chip" transform={`translate(${radius - 5} ${-radius + 5})`} aria-hidden="true">
       <circle r="24" />
       <text textAnchor="middle" dominantBaseline="central">{maxed ? "M" : rank}</text>

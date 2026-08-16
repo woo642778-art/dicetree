@@ -1,6 +1,7 @@
 import type { CanonicalGameData } from "../../../game-data/types";
 import { formatGameText } from "../../../game-data/formatGameText";
 import { recommendDeckV4, type DeckGoalV4, type DeckRoleV4, type SpendProfileV4 } from "../../../deck-lab/recommendDeck";
+import { DiceIcon } from "../shared/DiceIcon";
 
 export interface DeckLabViewProps {
   data: CanonicalGameData;
@@ -31,14 +32,13 @@ export function DeckLabView(props: DeckLabViewProps) {
   return <main className="v4-deck-lab" data-testid="v4-deck-lab">
     <header className="v4-deck-hero">
       <div>
-        <small>{locale === "ko" ? "IPA 1.0.1 근거 기반" : "IPA 1.0.1 evidence based"}</small>
+        <small>{locale === "ko" ? "게임 데이터 기반 추천" : "Game-data recommendation"}</small>
         <h1>{locale === "ko" ? "덱 연구소" : "Deck Lab"}</h1>
-        <p>{locale === "ko" ? "클라이언트 설명과 기본 스탯으로 역할을 분류해 5주사위 조합을 제안합니다." : "Builds five-dice compositions from client descriptions and base stats."}</p>
+        <p>{locale === "ko" ? "게임 내 효과 설명과 기본 능력치로 역할을 분류해 5주사위 조합을 제안합니다." : "Builds five-dice compositions from in-game effect descriptions and base stats."}</p>
       </div>
       <aside className="v4-meta-status" data-testid="v4-meta-status">
         <strong>{locale === "ko" ? "라이브 메타 미검증" : "Live meta unverified"}</strong>
-        <p>{locale === "ko" ? "첨부 IPA에는 랭킹·사용률 데이터가 없습니다. 아래 결과를 현재 유행 덱이나 랭킹 덱으로 표시하지 않습니다." : "The attached IPA contains no ranking or usage-rate data. These results are not labeled as current meta or ranked decks."}</p>
-        <code>{data.manifest.clientVersion} · {data.manifest.sourceSha256.slice(0, 12)}</code>
+        <p>{locale === "ko" ? "현재 랭킹과 사용률은 검증된 실시간 자료가 없어, 아래 결과를 유행 덱이나 랭킹 덱으로 표시하지 않습니다." : "Current rankings and usage rates are not available from a verified live source, so these results are not labeled as meta or ranked decks."}</p>
       </aside>
     </header>
 
@@ -62,7 +62,7 @@ export function DeckLabView(props: DeckLabViewProps) {
 
     <section className="v4-deck-result">
       <div className="v4-deck-title">
-        <div><small>{locale === "ko" ? "클라이언트 시너지 추천" : "Client-synergy recommendation"}</small><h2>{locale === "ko" ? "추천 5주사위" : "Recommended five dice"}</h2></div>
+        <div><small>{locale === "ko" ? "능력치·효과 시너지 추천" : "Stat and effect synergy"}</small><h2>{locale === "ko" ? "추천 5주사위" : "Recommended five dice"}</h2></div>
         <button type="button" onClick={() => props.onSimulate(recommendation.primaryDiceId)}>{locale === "ko" ? "주 딜러 시뮬레이션" : "Simulate primary dealer"}</button>
       </div>
       <div className="v4-deck-grid">
@@ -71,7 +71,7 @@ export function DeckLabView(props: DeckLabViewProps) {
           const name = localize(data, dice.nameKey, locale, dice.id);
           return <article key={entry.diceId} className={`family-${dice.family ?? "order"}`} data-testid={`deck-slot-${index + 1}`}>
             <span className="v4-deck-slot">{index + 1}</span>
-            <div className="v4-deck-token">{name.slice(0, 1)}</div>
+            <div className="v4-deck-token"><DiceIcon diceId={entry.diceId} label={name} /></div>
             <div className="v4-deck-card-copy">
               <h3>{name}{entry.diceId === recommendation.primaryDiceId ? <b>{locale === "ko" ? "주 딜러" : "Primary"}</b> : null}</h3>
               <div>{entry.roles.map((role) => <span key={role}>{ROLE_LABELS[role][locale]}</span>)}</div>
@@ -83,7 +83,7 @@ export function DeckLabView(props: DeckLabViewProps) {
           </article>;
         })}
       </div>
-      <footer>{locale === "ko" ? "역할 태그와 DPS는 IPA 표·설명에서 계산하거나 추론했습니다. 전투 기믹 공식이 미복원된 경우 기본 공격만 표시합니다." : "Role tags and DPS are calculated or inferred from IPA tables and descriptions. Unresolved combat mechanics are excluded."}</footer>
+      <footer>{locale === "ko" ? "역할 태그와 DPS는 게임 내 능력치와 효과 설명을 바탕으로 계산했습니다. 전투 기믹 공식이 미확인된 경우 기본 공격만 표시합니다." : "Role tags and DPS are calculated from in-game stats and effect descriptions. Unresolved combat mechanics are excluded."}</footer>
     </section>
   </main>;
 }

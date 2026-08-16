@@ -11,7 +11,7 @@ describe("V3 planner shell", () => {
     window.history.replaceState(null, "", "/dicetree/");
   });
 
-  it("defaults to the IPA-backed Dice Tree with Gold and Dice Core only", () => {
+  it("defaults to the Dice Tree with Gold and Dice Core only", () => {
     const { container } = render(<I18nProvider><App /></I18nProvider>);
     expect(screen.getByTestId("v3-app")).toBeInTheDocument();
     expect(screen.getByTestId("v3-tree-view")).toBeInTheDocument();
@@ -23,6 +23,7 @@ describe("V3 planner shell", () => {
     expect(container).not.toHaveTextContent("파란 재화");
     expect(container).not.toHaveTextContent("빨간 재화");
     expect(container).not.toHaveTextContent("프리즘 재화");
+    expect(container).not.toHaveTextContent(/IPA/i);
     expect(container.querySelector(".v2-app")).toBeNull();
   });
 
@@ -41,7 +42,8 @@ describe("V3 planner shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "구매 효율" }));
     expect(screen.getByTestId("v41-purchase-efficiency")).toBeInTheDocument();
     expect(screen.getByTestId("v41-top-pick")).toHaveTextContent("몰래 빼돌린 재설계 보따리");
-    expect(screen.getByTestId("v41-purchase-source")).toHaveTextContent("SpecialPackageTable");
+    expect(screen.getByTestId("v41-purchase-source")).toHaveTextContent("게임 내 상품 구성");
+    expect(document.body).not.toHaveTextContent(/IPA/i);
   });
 
   it("keeps V3 share state semantic and restorable", async () => {

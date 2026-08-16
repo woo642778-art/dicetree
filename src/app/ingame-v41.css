@@ -51,6 +51,8 @@
 .v3-resource-status.is-ok strong { color: #56e3ab; }
 .v3-history-actions button { background: #171321; color: #d7cee8; border-color: #4b4062; }
 
+.v41-mode-tree { height: 100dvh; min-height: 640px; overflow: hidden; }
+
 .v41-mode-tree .v3-tree-wrap {
   background:
     radial-gradient(circle at 50% 45%, #3a3252 0, transparent 42%),
@@ -69,7 +71,7 @@
 }
 
 .v41-mode-tree .v3-tree-wrap::after {
-  content: "DICE TREE / CLIENT 1.0.1";
+  content: "RANDOM DICE 2 / DICE TREE";
   position: absolute;
   left: 22px;
   top: 76px;

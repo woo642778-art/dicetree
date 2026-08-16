@@ -87,7 +87,7 @@ export function StatPanel({ result, locale }: StatPanelProps) {
     </div>
     {result.simulation.confidence === "partial" && <p className="v3-partial-note">
       {hasProjection
-        ? (locale === "ko" ? "LvAdd/UpAdd 변화는 표 기반 예상 스탯으로 표시합니다. 검증되지 않은 적용 순서는 실전 DPS에 포함하지 않았습니다." : "LvAdd/UpAdd changes are shown as table-projected stats. Unverified operation order is excluded from practical DPS.")
+        ? (locale === "ko" ? "레벨 및 전투 강화 성장치는 예상 스탯으로 표시합니다. 검증되지 않은 적용 순서는 실전 DPS에 포함하지 않았습니다." : "Level and battle-upgrade growth is shown as projected stats. Unverified operation order is excluded from practical DPS.")
         : (locale === "ko" ? "검증되지 않은 공식은 실전 DPS에 포함하지 않았습니다." : "Unverified formulas are excluded from practical DPS.")}
     </p>}
   </section>;
