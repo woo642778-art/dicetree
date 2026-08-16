@@ -198,6 +198,31 @@ def _index(items: Iterable[dict[str, Any]], key: str = "id") -> dict[str, dict[s
     return output
 
 
+def _canonical_prerequisites(value: Any) -> Any:
+    if not isinstance(value, list):
+        return value
+    if all(isinstance(entry, dict) for entry in value):
+        return sorted(
+            value,
+            key=lambda entry: (
+                str(entry.get("nodeId", "")),
+                int(entry.get("minRank", 0)),
+                json.dumps(entry, ensure_ascii=False, sort_keys=True),
+            ),
+        )
+    return sorted(value, key=lambda entry: json.dumps(entry, ensure_ascii=False, sort_keys=True))
+
+
+def _canonical_tree(items: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    output: list[dict[str, Any]] = []
+    for item in items:
+        normalized = dict(item)
+        if "prerequisites" in normalized:
+            normalized["prerequisites"] = _canonical_prerequisites(normalized["prerequisites"])
+        output.append(normalized)
+    return output
+
+
 def _record_changes(
     old_items: Iterable[dict[str, Any]],
     new_items: Iterable[dict[str, Any]],
@@ -234,9 +259,9 @@ def _localization_changes(old: dict[str, Any], new: dict[str, Any]) -> list[Diff
 
 
 def diff_documents(old: dict[str, Any], new: dict[str, Any]) -> ClientDiff:
-    """Return semantic changes; JSON ordering alone never creates a diff."""
-    tree_old = old.get("tree", [])
-    tree_new = new.get("tree", [])
+    """Return semantic changes; record and prerequisite ordering never create a diff."""
+    tree_old = _canonical_tree(old.get("tree", []))
+    tree_new = _canonical_tree(new.get("tree", []))
     return {
         "diceStats": _record_changes(
             old.get("dice", []),
