@@ -46,15 +46,16 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await expect(reachable).toBeVisible();
   const nodeTestId = await reachable.getAttribute("data-testid");
   expect(nodeTestId).toBeTruthy();
-  const beforeSimulatedRank = Number(await reachable.getAttribute("data-simulated-rank") ?? "0");
-  await reachable.click();
+  const selectedNode = page.getByTestId(nodeTestId!);
+  const beforeSimulatedRank = Number(await selectedNode.getAttribute("data-simulated-rank") ?? "0");
+  await selectedNode.click();
   await expect(page.getByTestId("v3-node-detail-sheet")).toBeVisible();
   await page.screenshot({ path: `test-results/qa-v3-node-detail-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
   const increment = page.getByRole("button", { name: "가상 랭크 올리기" });
   await expect(increment).toBeEnabled();
   await increment.click();
-  await expect(reachable).toHaveAttribute("data-simulated-rank", String(beforeSimulatedRank + 1));
-  const simulatedRank = await reachable.getAttribute("data-simulated-rank");
+  await expect(selectedNode).toHaveAttribute("data-simulated-rank", String(beforeSimulatedRank + 1));
+  const simulatedRank = await selectedNode.getAttribute("data-simulated-rank");
   expect(simulatedRank).not.toBeNull();
 
   await page.getByRole("button", { name: "공유" }).click();
