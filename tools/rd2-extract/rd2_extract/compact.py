@@ -1,5 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+
+
+def chunk_list(items: Sequence[object], chunk_size: int) -> list[list[object]]:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    return [list(items[index : index + chunk_size]) for index in range(0, len(items), chunk_size)]
+
+
+def chunk_mapping(items: Mapping[str, object], chunk_size: int) -> list[dict[str, object]]:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    entries = sorted(items.items())
+    return [dict(entries[index : index + chunk_size]) for index in range(0, len(entries), chunk_size)]
+
 
 def compact_dataset(data: dict[str, object]) -> dict[str, object]:
     dice = []
