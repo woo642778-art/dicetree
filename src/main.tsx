@@ -4,6 +4,7 @@ import { App } from "./app/App";
 import { I18nProvider } from "./i18n/I18nContext";
 import "./app/tokens.css";
 import "./app/app-v3.css";
+import "./app/recommend-v3.css";
 import "./app/motion-v3.css";
 import "./app/mobile-v3.css";
 import "./app/accessibility.css";
