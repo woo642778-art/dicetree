@@ -43,7 +43,9 @@ describe("shared V3 simulation engine", () => {
     expect(result.basicAttackDps).toBeNull();
     expect(result.practicalDps).toBeNull();
     expect(result.confidence).toBe("partial");
-    expect(result.trace.some((step) => step.stat === "attackInterval" && !step.applied && step.outputValue === 2.38)).toBe(true);
+    const projectedIntervalStep = result.trace.find((step) => step.stat === "attackInterval" && !step.applied);
+    expect(projectedIntervalStep).toBeDefined();
+    expect(projectedIntervalStep?.outputValue).toBeCloseTo(2.38, 10);
   });
 
   it("projects attack and interval level changes for a normal dice without promoting them to verified combat DPS", () => {
