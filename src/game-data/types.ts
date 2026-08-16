@@ -16,6 +16,10 @@ export interface SourceRefV3 {
   notes?: string;
 }
 
+/**
+ * `stone` is the client table field family (`RankUpStoneArr`). The in-game
+ * localized display name is `다이스 코어` / `Dice Core`.
+ */
 export interface TreeCost {
   gold: number;
   stone: number;
@@ -65,32 +69,42 @@ export interface DiceTreeNodeV3 {
   kind: "dice" | "passive" | "perk" | "milestone" | "connector";
   position: { x: number; y: number };
   prerequisites: Array<{ nodeId: string; minRank: number }>;
-  targetId?: string;
+  targetId?: string | null;
   maxRank: number;
   costsByRank: TreeCost[];
   zeroCostRanks?: number[];
-  passiveOrRuneRef?: string;
-  nameKey?: string;
-  descriptionKey?: string;
+  passiveOrRuneRef?: string | null;
+  nameKey?: string | null;
+  descriptionKey?: string | null;
   sourceRefs: string[];
 }
 
 export interface PassiveDefinitionV3 {
   id: string;
+  numericId?: number;
   scope: "global" | DiceFamilyV3 | "dice";
   targetDiceIds?: string[];
   maxRank: number;
-  baseValue?: number;
-  valuePerRank?: number;
+  baseValue?: number | null;
+  valuePerRank?: number | null;
+  valueType?: string | null;
   statKey?: string;
+  nameKey?: string | null;
+  descriptionKey?: string | null;
   confidence: CalculationConfidence;
   sourceRefs: string[];
 }
 
 export interface RuneDefinitionV3 {
   id: string;
+  kind?: string;
+  grade?: string;
+  maxRank?: number;
+  targetDiceId?: string | null;
   targetDiceIds?: string[];
   values: Record<string, number | string | boolean>;
+  nameKey?: string | null;
+  descriptionKey?: string | null;
   confidence: CalculationConfidence;
   sourceRefs: string[];
 }
@@ -98,11 +112,25 @@ export interface RuneDefinitionV3 {
 export interface EnemyDefinitionV3 {
   id: string;
   kind: "normal" | "elite" | "boss";
-  nameKey?: string;
+  bossType?: string | null;
+  nameKey?: string | null;
   hp?: number;
-  speed?: number;
+  hpMultiplierPercent?: number | null;
+  speed?: number | null;
+  sp?: number | null;
+  trophyLevel?: number | null;
   values: Record<string, number | string | boolean>;
   confidence: CalculationConfidence;
+  sourceRefs: string[];
+}
+
+export interface MechanicEvidenceV3 {
+  key: string;
+  symbols: string[];
+  present: boolean;
+  confidence: CalculationConfidence;
+  formula: string | null;
+  parameters?: Record<string, number | string | boolean>;
   sourceRefs: string[];
 }
 
