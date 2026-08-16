@@ -4,10 +4,10 @@ import { I18nProvider } from "../i18n/I18nContext";
 import { App } from "./App";
 
 describe("IPA-driven planner UI", () => {
-  it("shows only Gold and Node Stone as Dice Tree currencies", () => {
+  it("shows only Gold and Dice Core as Dice Tree currencies", () => {
     render(<I18nProvider><App /></I18nProvider>);
     expect(screen.getByText("골드")).toBeInTheDocument();
-    expect(screen.getByText("노드 스톤")).toBeInTheDocument();
+    expect(screen.getByText("다이스 코어")).toBeInTheDocument();
     expect(screen.queryByText("파란 재화")).not.toBeInTheDocument();
     expect(screen.queryByText("빨간 재화")).not.toBeInTheDocument();
     expect(screen.queryByText("프리즘 재화")).not.toBeInTheDocument();
