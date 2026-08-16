@@ -27,6 +27,10 @@ const FAMILY_COLOR: Record<RD2Family, string> = {
   chaos: "#d95b72",
 };
 
+const FIT_VIEW = { x: 0, y: 20, scale: 0.92 } as const;
+const VIEWBOX_WIDTH = 9800;
+const VIEWBOX_HEIGHT = 7800;
+
 function symbolFor(node: RD2TreeNode): string {
   if (node.nodeType === "DICE") return node.name.ko.replace(" 주사위", "").slice(0, 2);
   if (node.nodeType === "PERK") return "P";
@@ -49,7 +53,7 @@ function rankCostLabel(node: RD2TreeNode, rank: number, locale: Locale) {
 }
 
 function clampScale(value: number) {
-  return Math.max(0.11, Math.min(1.15, value));
+  return Math.max(0.28, Math.min(2.4, value));
 }
 
 export function ExactTreeCanvas({
@@ -62,7 +66,7 @@ export function ExactTreeCanvas({
   familyFilter,
   onSelect,
 }: ExactTreeCanvasProps) {
-  const [view, setView] = useState({ x: 0, y: 20, scale: 0.17 });
+  const [view, setView] = useState({ ...FIT_VIEW });
   const drag = useRef<{ id: number; x: number; y: number } | null>(null);
   const nodeMap = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -87,8 +91,15 @@ export function ExactTreeCanvas({
     if (!drag.current || drag.current.id !== event.pointerId) return;
     const dx = event.clientX - drag.current.x;
     const dy = event.clientY - drag.current.y;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const unitsX = VIEWBOX_WIDTH / Math.max(1, rect.width);
+    const unitsY = VIEWBOX_HEIGHT / Math.max(1, rect.height);
     drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
-    setView((current) => ({ ...current, x: current.x + dx / current.scale, y: current.y + dy / current.scale }));
+    setView((current) => ({
+      ...current,
+      x: current.x + (dx * unitsX) / current.scale,
+      y: current.y + (dy * unitsY) / current.scale,
+    }));
   };
   const pointerUp = (event: PointerEvent<SVGSVGElement>) => {
     if (drag.current?.id === event.pointerId) drag.current = null;
@@ -194,7 +205,7 @@ export function ExactTreeCanvas({
 
     <div className="exact-canvas-controls">
       <button type="button" onClick={() => setView((current) => ({ ...current, scale: clampScale(current.scale * .82) }))} aria-label="Zoom out">−</button>
-      <button type="button" className="fit" onClick={() => setView({ x: 0, y: 20, scale: .17 })}>{locale === "ko" ? "전체 보기" : "Fit"}</button>
+      <button type="button" className="fit" onClick={() => setView({ ...FIT_VIEW })}>{locale === "ko" ? "전체 보기" : "Fit"}</button>
       <button type="button" onClick={() => setView((current) => ({ ...current, scale: clampScale(current.scale * 1.22) }))} aria-label="Zoom in">+</button>
     </div>
   </div>;
