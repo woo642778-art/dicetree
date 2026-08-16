@@ -1,254 +1,57 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { DiceFamily, LocalizedText, ResourceCostV2, ResourceId, ResourceInventory, SourcedField, TreeNodeV2 } from "../domain/types";
-import { EMPTY_RESOURCES_V2, canAffordV2, sumV2Costs } from "../domain/costs";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/I18nContext";
-import { treeNodesV2 } from "../tree-data-v2/nodes";
-import { diceV2 } from "../tree-data-v2/dice";
-import { resourceDefinitions } from "../tree-data-v2/resources";
-import { strategyNotes } from "../strategy/strategyNotes";
-import { TreeCanvasV2 } from "../features/tree/TreeCanvasV2";
+import {
+  cumulativeNodeCost, familyLabel, focusRecommendationIds, formatNumber,
+  getDiceDefinition, getRuneDefinitionsForDice, getTreeNode, getTreeNodeForDice,
+  nodeEffectText, rankCost, rd2Dice, rd2Source, rd2TreeNodes,
+  type Locale, type RD2Family, type RD2TreeNode,
+} from "../game-data/rd2Extracted";
+import { simulateDiceStats } from "../simulator/diceSimulator";
+import { ExactTreeCanvas } from "../features/tree/ExactTreeCanvas";
 
-const DATA_VERSION = "v2-2026.08.15";
+type Build = { schemaVersion:3; focusDiceType:string; ranks:Record<number,number>; inventory:{gold:number;nodeStone:number}; level:number; powerUp:number };
+const FAMILY_ORDER: RD2Family[] = ["nature","order","chaos","engineering","magic"];
+const fresh = (): Build => ({schemaVersion:3,focusDiceType:"Predator",ranks:{},inventory:{gold:0,nodeStone:0},level:1,powerUp:1});
 
-type Role = "dealer" | "support" | "balanced";
-type Profile = "conservative" | "balanced" | "ceiling";
-interface BuildStateV2 {
-  schemaVersion: 2;
-  dataVersion: string;
-  planned: Record<string, 0 | 1>;
-  inventory: ResourceInventory;
-  primaryDieId: string;
-  secondaryDieIds: string[];
-  role: Role;
-  profile: Profile;
-}
+function encodeBuild(build:Build){const bytes=new TextEncoder().encode(JSON.stringify(build));let binary="";for(const byte of bytes)binary+=String.fromCharCode(byte);return `v3.${btoa(binary).replaceAll("+","-").replaceAll("/","_").replaceAll("=","")}`}
+function decodeBuild(value:string):Build|null{try{if(!value.startsWith("v3."))return null;let e=value.slice(3).replaceAll("-","+").replaceAll("_","/");while(e.length%4)e+="=";const parsed=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(e),c=>c.charCodeAt(0)))) as Partial<Build>;if(parsed.schemaVersion!==3||typeof parsed.focusDiceType!=="string"||!parsed.ranks)return null;getDiceDefinition(parsed.focusDiceType);const ranks:Record<number,number>={};for(const [id,r] of Object.entries(parsed.ranks)){const node=getTreeNode(Number(id));if(node){const rank=Math.max(0,Math.min(node.maxRank,Math.floor(Number(r)||0)));if(rank)ranks[node.id]=rank}}return {...fresh(),...parsed,ranks,inventory:{gold:Math.max(0,Number(parsed.inventory?.gold)||0),nodeStone:Math.max(0,Number(parsed.inventory?.nodeStone)||0)},level:Math.max(1,Math.min(7,Number(parsed.level)||1)),powerUp:Math.max(1,Math.min(20,Number(parsed.powerUp)||1))}}catch{return null}}
+function spentFor(ranks:Record<number,number>){let gold=0,nodeStone=0;for(const [id,r] of Object.entries(ranks)){const n=getTreeNode(Number(id));if(!n)continue;const c=cumulativeNodeCost(n,r);gold+=c.gold;nodeStone+=c.nodeStone}return{gold,nodeStone}}
+function costText(cost:{gold:number;nodeStone:number},locale:Locale){const p=[] as string[];if(cost.gold)p.push(`${formatNumber(cost.gold)} ${locale==="ko"?"골드":"Gold"}`);if(cost.nodeStone)p.push(`${cost.nodeStone} ${locale==="ko"?"다이스 코어":"Dice Core"}`);return p.join(" · ")||(locale==="ko"?"비용 없음":"No cost")}
+function nodeType(node:RD2TreeNode,locale:Locale){return ({DICE:{ko:"주사위 해금",en:"Dice unlock"},DICE_RUNE:{ko:"전용 효과",en:"Exclusive effect"},PLAYER_PASSIVE:{ko:"패시브",en:"Passive"},PERK:{ko:"계열 특성",en:"Family perk"}} as const)[node.nodeType][locale]}
+function Stat({label,value,sub}:{label:string;value:string;sub?:string}){return <div className="sim-stat-card"><span>{label}</span><strong>{value}</strong>{sub&&<small>{sub}</small>}</div>}
 
-const emptyBuild = (): BuildStateV2 => ({
-  schemaVersion: 2,
-  dataVersion: DATA_VERSION,
-  planned: {},
-  inventory: { ...EMPTY_RESOURCES_V2 },
-  primaryDieId: "devourer",
-  secondaryDieIds: ["corruption"],
-  role: "dealer",
-  profile: "conservative",
-});
-
-const FAMILY_LABEL: Record<DiceFamily, { ko: string; en: string }> = {
-  nature: { ko: "자연", en: "Nature" },
-  chaos: { ko: "혼돈", en: "Chaos" },
-  order: { ko: "질서", en: "Order" },
-  engineering: { ko: "공학", en: "Engineering" },
-  magic: { ko: "마법", en: "Magic" },
-};
-
-const RESOURCE_SHORT: Record<ResourceId, string> = { gold: "G", blueCard: "B", redCard: "R", prismCube: "◇" };
-
-function localized(field?: SourcedField<LocalizedText>, locale: "ko" | "en" = "ko", fallback = "") {
-  return field?.value?.[locale] ?? field?.value?.ko ?? fallback;
-}
-
-function encodeState(state: BuildStateV2) {
-  const bytes = new TextEncoder().encode(JSON.stringify(state));
-  let binary = "";
-  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
-  return `v2.${btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "")}`;
-}
-
-function decodeState(value: string): BuildStateV2 | null {
-  try {
-    if (!value.startsWith("v2.")) return null;
-    let encoded = value.slice(3).replaceAll("-", "+").replaceAll("_", "/");
-    while (encoded.length % 4) encoded += "=";
-    const binary = atob(encoded);
-    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<BuildStateV2>;
-    if (parsed.schemaVersion !== 2 || !parsed.planned || !parsed.inventory || typeof parsed.primaryDieId !== "string") return null;
-    return {
-      ...emptyBuild(),
-      ...parsed,
-      planned: Object.fromEntries(Object.entries(parsed.planned).filter(([id, rank]) => treeNodesV2.some((node) => node.id === id) && rank === 1)) as Record<string, 0 | 1>,
-      inventory: { ...EMPTY_RESOURCES_V2, ...parsed.inventory },
-      secondaryDieIds: Array.isArray(parsed.secondaryDieIds) ? parsed.secondaryDieIds.filter((id) => diceV2.some((die) => die.id === id)) : [],
-    };
-  } catch {
-    return null;
-  }
-}
-
-function costText(cost: ResourceCostV2, locale: "ko" | "en") {
-  const values: string[] = [];
-  if (cost.gold) values.push(`${cost.gold.toLocaleString()} ${locale === "ko" ? "골드" : "Gold"}`);
-  if (cost.blueCard) values.push(`${locale === "ko" ? "파란 재화" : "Blue"} ${cost.blueCard}`);
-  if (cost.redCard) values.push(`${locale === "ko" ? "빨간 재화" : "Red"} ${cost.redCard}`);
-  if (cost.prismCube) values.push(`${locale === "ko" ? "프리즘 재화" : "Prism"} ${cost.prismCube}`);
-  return values.join(" · ");
-}
-
-function recommendationScore(node: TreeNodeV2, build: BuildStateV2) {
-  if (!node.observedNextCost?.value || build.planned[node.id]) return -Infinity;
-  const primary = diceV2.find((die) => die.id === build.primaryDieId);
-  const secondary = build.secondaryDieIds.map((id) => diceV2.find((die) => die.id === id)).filter(Boolean);
-  const focusFamilies = [primary?.family, ...secondary.map((die) => die?.family)].filter(Boolean) as DiceFamily[];
-  let score = 0;
-  if (node.tags.includes("global")) score += 7;
-  if (node.family !== "core" && focusFamilies.includes(node.family)) score += 6;
-  if (node.family !== "core" && focusFamilies.filter((family) => family === node.family).length > 1) score += 3;
-  if (build.role === "dealer" && ["bullet-damage", "attack-speed", "speed", "combat", "rankable"].some((tag) => node.tags.includes(tag))) score += 3;
-  if (node.tags.includes("capstone") || node.tags.includes("milestone")) score += build.profile === "ceiling" ? 3 : 0.4;
-  const cost = node.observedNextCost.value;
-  const normalized = (cost.gold ?? 0) / 1000 + (cost.blueCard ?? 0) * 4 + (cost.redCard ?? 0) * 7 + (cost.prismCube ?? 0) * 6;
-  if (build.profile === "conservative") score -= normalized * 0.18;
-  else if (build.profile === "balanced") score -= normalized * 0.1;
-  else score -= normalized * 0.035;
-  const confidence = node.observedNextCost.confidence;
-  if (confidence === "partial" || confidence === "inferred") score -= 2;
-  return score;
-}
-
-function ResourceGlyph({ id }: { id: ResourceId }) {
-  if (id === "gold") return <span className="resource-art gold-art">●</span>;
-  if (id === "prismCube") return <span className="resource-art prism-art">◆</span>;
-  if (id === "redCard") return <span className="resource-art card-art red-art">▱</span>;
-  return <span className="resource-art card-art blue-art">▱</span>;
-}
-
-export function App() {
-  const { locale, setLocale } = useI18n();
-  const [build, setBuild] = useState<BuildStateV2>(() => emptyBuild());
-  const [selectedNodeId, setSelectedNodeId] = useState<string>();
-  const [familyFilter, setFamilyFilter] = useState<DiceFamily | "all">("all");
-  const [query, setQuery] = useState("");
-  const [plannerOpen, setPlannerOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [shareUrl, setShareUrl] = useState("");
-  const [shareWarning, setShareWarning] = useState(false);
-
-  useEffect(() => {
-    if (!window.location.hash.startsWith("#b=")) return;
-    const restored = decodeState(decodeURIComponent(window.location.hash.slice(3)));
-    if (!restored) { setShareWarning(true); return; }
-    setBuild(restored);
-  }, []);
-
-  const selected = treeNodesV2.find((node) => node.id === selectedNodeId);
-  const plannedNodes = useMemo(() => treeNodesV2.filter((node) => build.planned[node.id] && node.observedNextCost?.value), [build.planned]);
-  const spent = useMemo(() => sumV2Costs(plannedNodes.map((node) => node.observedNextCost!.value!)), [plannedNodes]);
-  const remaining: ResourceInventory = {
-    gold: build.inventory.gold - spent.gold,
-    blueCard: build.inventory.blueCard - spent.blueCard,
-    redCard: build.inventory.redCard - spent.redCard,
-    prismCube: build.inventory.prismCube - spent.prismCube,
-  };
-  const affordable = canAffordV2(build.inventory, spent);
-  const recommendations = useMemo(() => treeNodesV2
-    .map((node) => ({ node, score: recommendationScore(node, build) }))
-    .filter((entry) => Number.isFinite(entry.score))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5), [build]);
-  const recommendedIds = useMemo(() => new Set(recommendations.map((entry) => entry.node.id)), [recommendations]);
-  const semanticBuild = useMemo(() => encodeState(build), [build]);
-
-  const togglePlan = (node: TreeNodeV2) => {
-    if (!node.observedNextCost?.value) return;
-    setBuild((current) => ({ ...current, planned: { ...current.planned, [node.id]: current.planned[node.id] ? 0 : 1 } }));
-  };
-
-  const share = async () => {
-    const url = `${window.location.origin}${window.location.pathname}#b=${encodeURIComponent(semanticBuild)}`;
-    setShareUrl(url);
-    setShareOpen(true);
-    try { await navigator.clipboard?.writeText(url); } catch { /* visible URL is the fallback */ }
-  };
-
-  const confidenceText = (node: TreeNodeV2) => {
-    const cost = node.fieldConfidence.cost;
-    const effect = node.fieldConfidence.effect;
-    if (cost === "observed" && (effect === "observed" || effect === "verified" || effect === "partial")) return locale === "ko" ? "비용 확인 · 효과 일부 확인" : "Cost observed · effect partial";
-    if (cost === "observed") return locale === "ko" ? "비용 확인 · 효과 상세 필요" : "Cost observed · effect detail needed";
-    return locale === "ko" ? "위치 확인 · 상세 자료 필요" : "Position observed · detail needed";
-  };
-
-  return <div className="v2-app">
-    <header className="v2-header">
-      <div className="v2-brand">
-        <span className="v2-logo"><i>RD</i><b>2</b></span>
-        <div><strong>{locale === "ko" ? "랜덤다이스2 트리" : "Random Dice 2 Tree"}</strong><small>{locale === "ko" ? "실제 트리 기반 빌드 플래너" : "Screenshot-sourced build planner"}</small></div>
-      </div>
-      <nav className="v2-nav" aria-label="primary"><span className="active">{locale === "ko" ? "다이스 트리" : "Dice Tree"}</span><span>{locale === "ko" ? "전략" : "Strategy"}</span></nav>
-      <div className="v2-header-actions">
-        <button className="planner-pill" type="button" onClick={() => setPlannerOpen(true)}>{locale === "ko" ? "내 조건" : "My setup"}</button>
-        <button className="share-pill" data-testid="share-button" type="button" onClick={share}>{locale === "ko" ? "공유" : "Share"}</button>
-        <button className="locale-pill" type="button" onClick={() => setLocale(locale === "ko" ? "en" : "ko")}>{locale === "ko" ? "EN" : "KO"}</button>
-      </div>
-    </header>
-
-    <section className="resource-rail" data-testid="resource-summary" aria-label={locale === "ko" ? "재화 현황" : "Resources"}>
-      <div className="rail-kicker"><b>{locale === "ko" ? "가상 투자" : "Simulation"}</b><span>{plannedNodes.length}{locale === "ko" ? "개 노드" : " nodes"}</span></div>
-      {resourceDefinitions.map((resource) => <div className="resource-pill-v2" key={resource.id} style={{ "--resource-accent": resource.accent } as CSSProperties}>
-        <ResourceGlyph id={resource.id}/>
-        <div><small>{localized(resource.name, locale)}</small><strong>{build.inventory[resource.id].toLocaleString()}</strong></div>
-        {spent[resource.id] > 0 && <span className="spent-mark">−{spent[resource.id].toLocaleString()}</span>}
-      </div>)}
-      <div className={`budget-state ${affordable ? "ok" : "short"}`}><span>{affordable ? "✓" : "!"}</span>{affordable ? (locale === "ko" ? "현재 입력 재화 내" : "Within inventory") : (locale === "ko" ? "재화 부족" : "Shortfall")}</div>
-    </section>
-
-    {shareWarning && <div className="share-alert" data-testid="share-warning"><span>{locale === "ko" ? "공유 링크를 읽을 수 없어 새 플래너를 열었습니다." : "The shared build could not be read. A fresh planner was opened."}</span><button type="button" onClick={() => setShareWarning(false)}>×</button></div>}
-    <output hidden aria-hidden="true" data-testid="semantic-build-hash">{semanticBuild}</output>
-
-    <main className="v2-workspace">
-      <section className="tree-shell">
-        <div className="tree-toolbar">
-          <div className="family-switcher">
-            <button className={familyFilter === "all" ? "active" : ""} type="button" onClick={() => setFamilyFilter("all")}>{locale === "ko" ? "전체" : "All"}</button>
-            {(Object.keys(FAMILY_LABEL) as DiceFamily[]).map((family) => <button className={familyFilter === family ? `active family-${family}` : `family-${family}`} key={family} type="button" onClick={() => setFamilyFilter(family)}>{FAMILY_LABEL[family][locale]}</button>)}
-          </div>
-          <label className="tree-search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={locale === "ko" ? "노드·효과 검색" : "Search nodes & effects"}/></label>
-        </div>
-        <div className="tree-stage-v2">
-          <div className="canvas-watermark"><b>{treeNodesV2.length}</b><span>{locale === "ko" ? "개 스크린샷 매핑 노드" : "screenshot-mapped nodes"}</span><i>{locale === "ko" ? "회색 노드도 위치·연결은 실제 사진 기준" : "Grey nodes still use screenshot-sourced geometry"}</i></div>
-          <TreeCanvasV2
-            nodes={treeNodesV2}
-            selectedNodeId={selectedNodeId}
-            plannedRanks={build.planned}
-            recommendedIds={recommendedIds}
-            familyFilter={familyFilter}
-            query={query}
-            locale={locale}
-            onSelect={setSelectedNodeId}
-          />
-        </div>
-      </section>
-
-      <aside className={`node-sheet ${selected ? "has-node" : ""}`} data-testid="node-panel">
-        {!selected ? <div className="sheet-empty"><div className="empty-orbit">◇</div><h2>{locale === "ko" ? "노드를 선택하세요" : "Select a node"}</h2><p>{locale === "ko" ? "사진에서 확인된 위치, 비용, 랭크와 추천 근거를 분리해서 보여줍니다." : "See screenshot-sourced position, cost, rank and strategy evidence separately."}</p></div> : <>
-          <div className="sheet-topline"><span className={`family-dot family-${selected.family}`}/><span>{selected.family === "core" ? "CORE" : FAMILY_LABEL[selected.family][locale]}</span><small>{confidenceText(selected)}</small></div>
-          <div className="sheet-title-row"><div className={`node-preview family-${selected.family}`}><span>{selected.iconKey?.value ? "◇" : "•"}</span></div><div><h2>{localized(selected.name, locale, locale === "ko" ? "노드 상세 확인 중" : "Node detail pending")}</h2><p>{selected.id}</p></div></div>
-
-          {selected.effectSummary?.value ? <div className="effect-card"><span>{locale === "ko" ? "효과" : "Effect"}</span><strong>{localized(selected.effectSummary, locale)}</strong></div> : <div className="partial-card"><span>i</span><div><b>{locale === "ko" ? "위치와 연결은 확인됨" : "Position and route observed"}</b><p>{locale === "ko" ? "정확한 효과 문구는 상세창 자료가 확보되면 추가됩니다. 임의 수치를 사용하지 않습니다." : "Exact effect text will be added only after a current detail-panel source is available."}</p></div></div>}
-
-          <div className="sheet-grid">
-            <div><small>{locale === "ko" ? "게임 화면 랭크" : "Observed rank"}</small><strong>{selected.displayedRank?.value ? `${selected.displayedRank.value.current} / ${selected.displayedRank.value.max}` : "—"}</strong></div>
-            <div><small>{locale === "ko" ? "관찰된 다음 비용" : "Observed next cost"}</small><strong>{selected.observedNextCost?.value ? costText(selected.observedNextCost.value, locale) : "—"}</strong></div>
-          </div>
-          {selected.observedNextCost?.value && <p className="rank-context">{locale === "ko" ? "이 비용은 사진에 표시된 현재 랭크에서 다음 1단계에 필요한 값입니다. 50/100레벨 전체 비용으로 반복 추정하지 않습니다." : "This is the next-step cost shown at the photographed rank. It is not repeated across unknown 50/100-rank ladders."}</p>}
-          <button className={`plan-button ${build.planned[selected.id] ? "remove" : ""}`} type="button" disabled={!selected.observedNextCost?.value} onClick={() => togglePlan(selected)}>{!selected.observedNextCost?.value ? (locale === "ko" ? "비용 자료 필요" : "Cost data needed") : build.planned[selected.id] ? (locale === "ko" ? "가상 투자 취소" : "Remove planned step") : (locale === "ko" ? "다음 1단계 계획에 추가" : "Plan next step")}</button>
-
-          <div className="recommend-block"><div className="section-label"><span>{locale === "ko" ? "다음 투자 후보" : "Next candidates"}</span><small>{locale === "ko" ? "관측 데이터 기반" : "observed data only"}</small></div>{recommendations.slice(0, 3).map((entry, index) => <button key={entry.node.id} type="button" className="recommend-row" onClick={() => setSelectedNodeId(entry.node.id)}><b>0{index + 1}</b><div><strong>{localized(entry.node.name, locale, locale === "ko" ? `${entry.node.family === "core" ? "코어" : FAMILY_LABEL[entry.node.family][locale]} 노드` : "Mapped node")}</strong><small>{entry.node.observedNextCost?.value ? costText(entry.node.observedNextCost.value, locale) : ""}</small></div><span>→</span></button>)}</div>
-
-          {(() => { const note = strategyNotes.find((item) => (item.subject.type === "family" && item.subject.id === selected.family) || (item.subject.type === "node" && item.subject.id === selected.id)); return note ? <div className="strategy-note"><small>{locale === "ko" ? "커뮤니티 전략 메모" : "Community strategy note"}</small><p>{note.summary[locale]}</p><span>{locale === "ko" ? "공식 데이터와 분리됨" : "Separated from canonical facts"}</span></div> : null; })()}
-        </>}
-      </aside>
-    </main>
-
-    {plannerOpen && <div className="planner-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) setPlannerOpen(false); }}><section className="planner-drawer"><div className="drawer-head"><div><small>{locale === "ko" ? "추천 조건" : "Recommendation setup"}</small><h2>{locale === "ko" ? "내 진행 상황" : "My progression"}</h2></div><button type="button" onClick={() => setPlannerOpen(false)}>×</button></div>
-      <label className="drawer-field"><span>{locale === "ko" ? "주력 주사위" : "Primary die"}</span><select value={build.primaryDieId} onChange={(event) => setBuild((current) => ({ ...current, primaryDieId: event.target.value }))}>{diceV2.map((die) => <option value={die.id} key={die.id}>{localized(die.name, locale, die.id)}</option>)}</select></label>
-      <div className="drawer-field"><span>{locale === "ko" ? "추천 성향" : "Progression profile"}</span><div className="profile-buttons">{(["conservative", "balanced", "ceiling"] as Profile[]).map((profile) => <button type="button" className={build.profile === profile ? "active" : ""} key={profile} onClick={() => setBuild((current) => ({ ...current, profile }))}>{profile === "conservative" ? (locale === "ko" ? "재화 절약" : "Efficient") : profile === "balanced" ? (locale === "ko" ? "균형" : "Balanced") : (locale === "ko" ? "고점" : "Ceiling")}</button>)}</div></div>
-      <div className="drawer-field"><span>{locale === "ko" ? "현재 보유 재화" : "Current inventory"}</span><div className="inventory-grid">{resourceDefinitions.map((resource) => <label key={resource.id}><ResourceGlyph id={resource.id}/><small>{localized(resource.name, locale)}</small><input inputMode="numeric" min="0" type="number" value={build.inventory[resource.id]} onChange={(event) => setBuild((current) => ({ ...current, inventory: { ...current.inventory, [resource.id]: Math.max(0, Number(event.target.value) || 0) } }))}/></label>)}</div></div>
-      <div className="budget-preview"><div><span>{locale === "ko" ? "계획 사용" : "Planned spend"}</span><strong>{Object.entries(spent).filter(([, value]) => value).map(([key, value]) => `${RESOURCE_SHORT[key as ResourceId]} ${value.toLocaleString()}`).join(" · ") || "0"}</strong></div><div><span>{locale === "ko" ? "남은 재화" : "Remaining"}</span><strong className={affordable ? "good" : "bad"}>{Object.entries(remaining).map(([key, value]) => `${RESOURCE_SHORT[key as ResourceId]} ${value.toLocaleString()}`).join(" · ")}</strong></div></div>
-      <button className="drawer-done" type="button" onClick={() => setPlannerOpen(false)}>{locale === "ko" ? "적용" : "Apply"}</button>
-    </section></div>}
-
-    {shareOpen && <div className="share-popover-v2" data-testid="share-popover"><div><b>{locale === "ko" ? "빌드 링크" : "Build link"}</b><button type="button" onClick={() => setShareOpen(false)}>×</button></div><p>{locale === "ko" ? "로그인 없이 현재 가상 투자와 추천 조건을 그대로 공유합니다." : "Share planned investments and setup without an account."}</p><label><input data-testid="share-url" readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()}/><button type="button" onClick={() => navigator.clipboard?.writeText(shareUrl)}>{locale === "ko" ? "복사" : "Copy"}</button></label></div>}
-  </div>;
+export function App(){
+ const {locale,setLocale}=useI18n();
+ const [build,setBuild]=useState<Build>(fresh);
+ const [selectedId,setSelectedId]=useState(5007);
+ const [family,setFamily]=useState<RD2Family|"all">("all");
+ const [query,setQuery]=useState("");
+ const [shareUrl,setShareUrl]=useState("");
+ const [shareOpen,setShareOpen]=useState(false);
+ const [shareWarning,setShareWarning]=useState(false);
+ useEffect(()=>{if(!location.hash.startsWith("#b="))return;const b=decodeBuild(decodeURIComponent(location.hash.slice(3)));if(!b){setShareWarning(true);return}setBuild(b);const n=getTreeNodeForDice(b.focusDiceType);if(n)setSelectedId(n.id)},[]);
+ const selected=getTreeNode(selectedId)??rd2TreeNodes[0];
+ const rank=build.ranks[selected.id]??0;
+ const spent=useMemo(()=>spentFor(build.ranks),[build.ranks]);
+ const focusDice=getDiceDefinition(build.focusDiceType);
+ const focusIds=useMemo(()=>focusRecommendationIds(build.focusDiceType),[build.focusDiceType]);
+ const sim=useMemo(()=>simulateDiceStats(build.focusDiceType,{level:build.level,powerUp:build.powerUp,treeRanks:build.ranks}),[build]);
+ const runes=useMemo(()=>getRuneDefinitionsForDice(build.focusDiceType),[build.focusDiceType]);
+ const diceOptions=useMemo(()=>rd2Dice.filter(d=>d.use&&getTreeNodeForDice(d.type)).sort((a,b)=>a.name.ko.localeCompare(b.name.ko,"ko")),[]);
+ const setRank=(node:RD2TreeNode,r:number)=>setBuild(cur=>{const ranks={...cur.ranks};const v=Math.max(0,Math.min(node.maxRank,r));if(v)ranks[node.id]=v;else delete ranks[node.id];return{...cur,ranks}});
+ const chooseDice=(type:string)=>{const n=getTreeNodeForDice(type);setBuild(c=>({...c,focusDiceType:type}));if(n){setSelectedId(n.id);setFamily(n.family)}};
+ const share=async()=>{const url=`${location.origin}${location.pathname}#b=${encodeURIComponent(encodeBuild(build))}`;setShareUrl(url);setShareOpen(true);try{await navigator.clipboard?.writeText(url)}catch{}};
+ const nextRank=Math.min(selected.maxRank,rank+1),nextCost=rankCost(selected,nextRank),totalCost=cumulativeNodeCost(selected,rank);
+ const focusName=focusDice.name[locale];
+ return <div className="exact-app">
+  <header className="exact-header"><div className="brand"><span className="logo-die">RD²</span><div><strong>Dice Tree Lab</strong><small>Random Dice 2 · IPA table {rd2Source.tableBundleVersion}</small></div></div><div className="header-actions"><button onClick={()=>setLocale(locale==="ko"?"en":"ko")}>{locale==="ko"?"EN":"KO"}</button><button data-testid="share-button" className="primary" onClick={share}>{locale==="ko"?"빌드 공유":"Share build"}</button></div></header>
+  {shareWarning&&<div data-testid="share-warning" className="warning">{locale==="ko"?"공유 링크를 읽을 수 없어 새 빌드를 열었습니다.":"The shared build could not be read."}<button onClick={()=>setShareWarning(false)}>×</button></div>}
+  <section className="focus-bar"><div><span>{locale==="ko"?"목표 주사위":"Focus dice"}</span><strong>{focusName}</strong><small>{familyLabel(focusDice.family as RD2Family,locale)} · {focusDice.description[locale]}</small></div><div className="quick-dice">{["Predator","Decay","Bingo"].map(type=>{const d=getDiceDefinition(type);return <button key={type} aria-label={d.name[locale]} className={build.focusDiceType===type?"active":""} onClick={()=>chooseDice(type)}>{d.name[locale]}<small>{familyLabel(d.family as RD2Family,locale)}</small></button>})}</div><label className="dice-select"><span>{locale==="ko"?"전체 주사위":"All dice"}</span><select value={build.focusDiceType} onChange={e=>chooseDice(e.target.value)}>{diceOptions.map(d=><option key={d.type} value={d.type}>{d.name[locale]}</option>)}</select></label></section>
+  <section className="currency-bar" data-testid="resource-summary"><div className="currency-title"><span>{locale==="ko"?"다이스 트리 재화":"Dice Tree currency"}</span><strong>239 {locale==="ko"?"노드":"nodes"}</strong></div><label><b className="coin">G</b><span>{locale==="ko"?"골드":"Gold"}</span><input aria-label={locale==="ko"?"보유 골드":"Gold inventory"} type="number" min="0" value={build.inventory.gold} onChange={e=>setBuild(c=>({...c,inventory:{...c.inventory,gold:Math.max(0,Number(e.target.value)||0)}}))}/><em>−{formatNumber(spent.gold)}</em></label><label><b className="core">C</b><span>{locale==="ko"?"다이스 코어":"Dice Core"}</span><input aria-label={locale==="ko"?"보유 다이스 코어":"Dice Core inventory"} type="number" min="0" value={build.inventory.nodeStone} onChange={e=>setBuild(c=>({...c,inventory:{...c.inventory,nodeStone:Math.max(0,Number(e.target.value)||0)}}))}/><em>−{formatNumber(spent.nodeStone)}</em></label><div className="source-chip"><span>IPA 1.0.1</span><strong>{rd2Source.tableCreatedAt.slice(0,10)}</strong></div></section>
+  <main className="exact-workspace"><section className="tree-area"><div className="tree-toolbar"><div className="family-tabs"><button className={family==="all"?"active":""} onClick={()=>setFamily("all")}>{locale==="ko"?"전체":"All"}</button>{FAMILY_ORDER.map(f=><button key={f} className={family===f?"active":""} onClick={()=>setFamily(f)}>{familyLabel(f,locale)}</button>)}</div><label className="search"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={locale==="ko"?"주사위·효과 검색":"Search dice & effects"}/></label></div><div className="tree-card"><div className="tree-note"><strong>{locale==="ko"?"인게임 좌표·연결":"In-game coordinates & links"}</strong><span>{locale==="ko"?"239개 노드를 원본 DiceTreeNodeTable로 렌더링":"Rendered from DiceTreeNodeTable"}</span></div><ExactTreeCanvas nodes={rd2TreeNodes} locale={locale} selectedNodeId={selectedId} plannedRanks={build.ranks} focusIds={focusIds} query={query} familyFilter={family} onSelect={setSelectedId}/></div></section>
+   <aside className="side-panel"><section className="node-panel" data-testid="node-panel"><div className="eyebrow"><span>{familyLabel(selected.family,locale)}</span><small>{nodeType(selected,locale)}</small></div><div className="node-title"><div className={`node-avatar family-${selected.family}`}>{selected.nodeType==="DICE"?selected.name.ko.replace(" 주사위","").slice(0,2):selected.nodeType==="DICE_RUNE"?"◆":"↑"}</div><div><h2>{selected.name[locale]}</h2><p>Node #{selected.id} · ({selected.position.x}, {selected.position.y})</p></div></div><div className="effect"><span>{locale==="ko"?"효과":"Effect"}</span><strong>{nodeEffectText(selected,Math.max(1,rank||1),locale)||selected.name[locale]}</strong></div><div className="rank-head"><span>{locale==="ko"?"가상 랭크":"Planned rank"}</span><strong>{rank} / {selected.maxRank}</strong></div><div className="rank-control"><button aria-label="rank down" disabled={!rank} onClick={()=>setRank(selected,rank-1)}>−</button><input aria-label={locale==="ko"?"노드 랭크":"Node rank"} type="range" min="0" max={selected.maxRank} value={rank} onChange={e=>setRank(selected,Number(e.target.value))}/><button aria-label="rank up" disabled={rank>=selected.maxRank} onClick={()=>setRank(selected,rank+1)}>+</button></div><div className="cost-grid"><div><span>{locale==="ko"?"누적 비용":"Total cost"}</span><strong>{costText(totalCost,locale)}</strong></div><div><span>{rank>=selected.maxRank?"MAX":`${locale==="ko"?"다음 랭크":"Next rank"} ${nextRank}`}</span><strong>{rank>=selected.maxRank?"MAX":costText(nextCost,locale)}</strong></div></div><button className="max-btn" onClick={()=>setRank(selected,selected.maxRank)}>{locale==="ko"?"MAX 미리보기":"Preview MAX"}</button></section>
+    <section className="sim-panel"><div className="sim-heading"><div><small>DefenderTable + ProjectileAbilityTable</small><h2>{locale==="ko"?`${focusDice.name.ko.replace(" 주사위","")} 시뮬레이터`:`${focusDice.name.en} simulator`}</h2></div><span>{familyLabel(focusDice.family as RD2Family,locale)}</span></div><div className="sliders"><label><span>{locale==="ko"?"눈금 레벨":"Dot level"} <b>{build.level}</b></span><input type="range" min="1" max="7" value={build.level} onChange={e=>setBuild(c=>({...c,level:Number(e.target.value)}))}/></label><label><span>{locale==="ko"?"파워업":"Power-Up"} <b>{build.powerUp}</b></span><input type="range" min="1" max="20" value={build.powerUp} onChange={e=>setBuild(c=>({...c,powerUp:Number(e.target.value)}))}/></label></div><div className="stat-grid"><Stat label={locale==="ko"?"기본 대미지":"Base DMG"} value={formatNumber(sim.attack)}/><Stat label={locale==="ko"?"공격 주기":"ATK interval"} value={`${sim.attackInterval.toFixed(2)}s`} sub={`${sim.attacksPerSecond.toFixed(3)}/s`}/><Stat label={locale==="ko"?"사거리":"Range"} value={sim.range.toFixed(2)}/><Stat label={locale==="ko"?"보스 대미지":"Boss DMG"} value={`${formatNumber(sim.bossDamagePercent)}%`}/></div>{sim.projectileAbility&&<div className="ability"><span>{sim.projectileAbility.label[locale]|| (locale==="ko"?"고유 수치":"Ability")}</span><strong>{formatNumber(sim.projectileAbility.value)}</strong>{build.level===7&&focusDice.level7Description[locale]&&<p>{focusDice.level7Description[locale]}</p>}</div>}<div className="bonus-grid"><div><span>{locale==="ko"?"트리 불렛 대미지":"Tree Bullet DMG"}</span><strong>+{formatNumber(sim.treeBonuses.bulletDamagePercent)}%</strong></div><div><span>{locale==="ko"?"트리 공격속도":"Tree ATK SPD"}</span><strong>+{formatNumber(sim.treeBonuses.attackSpeedPercent)}%</strong></div><div><span>{locale==="ko"?"예상 불렛 DPS":"Projected bullet DPS"}</span><strong>{formatNumber(sim.projectedBulletDps)}</strong></div></div><p className="model-note">{locale==="ko"?"기본·눈금·파워업 수치는 IPA 테이블 원본이며, DPS는 트리에 명시된 불렛 대미지/공격속도 %를 적용한 시뮬레이션입니다.":"Base/dot/Power-Up values come from the extracted tables. DPS is a planner projection using displayed tree percentages."}</p><div className="runes"><h3>{locale==="ko"?"전용 효과":"Exclusive effects"}</h3>{runes.map(r=>{const n=rd2TreeNodes.find(x=>x.nodeType==="DICE_RUNE"&&x.kindId===r.id);if(!n)return null;const rr=build.ranks[n.id]??0;return <button key={r.id} onClick={()=>setSelectedId(n.id)}><span>◆</span><div><strong>{r.name[locale]}</strong><small>{nodeEffectText(n,Math.max(1,rr||1),locale)}</small></div><em>{rr}/{n.maxRank}</em></button>})}</div></section>
+   </aside></main>
+  {shareOpen&&<div className="share-modal" data-testid="share-popover" onMouseDown={e=>{if(e.target===e.currentTarget)setShareOpen(false)}}><section><header><div><small>{locale==="ko"?"로그인 없이 공유":"No-login share"}</small><h2>{locale==="ko"?"현재 빌드 링크":"Current build link"}</h2></div><button onClick={()=>setShareOpen(false)}>×</button></header><p>{locale==="ko"?"목표 주사위, 가상 랭크, 재화, 눈금과 파워업 상태가 URL에 저장됩니다.":"Focus dice, ranks, currency, dot level and Power-Up are encoded in the URL."}</p><input data-testid="share-url" readOnly value={shareUrl}/></section></div>}
+ </div>
 }
