@@ -2,6 +2,7 @@ import type { CanonicalGameData, DiceDefinitionV3 } from "../../game-data/types"
 import { applyVerifiedModifiers } from "./applyModifiers";
 import { growthModifiersForDice } from "./growth";
 import type {
+  CalculationTraceStepV3,
   SimulationInputV3,
   SimulationResultV3,
   StatModifierV3,
@@ -43,6 +44,26 @@ function exactBasicAttackDps(
   return attack / interval;
 }
 
+function projectionSupportsBasicAttack(trace: readonly CalculationTraceStepV3[]) {
+  return trace
+    .filter((step) => !step.applied && (step.stat === "attack" || step.stat === "attackInterval"))
+    .every((step) => (
+      (step.stage === "permanent-growth" || step.stage === "battle-upgrade")
+      && step.outputValue !== null
+    ));
+}
+
+function projectedBasicAttackDps(
+  projectedStats: Record<string, number>,
+  trace: readonly CalculationTraceStepV3[],
+): number | null {
+  if (!projectionSupportsBasicAttack(trace)) return null;
+  const attack = projectedStats.attack;
+  const interval = projectedStats.attackInterval;
+  if (attack === undefined || interval === undefined || attack < 0 || interval <= 0) return null;
+  return attack / interval;
+}
+
 export function simulateDiceV3(
   input: SimulationInputV3,
   data: CanonicalGameData,
@@ -68,6 +89,7 @@ export function simulateDiceV3(
   const resolved = options.resolvedMechanicKeys ?? new Set<string>();
   const unresolvedMechanics = mechanicKeys(dice).filter((key) => !resolved.has(key));
   const basicAttackDps = exactBasicAttackDps(applied.stats, applied.unresolvedStats);
+  const projectedBasicDps = projectedBasicAttackDps(applied.projectedStats, applied.trace);
   const practicalDps = basicAttackDps !== null && unresolvedMechanics.length === 0
     ? basicAttackDps
     : null;
@@ -76,7 +98,9 @@ export function simulateDiceV3(
   return {
     diceId: dice.id,
     stats: applied.stats,
+    projectedStats: applied.projectedStats,
     basicAttackDps,
+    projectedBasicAttackDps: projectedBasicDps,
     practicalDps,
     confidence: partial ? "partial" : "verified",
     trace: applied.trace,
