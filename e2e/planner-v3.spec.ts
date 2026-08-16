@@ -7,6 +7,27 @@ function captureBrowserErrors(page: Page) {
   return errors;
 }
 
+async function selectDiceByInternalId(page: Page, diceId: string) {
+  await page.getByRole("textbox", { name: "주사위 검색" }).fill(diceId);
+  const list = page.getByRole("listbox", { name: "주사위 목록" });
+  const option = list.getByRole("option").first();
+  await expect(option).toBeVisible();
+  await option.click();
+}
+
+async function investTreeNode(page: Page, nodeId: string) {
+  const node = page.getByTestId(`v3-node-${nodeId}`);
+  await expect(node).toBeVisible();
+  await expect(node).toHaveAttribute("data-can-increment", "true");
+  const before = Number(await node.getAttribute("data-simulated-rank") ?? "0");
+  await node.click();
+  const increment = page.getByRole("button", { name: "가상 랭크 올리기" });
+  await expect(increment).toBeEnabled();
+  await increment.click();
+  await expect(node).toHaveAttribute("data-simulated-rank", String(before + 1));
+  await page.getByRole("button", { name: "닫기" }).click();
+}
+
 test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ page, browser, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
@@ -61,16 +82,69 @@ test("V3 Simulator exposes dice-specific conditions and partial-safe Predator ou
   await expect(page.getByTestId("v3-stat-panel")).toContainText(/부분 계산|Partial/);
   await page.screenshot({ path: `test-results/qa-v3-predator-simulator-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
-  const diceList = page.getByRole("listbox", { name: "주사위 목록" });
-  const search = page.getByRole("textbox", { name: "주사위 검색" });
-  await search.fill("gear");
-  const gear = diceList.getByRole("option").first();
-  await expect(gear).toBeVisible();
-  await gear.click();
+  await selectDiceByInternalId(page, "gear");
   const conditionPanel = page.getByTestId("v3-condition-controls");
   await expect(conditionPanel).toBeVisible();
   await expect(conditionPanel.getByRole("spinbutton")).toBeVisible();
   await page.screenshot({ path: `test-results/qa-v3-gear-simulator-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+  expect(errors).toEqual([]);
+});
+
+test("V3 client-table projection reacts to permanent level and battle upgrade without claiming exact DPS", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await selectDiceByInternalId(page, "wind");
+
+  await expect(page.getByTestId("stat-attack")).toContainText("100");
+  await expect(page.getByTestId("stat-attackInterval")).toContainText("0.45");
+  await page.getByRole("spinbutton", { name: "영구 주사위 레벨" }).fill("2");
+  await page.getByRole("spinbutton", { name: "전투 파워업" }).fill("2");
+
+  await expect(page.getByTestId("stat-attack")).toHaveAttribute("data-projected", "true");
+  await expect(page.getByTestId("stat-attack")).toContainText("300");
+  await expect(page.getByTestId("stat-attackInterval")).toContainText("0.425");
+  await expect(page.getByTestId("stat-projectedBasicAttackDps")).toContainText("705.88");
+  await expect(page.getByTestId("v3-stat-panel")).toContainText(/표 기반 예상|Table projection/);
+  await expect(page.getByTestId("stat-practical-dps")).toHaveText("—");
+  await page.screenshot({ path: `test-results/qa-v3-wind-growth-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+  expect(errors).toEqual([]);
+});
+
+test("V3 custom enemy HP changes kill time through the shared scenario engine", async ({ page }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await selectDiceByInternalId(page, "wind");
+
+  await page.getByRole("spinbutton", { name: "적 HP" }).fill("1000");
+  await expect(page.getByTestId("stat-practical-dps")).toContainText("222.22");
+  await expect(page.getByTestId("damage-kill-time")).toContainText("4.5s");
+  await page.getByRole("spinbutton", { name: "적 HP" }).fill("2000");
+  await expect(page.getByTestId("damage-kill-time")).toContainText("9s");
+  expect(errors).toEqual([]);
+});
+
+test("V3 real Wind Dice Tree path changes the selected dice tree stat without fabricating practical DPS", async ({ page, isMobile }) => {
+  test.skip(isMobile, "canonical multi-node route interaction is covered on desktop; mobile pan/detail flow is separate");
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("spinbutton", { name: "보유 골드" }).fill("9999999");
+  await page.getByRole("spinbutton", { name: "보유 다이스 코어" }).fill("9999");
+
+  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await selectDiceByInternalId(page, "wind");
+  await page.getByRole("button", { name: "다이스 트리" }).click();
+
+  await investTreeNode(page, "1001");
+  await investTreeNode(page, "1005");
+  await investTreeNode(page, "1205");
+
+  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  const bullet = page.getByTestId("stat-bulletDamagePercent");
+  await expect(bullet).toBeVisible();
+  await expect.poll(async () => Number((await bullet.locator("strong").textContent())?.replaceAll(",", "") ?? "0")).toBeGreaterThan(0);
+  await expect(page.getByTestId("stat-practical-dps")).toHaveText("—");
   expect(errors).toEqual([]);
 });
 
