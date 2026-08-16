@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _write_json(path: Path, value: object) -> None:
     path.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n",
         encoding="utf-8",
     )
 
