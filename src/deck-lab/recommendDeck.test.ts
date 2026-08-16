@@ -3,14 +3,13 @@ import { gameDataV3 } from "../game-data/load";
 import { analyzeDeckDiceV4, recommendDeckV4 } from "./recommendDeck";
 
 describe("recommendDeckV4", () => {
-  it("builds a five-dice client-synergy deck without claiming live meta", () => {
+  it("builds a five-dice game-data synergy deck", () => {
     const result = recommendDeckV4(gameDataV3, "balanced", "free");
     expect(result.dice).toHaveLength(5);
     expect(new Set(result.dice.map((entry) => entry.diceId)).size).toBe(5);
     expect(result.dice.some((entry) => entry.roles.includes("dealer"))).toBe(true);
     expect(result.dice.some((entry) => entry.roles.includes("economy"))).toBe(true);
-    expect(result.liveMetaVerified).toBe(false);
-    expect(result.source).toBe("ipa-client-synergy");
+    expect(result.source).toBe("game-data-synergy");
   });
 
   it("classifies client-described control and economy functions", () => {

@@ -6,10 +6,14 @@ import { DeckLabView } from "./DeckLabView";
 afterEach(cleanup);
 
 describe("DeckLabView", () => {
-  it("separates client synergy from unverified live meta and renders five slots", () => {
+  it("separates observed ranking data from forecasts and renders five personal slots", () => {
     render(<DeckLabView data={gameDataV3} locale="ko" goal="balanced" spendProfile="free" onGoalChange={vi.fn()} onSpendProfileChange={vi.fn()} onSimulate={vi.fn()} />);
-    expect(screen.getByTestId("v4-meta-status")).toHaveTextContent("라이브 메타 미검증");
-    expect(screen.getByTestId("v4-meta-status")).toHaveTextContent("현재 랭킹과 사용률은 검증된 실시간 자료가 없어");
+    expect(screen.getByTestId("v4-meta-status")).toHaveTextContent("2026.08.16 협동 랭킹 스냅샷");
+    expect(screen.getByTestId("v43-ranking-snapshot")).toHaveTextContent("105개 랭킹 덱");
+    expect(screen.getByTestId("v43-dealer-lane")).toHaveTextContent("딜러 덱");
+    expect(screen.getByTestId("v43-support-lane")).toHaveTextContent("서포트 덱");
+    expect(screen.getByTestId("v43-forecast")).toHaveTextContent("예측 · 랭킹 사실 아님");
+    expect(screen.getByTestId("v43-forecast")).toHaveTextContent("55종 전수 분석");
     for (let index = 1; index <= 5; index += 1) {
       const slot = screen.getByTestId(`deck-slot-${index}`);
       expect(slot).toBeInTheDocument();

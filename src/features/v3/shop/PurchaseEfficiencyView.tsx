@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { OFFICIAL_APP_STORE_KR_URL, type PurchaseGoal, type PurchaseProduct, type PurchaseProfile } from "../../../purchase-efficiency/products";
+import { OFFICIAL_APP_STORE_KR_URL, purchaseDisplayPrice, REFERENCE_KRW_PER_USD, type PurchaseGoal, type PurchaseProduct, type PurchaseProfile } from "../../../purchase-efficiency/products";
 import { findIntroOffer, recommendPurchasesV41 } from "../../../purchase-efficiency/recommend";
 
 function rewardText(product: PurchaseProduct, locale: "ko" | "en") {
@@ -14,10 +14,11 @@ function rewardText(product: PurchaseProduct, locale: "ko" | "en") {
 }
 
 function Price({ product, locale }: { product: PurchaseProduct; locale: "ko" | "en" }) {
+  const price = purchaseDisplayPrice(product, locale);
   return <div className="v41-price">
-    {product.officialKrw
-      ? <><strong>₩{product.officialKrw.toLocaleString()}</strong><small>{locale === "ko" ? "현재 한국 App Store 표시가" : "Current Korean App Store price"}</small></>
-      : <><strong>${product.priceUsd.toFixed(2)}</strong><small>{locale === "ko" ? "게임 내 기준가" : "In-game reference price"}</small></>}
+    {price.currency === "KRW"
+      ? <><strong>₩{price.value.toLocaleString("ko-KR")}</strong><small>{price.basis === "official" ? "현재 한국 App Store 표시가" : "달러 기준가의 원화 환산 참고가"}</small></>
+      : <><strong>${price.value.toFixed(2)}</strong><small>In-game USD reference price</small></>}
   </div>;
 }
 
@@ -38,6 +39,7 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
       <aside className="v41-source-card" data-testid="v41-purchase-source">
         <strong>{locale === "ko" ? "데이터 기준" : "Data basis"}</strong>
         <span>{locale === "ko" ? "게임 내 상품 구성 · 패키지 효율 · 보상 정보" : "In-game product contents, package efficiency and rewards"}</span>
+        <small>{locale === "ko" ? `원화 미노출 상품은 미국 달러 1단위당 ₩${REFERENCE_KRW_PER_USD.toLocaleString()} 고정 참고 환율 적용` : "English prices use the in-game USD reference only."}</small>
         <a href={OFFICIAL_APP_STORE_KR_URL} target="_blank" rel="noreferrer">{locale === "ko" ? "한국 App Store 가격 확인" : "Check Korean App Store prices"}</a>
       </aside>
     </header>
