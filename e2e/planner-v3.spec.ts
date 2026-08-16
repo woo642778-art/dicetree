@@ -80,6 +80,8 @@ test("V3 Simulator exposes dice-specific conditions and partial-safe Predator ou
   await page.getByRole("button", { name: "시뮬레이터" }).click();
   await expect(page.getByTestId("v3-simulator-view")).toBeVisible();
   await expect(page.getByTestId("v3-condition-controls")).toBeVisible();
+  await expect(page.getByTestId("v3-condition-controls")).toContainText("포식 스택");
+  await expect(page.getByTestId("v3-condition-controls")).not.toContainText("sim_condition_");
   await expect(page.getByTestId("v3-stat-panel")).toContainText(/부분 계산|Partial/);
   await page.screenshot({ path: `test-results/qa-v3-predator-simulator-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
@@ -193,5 +195,16 @@ test("mobile V3 tree supports touch pan and bottom-sheet node details", async ({
   expect(sheetPosition).toBe("fixed");
   const widths = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
   expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
+
+  const nav = await page.getByRole("navigation", { name: "주요 화면" }).boundingBox();
+  const viewport = page.viewportSize();
+  expect(nav).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(nav!.y).toBeGreaterThan(viewport!.height / 2);
+  expect(nav!.y + nav!.height).toBeLessThanOrEqual(viewport!.height);
+  const navButtons = await page.getByRole("navigation", { name: "주요 화면" }).getByRole("button").evaluateAll((buttons) => (
+    buttons.map((button) => ({ height: button.getBoundingClientRect().height, lines: button.getClientRects().length }))
+  ));
+  expect(navButtons.every(({ height, lines }) => height <= 48 && lines === 1)).toBe(true);
   expect(errors).toEqual([]);
 });
