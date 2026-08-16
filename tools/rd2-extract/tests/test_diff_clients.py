@@ -27,11 +27,31 @@ class ClientDiffTests(TestCase):
                 {"id": "a", "family": "order", "baseStats": {"attack": 10}},
             ]
         }
-        new = {
-            "dice": list(reversed(old["dice"]))
-        }
+        new = {"dice": list(reversed(old["dice"]))}
         diff = diff_documents(old, new)
         self.assertEqual(diff["diceStats"], [])
+
+    def test_prerequisite_order_does_not_create_a_topology_diff(self):
+        old = {
+            "tree": [{
+                "id": "n1",
+                "family": "chaos",
+                "kind": "passive",
+                "position": {"x": 0, "y": 0},
+                "prerequisites": [
+                    {"nodeId": "b", "minRank": 1},
+                    {"nodeId": "a", "minRank": 1},
+                ],
+                "targetId": None,
+                "passiveOrRuneRef": "passive:p1",
+                "maxRank": 1,
+                "costsByRank": [{"gold": 2000, "stone": 0}],
+            }]
+        }
+        new = json.loads(json.dumps(old))
+        new["tree"][0]["prerequisites"].reverse()
+        diff = diff_documents(old, new)
+        self.assertEqual(diff["treeTopology"], [])
 
     def test_tree_topology_and_costs_are_separate_sections(self):
         old = {
