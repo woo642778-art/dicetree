@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
+import type { DiceFamilyV3 } from "../../../game-data/types";
 import { gameDataV3 } from "../../../game-data/load";
-import { simulatedInvestmentCost, projectResources } from "../../../planner-v3/costs";
+import { useI18n } from "../../../i18n/I18nContext";
+import { recommendTreeInvestmentsV3, type V3RecommendationSet } from "../../../optimizer/recommendV3";
+import { projectResources, simulatedInvestmentCost } from "../../../planner-v3/costs";
 import { createPlannerHistoryV3, effectiveRankV3, plannerReducerV3 } from "../../../planner-v3/reducer";
 import type { PlannerActionV3, PlannerStateV3 } from "../../../planner-v3/types";
 import { resolveEnemyPresetV3 } from "../../../simulation/enemies/presets";
 import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { evaluateNodeV3 } from "../../../simulation/marginal/evaluateNode";
 import { decodeV3FromHash, encodeV3 } from "../../../share/codecV3";
-import { useI18n } from "../../../i18n/I18nContext";
 import { CompareView } from "../compare/CompareView";
 import { SimulatorView } from "../simulator/SimulatorView";
 import { NodeDetailSheet } from "../tree/NodeDetailSheet";
+import { RecommendationStrip } from "../tree/RecommendationStrip";
 import { TreeCanvasV3 } from "../tree/TreeCanvasV3";
-import type { DiceFamilyV3 } from "../../../game-data/types";
 
 type Tab = "tree" | "simulator" | "compare";
 
@@ -22,6 +24,7 @@ const limits = {
 };
 const validDiceIds = new Set(gameDataV3.dice.map((dice) => dice.id));
 const defaultDiceId = gameDataV3.dice.some((dice) => dice.id === "predator") ? "predator" : gameDataV3.dice[0]?.id ?? "";
+const EMPTY_RECOMMENDATIONS: V3RecommendationSet = { verified: [], partial: [] };
 
 function initialState(): PlannerStateV3 {
   return {
@@ -91,13 +94,20 @@ export function V3Shell() {
 
   const spent = useMemo(() => simulatedInvestmentCost(gameDataV3.tree, state), [state]);
   const resources = useMemo(() => projectResources(state.inventory, spent), [spent, state.inventory]);
-  const ranks = useMemo(() => rankMap(state), [state]);
   const selectedNode = gameDataV3.tree.find((node) => node.id === selectedNodeId);
   const currentInput = useMemo(() => simulationInput(state), [state]);
   const marginal = useMemo(() => {
     if (!selectedNodeId) return undefined;
     try { return evaluateNodeV3(currentInput, gameDataV3, selectedNodeId); } catch { return undefined; }
   }, [currentInput, selectedNodeId]);
+  const recommendations = useMemo<V3RecommendationSet>(() => {
+    try { return recommendTreeInvestmentsV3(currentInput, gameDataV3, { limit: 5 }); }
+    catch { return EMPTY_RECOMMENDATIONS; }
+  }, [currentInput]);
+  const recommendedIds = useMemo(
+    () => new Set(recommendations.verified.map((entry) => entry.nodeId)),
+    [recommendations],
+  );
   const compareInput = useMemo<SimulationInputV3>(() => ({
     ...currentInput,
     diceId: compareDiceId,
@@ -152,12 +162,19 @@ export function V3Shell() {
           </div>
           <input aria-label={locale === "ko" ? "트리 검색" : "Tree search"} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={locale === "ko" ? "노드·효과 검색" : "Search node or effect"} />
         </div>
+        <RecommendationStrip
+          data={gameDataV3}
+          recommendations={recommendations}
+          locale={locale}
+          onSelectNode={setSelectedNodeId}
+        />
         <TreeCanvasV3
           nodes={gameDataV3.tree}
           ownedRanks={state.ownedRanks}
           simulatedRanks={state.simulatedRanks}
           selectedNodeId={selectedNodeId}
           selectedDiceId={state.scenario.diceId}
+          recommendedIds={recommendedIds}
           familyFilter={familyFilter}
           query={query}
           locale={locale}
