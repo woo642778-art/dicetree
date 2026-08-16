@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { DiceTreeNodeV3 } from "../../../game-data/types";
 import { TreeCanvasV3, canIncrementNodeV3, prerequisitesSatisfiedV3 } from "./TreeCanvasV3";
@@ -20,7 +21,7 @@ const nodes: DiceTreeNodeV3[] = [
   },
 ];
 
-function renderTree(overrides: Partial<React.ComponentProps<typeof TreeCanvasV3>> = {}) {
+function renderTree(overrides: Partial<ComponentProps<typeof TreeCanvasV3>> = {}) {
   const onSelect = vi.fn();
   render(<TreeCanvasV3
     nodes={nodes}
