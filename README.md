@@ -25,14 +25,18 @@ The shared V3 engine combines verified base stats, permanent dice progression, i
 
 `verified` results may produce practical DPS, 5/10/30-second cumulative damage and kill time. `partial` results preserve known stats and mechanic parameters but do not invent unresolved operation order, attack-speed formulas, proc behavior or special-dice timing. Predator/포식 is the first complex golden-reference dice; its extracted values are visible even while unresolved runtime ordering remains excluded from exact practical DPS.
 
-Tree marginal-value recommendations run the same simulation before and after a one-rank change. Partial candidates are shown separately and cannot outrank verified candidates with fabricated utility.
+Direct client-table `LvAdd` and `UpAdd` deltas are also exposed as **table-projected stats**. This lets permanent level and in-battle power-up controls visibly change attack, attack interval, range and projected basic-attack DPS while keeping those projections separate from verified practical DPS until runtime operation order is recovered. The UI labels these values as `표 기반 예상` / `Table projection` rather than presenting them as exact combat formulas.
+
+Tree marginal-value recommendations run the same simulation before and after a one-rank change. Only positive verified gains are allowed into the exact ranking. Partial candidates are shown separately and cannot outrank verified candidates with fabricated utility.
 
 ## Product surfaces
 
 - IPA-backed Dice Tree with canonical positions, prerequisites, max ranks and Gold/Dice Core costs
 - owned vs simulated rank states, pan/wheel zoom, touch/pinch, family navigation and node detail sheets
 - all-dice Simulator with permanent level, battle upgrade, dice-specific conditions, enemy presets/editable HP and explainable calculation traces
+- table-projected level/power-up stat changes that remain visibly separated from unresolved practical-DPS formulas
 - shared-engine Compare view for dice/tree configurations
+- simulation-backed next-investment analysis that withholds guessed rankings when formulas are partial
 - Korean/English presentation without mutating semantic state
 - login-free V3 share URLs that preserve ranks, inventory and simulation scenario
 - white/pearl responsive game-companion UI with reduced-motion fallbacks
