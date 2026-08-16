@@ -18,8 +18,13 @@ function applyOperation(input: number, modifier: StatModifierV3): number {
   return modifier.value;
 }
 
+function projectionEligible(modifier: StatModifierV3) {
+  return modifier.stage === "permanent-growth" || modifier.stage === "battle-upgrade";
+}
+
 export interface AppliedModifierResultV3 {
   stats: Record<string, number>;
+  projectedStats: Record<string, number>;
   trace: CalculationTraceStepV3[];
   unresolvedStats: string[];
 }
@@ -29,6 +34,7 @@ export function applyVerifiedModifiers(
   modifiers: readonly StatModifierV3[],
 ): AppliedModifierResultV3 {
   const stats = { ...initialStats };
+  const projectedStats = { ...initialStats };
   const trace: CalculationTraceStepV3[] = [];
   const unresolved = new Set<string>();
   const ordered = [...modifiers].sort((left, right) => {
@@ -38,12 +44,21 @@ export function applyVerifiedModifiers(
 
   for (const modifier of ordered) {
     const inputValue = stats[modifier.stat];
+    const projectedInput = projectedStats[modifier.stat];
     if (modifier.confidence !== "verified") {
       unresolved.add(modifier.stat);
+      let projectedOutput = projectedInput ?? inputValue ?? null;
+      if (
+        projectionEligible(modifier)
+        && (projectedInput !== undefined || modifier.operation === "replace")
+      ) {
+        projectedOutput = applyOperation(projectedInput ?? 0, modifier);
+        projectedStats[modifier.stat] = projectedOutput;
+      }
       trace.push({
         ...modifier,
         inputValue: inputValue ?? null,
-        outputValue: inputValue ?? null,
+        outputValue: projectedOutput,
         applied: false,
         reason: "partial-formula",
         modifierValue: modifier.value,
@@ -65,6 +80,8 @@ export function applyVerifiedModifiers(
 
     const nextValue = applyOperation(inputValue ?? 0, modifier);
     stats[modifier.stat] = nextValue;
+    const projectedBase = projectedInput ?? inputValue ?? 0;
+    projectedStats[modifier.stat] = applyOperation(projectedBase, modifier);
     trace.push({
       ...modifier,
       inputValue: inputValue ?? null,
@@ -76,6 +93,7 @@ export function applyVerifiedModifiers(
 
   return {
     stats,
+    projectedStats,
     trace,
     unresolvedStats: [...unresolved].sort(),
   };
