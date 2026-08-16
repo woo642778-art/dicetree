@@ -24,6 +24,7 @@ type Tab = "tree" | "simulator" | "decks" | "compare" | "shop";
 const limits = {
   validNodeIds: new Set(gameDataV3.tree.map((node) => node.id)),
   maxRanks: new Map(gameDataV3.tree.map((node) => [node.id, node.maxRank])),
+  prerequisites: new Map(gameDataV3.tree.map((node) => [node.id, node.prerequisites])),
 };
 const validDiceIds = new Set(gameDataV3.dice.map((dice) => dice.id));
 const defaultDiceId = gameDataV3.dice.some((dice) => dice.id === "predator") ? "predator" : gameDataV3.dice[0]?.id ?? "";
@@ -167,8 +168,8 @@ export function V3Shell() {
     </header>
 
     <section className="v3-resource-rail" aria-label={locale === "ko" ? "다이스 트리 재화" : "Dice Tree resources"}>
-      <div className="v3-resource-item gold"><span className="v3-resource-icon">●</span><label>{locale === "ko" ? "골드" : "Gold"}<input aria-label={locale === "ko" ? "보유 골드" : "Owned Gold"} type="number" min="0" value={state.inventory.gold} onChange={(event) => dispatch({ type: "setInventory", inventory: { gold: Math.max(0, Number(event.target.value) || 0) } })} /></label><small>−{spent.gold.toLocaleString()}</small></div>
-      <div className="v3-resource-item stone"><span className="v3-resource-icon">◆</span><label>{locale === "ko" ? "다이스 코어" : "Dice Core"}<input aria-label={locale === "ko" ? "보유 다이스 코어" : "Owned Dice Core"} type="number" min="0" value={state.inventory.stone} onChange={(event) => dispatch({ type: "setInventory", inventory: { stone: Math.max(0, Number(event.target.value) || 0) } })} /></label><small>−{spent.stone.toLocaleString()}</small></div>
+      <div className="v3-resource-item gold"><span className="v3-resource-icon">●</span><label>{locale === "ko" ? "남은 골드" : "Remaining Gold"}<input aria-label={locale === "ko" ? "남은 골드" : "Remaining Gold"} type="number" min="0" value={Math.max(0, resources.remaining.gold)} onChange={(event) => dispatch({ type: "setInventory", inventory: { gold: Math.max(0, Number(event.target.value) || 0) + spent.gold } })} /></label><small>{locale === "ko" ? "사용" : "Spent"} {spent.gold.toLocaleString()}</small></div>
+      <div className="v3-resource-item stone"><span className="v3-resource-icon">◆</span><label>{locale === "ko" ? "남은 다이스 코어" : "Remaining Dice Core"}<input aria-label={locale === "ko" ? "남은 다이스 코어" : "Remaining Dice Core"} type="number" min="0" value={Math.max(0, resources.remaining.stone)} onChange={(event) => dispatch({ type: "setInventory", inventory: { stone: Math.max(0, Number(event.target.value) || 0) + spent.stone } })} /></label><small>{locale === "ko" ? "사용" : "Spent"} {spent.stone.toLocaleString()}</small></div>
       <div className={`v3-resource-status ${resources.affordable ? "is-ok" : "is-short"}`}><strong>{resources.affordable ? (locale === "ko" ? "투자 가능" : "Affordable") : (locale === "ko" ? "재화 부족" : "Shortfall")}</strong><span>{locale === "ko" ? "가상 투자 비용" : "Simulated cost"}: {spent.gold.toLocaleString()} G · {spent.stone.toLocaleString()} C</span></div>
       <div className="v3-history-actions"><button type="button" onClick={() => dispatch({ type: "clearSimulatedRanks" })} disabled={!Object.keys(state.simulatedRanks).length}>{locale === "ko" ? "전체 계획 취소" : "Clear plan"}</button><button type="button" onClick={() => dispatch({ type: "undo" })} disabled={!history.past.length}>{locale === "ko" ? "실행 취소" : "Undo"}</button><button type="button" onClick={() => dispatch({ type: "redo" })} disabled={!history.future.length}>{locale === "ko" ? "다시 실행" : "Redo"}</button></div>
     </section>

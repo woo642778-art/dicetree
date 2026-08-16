@@ -50,8 +50,8 @@ describe("V3 planner shell", () => {
     const clipboard = { writeText: async () => undefined };
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: clipboard });
     render(<I18nProvider><App /></I18nProvider>);
-    fireEvent.change(screen.getByRole("spinbutton", { name: "보유 골드" }), { target: { value: "12345" } });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "보유 다이스 코어" }), { target: { value: "7" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "남은 골드" }), { target: { value: "12345" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "남은 다이스 코어" }), { target: { value: "7" } });
     fireEvent.click(screen.getByRole("button", { name: "공유" }));
     expect(window.location.hash).toMatch(/^#b=v3\./);
   });

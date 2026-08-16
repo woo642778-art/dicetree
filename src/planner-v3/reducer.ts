@@ -13,6 +13,39 @@ function clampRank(nodeId: string, rank: number, limits: PlannerNodeLimitsV3): n
   return Math.min(rank, maximum);
 }
 
+function prerequisitesSatisfied(
+  state: Pick<PlannerStateV3, "ownedRanks" | "simulatedRanks">,
+  nodeId: string,
+  limits: PlannerNodeLimitsV3,
+) {
+  const prerequisites = limits.prerequisites?.get(nodeId) ?? [];
+  return prerequisites.every((prerequisite) => (
+    Math.max(
+      state.simulatedRanks[prerequisite.nodeId] ?? 0,
+      state.ownedRanks[prerequisite.nodeId] ?? 0,
+    ) >= prerequisite.minRank
+  ));
+}
+
+function pruneInvalidSimulatedRanks(
+  state: PlannerStateV3,
+  limits: PlannerNodeLimitsV3,
+): PlannerStateV3 {
+  if (!limits.prerequisites) return state;
+  const simulatedRanks = { ...state.simulatedRanks };
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const candidate = { ...state, simulatedRanks };
+    for (const nodeId of Object.keys(simulatedRanks)) {
+      if (prerequisitesSatisfied(candidate, nodeId, limits)) continue;
+      delete simulatedRanks[nodeId];
+      changed = true;
+    }
+  }
+  return { ...state, simulatedRanks };
+}
+
 function normalizeSparseRanks(
   state: PlannerStateV3,
   limits: PlannerNodeLimitsV3,
@@ -31,7 +64,7 @@ function normalizeSparseRanks(
     if (rank > owned) simulatedRanks[nodeId] = rank;
   }
 
-  return { ...state, ownedRanks, simulatedRanks };
+  return pruneInvalidSimulatedRanks({ ...state, ownedRanks, simulatedRanks }, limits);
 }
 
 function sanitizeNonNegativeInteger(value: number, fallback: number): number {
@@ -132,15 +165,19 @@ export function plannerReducerV3(
     const simulatedRanks = { ...next.simulatedRanks };
     const simulated = simulatedRanks[action.nodeId];
     if (simulated !== undefined && simulated <= rank) delete simulatedRanks[action.nodeId];
-    next = { ...next, ownedRanks, simulatedRanks };
+    next = pruneInvalidSimulatedRanks({ ...next, ownedRanks, simulatedRanks }, limits);
   } else if (action.type === "setSimulatedRank") {
     const rank = clampRank(action.nodeId, action.rank, limits);
     if (rank === null) return history;
     const owned = next.ownedRanks[action.nodeId] ?? 0;
     const simulatedRanks = { ...next.simulatedRanks };
-    if (rank > owned) simulatedRanks[action.nodeId] = rank;
+    if (rank > owned) {
+      const candidate = { ...next, simulatedRanks: { ...simulatedRanks, [action.nodeId]: rank } };
+      if (!prerequisitesSatisfied(candidate, action.nodeId, limits)) return history;
+      simulatedRanks[action.nodeId] = rank;
+    }
     else delete simulatedRanks[action.nodeId];
-    next = { ...next, simulatedRanks };
+    next = pruneInvalidSimulatedRanks({ ...next, simulatedRanks }, limits);
   } else if (action.type === "applyRoute") {
     const simulatedRanks = { ...next.simulatedRanks };
     for (const [nodeId, rawRank] of Object.entries(action.ranks)) {
@@ -149,7 +186,11 @@ export function plannerReducerV3(
       const owned = next.ownedRanks[nodeId] ?? 0;
       if (rank > owned) simulatedRanks[nodeId] = Math.max(simulatedRanks[nodeId] ?? 0, rank);
     }
-    next = { ...next, simulatedRanks };
+    const candidate = { ...next, simulatedRanks };
+    for (const nodeId of Object.keys(action.ranks)) {
+      if (!prerequisitesSatisfied(candidate, nodeId, limits)) return history;
+    }
+    next = candidate;
   } else if (action.type === "clearSimulatedRanks") {
     next = { ...next, simulatedRanks: {} };
   } else if (action.type === "incrementSimulatedRank") {
@@ -158,10 +199,12 @@ export function plannerReducerV3(
     if (maximum === undefined) return history;
     const current = effectiveRankV3(next, action.nodeId);
     if (current >= maximum) return history;
-    next = {
+    const candidate = {
       ...next,
       simulatedRanks: { ...next.simulatedRanks, [action.nodeId]: current + 1 },
     };
+    if (!prerequisitesSatisfied(candidate, action.nodeId, limits)) return history;
+    next = candidate;
   } else if (action.type === "decrementSimulatedRank") {
     if (!limits.validNodeIds.has(action.nodeId)) return history;
     const owned = next.ownedRanks[action.nodeId] ?? 0;
@@ -171,7 +214,7 @@ export function plannerReducerV3(
     const simulatedRanks = { ...next.simulatedRanks };
     if (target > owned) simulatedRanks[action.nodeId] = target;
     else delete simulatedRanks[action.nodeId];
-    next = { ...next, simulatedRanks };
+    next = pruneInvalidSimulatedRanks({ ...next, simulatedRanks }, limits);
   } else if (action.type === "setInventory") {
     next = {
       ...next,

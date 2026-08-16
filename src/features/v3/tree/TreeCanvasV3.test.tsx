@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DiceTreeNodeV3 } from "../../../game-data/types";
-import { TreeCanvasV3, canIncrementNodeV3, prerequisitesSatisfiedV3 } from "./TreeCanvasV3";
+import { TreeCanvasV3, canIncrementNodeV3, normalizeTreeSearchText, prerequisitesSatisfiedV3 } from "./TreeCanvasV3";
 
 afterEach(cleanup);
 
@@ -70,6 +70,15 @@ describe("TreeCanvasV3", () => {
     expect(canIncrementNodeV3(nodes[2], { root: 1 }, {})).toBe(false);
     expect(canIncrementNodeV3(nodes[2], { root: 2 }, {})).toBe(true);
     expect(canIncrementNodeV3(nodes[0], { root: 2 }, {})).toBe(false);
+  });
+
+  it("normalizes whitespace and punctuation in searches and focuses matching nodes", () => {
+    expect(normalizeTreeSearchText("공격 속도")).toBe(normalizeTreeSearchText("공격속도"));
+    renderTree({ query: "child" });
+    expect(screen.getByTestId("v44-tree-search-status")).toHaveTextContent("1개 검색 결과");
+    expect(screen.getByTestId("v3-node-child")).not.toHaveClass("is-dimmed");
+    expect(screen.getByTestId("v3-node-root")).toHaveClass("is-dimmed");
+    expect(screen.getByTestId("v3-tree-transform").getAttribute("transform")).toContain("scale(2.5)");
   });
 
   it("selects nodes and provides fit, zoom, family and selected-dice navigation", () => {

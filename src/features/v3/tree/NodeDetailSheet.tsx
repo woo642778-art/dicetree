@@ -146,6 +146,12 @@ export function NodeDetailSheet({
   const description = formatGameText(rawDescription, locale, effect?.templateValues);
   const canIncrement = canIncrementNodeV3(node, state.ownedRanks, state.simulatedRanks);
   const canDecrement = rank > ownedRank;
+  const routeHasPrerequisites = route?.steps.some((step) => !step.target) ?? false;
+  const canApplyRoute = Boolean(route?.steps.length && routeAffordable && onApplyRoute);
+  const canUseIncrementControl = route ? canApplyRoute : canIncrement;
+  const incrementLabel = routeHasPrerequisites
+    ? (locale === "ko" ? "선행 노드 포함 가상 구매" : "Buy with prerequisite nodes")
+    : (locale === "ko" ? "가상 랭크 올리기" : "Increase simulated rank");
   const prerequisiteRows = node.prerequisites.map((prerequisite) => {
     const prerequisiteNode = data.tree.find((candidate) => candidate.id === prerequisite.nodeId);
     return {
@@ -171,7 +177,10 @@ export function NodeDetailSheet({
       <div><span>{locale === "ko" ? "보유" : "Owned"}</span><strong>{ownedRank}</strong></div>
       <div className="v3-rank-controls">
         <button type="button" aria-label={locale === "ko" ? "가상 랭크 내리기" : "Decrease simulated rank"} disabled={!canDecrement} onClick={() => onSetSimulatedRank(node.id, rank - 1)}>−</button>
-        <button type="button" aria-label={locale === "ko" ? "가상 랭크 올리기" : "Increase simulated rank"} disabled={!canIncrement} onClick={() => onSetSimulatedRank(node.id, rank + 1)}>+</button>
+        <button type="button" aria-label={incrementLabel} disabled={!canUseIncrementControl} onClick={() => {
+          if (canApplyRoute && route) onApplyRoute?.(route.targetRanks);
+          else onSetSimulatedRank(node.id, rank + 1);
+        }}>+</button>
       </div>
     </section>
 
@@ -208,8 +217,8 @@ export function NodeDetailSheet({
         <div className="v4-route-total"><span>{locale === "ko" ? "경로 총비용" : "Total route cost"}</span><strong>{formatCost(route.totalCost.gold, route.totalCost.stone, locale)}</strong></div>
         <p className={routeAffordable ? "is-affordable" : "is-short"}>{routeAffordable
           ? (locale === "ko" ? "현재 남은 재화로 적용 가능합니다." : "Affordable with remaining resources.")
-          : (locale === "ko" ? "현재 재화가 부족하지만 실제 재화 소모 없이 결과를 미리 볼 수 있습니다." : "Resources are short, but you can still preview without spending in game.")}</p>
-        {onApplyRoute && <button className="v4-route-apply" type="button" onClick={() => onApplyRoute(route.targetRanks)}>{locale === "ko" ? "경로 가상 적용" : "Apply virtual route"}</button>}
+          : (locale === "ko" ? "현재 남은 재화가 부족해 이 경로를 구매할 수 없습니다." : "The remaining resources are insufficient for this route.")}</p>
+        {onApplyRoute && <button className="v4-route-apply" type="button" disabled={!routeAffordable} onClick={() => onApplyRoute(route.targetRanks)}>{locale === "ko" ? "선행 노드 포함 가상 구매" : "Buy route with prerequisites"}</button>}
       </> : <p>{locale === "ko" ? "추가로 구매할 랭크가 없습니다." : "No additional ranks are required."}</p>}
       {canDecrement && onCancelPlan && <button className="v4-route-cancel" type="button" onClick={onCancelPlan}>{locale === "ko" ? "이 노드 계획 취소" : "Cancel this node plan"}</button>}
     </section>
