@@ -187,13 +187,17 @@ test("V3 real Wind Dice Tree path changes the selected dice tree stat without fa
   expect(errors).toEqual([]);
 });
 
-test("V4 Deck Lab keeps live meta claims source-gated and opens its primary dealer in Simulator", async ({ page, isMobile }) => {
+test("V4.3 Deck Lab separates ranked dealer and support decks from forecasts and opens Simulator", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
   await page.getByRole("button", { name: "덱 연구소" }).click();
   await expect(page.getByTestId("v4-deck-lab")).toBeVisible();
-  await expect(page.getByTestId("v4-meta-status")).toContainText("라이브 메타 미검증");
-  await expect(page.getByTestId("v4-meta-status")).toContainText("현재 랭킹과 사용률은 검증된 실시간 자료가 없어");
+  await expect(page.getByTestId("v4-meta-status")).toContainText("2026.08.16 협동 랭킹 스냅샷");
+  await expect(page.getByTestId("v43-ranking-snapshot")).toContainText("105개 랭킹 덱");
+  await expect(page.getByTestId("v43-dealer-lane")).toContainText("딜러 덱");
+  await expect(page.getByTestId("v43-support-lane")).toContainText("서포트 덱");
+  await expect(page.getByTestId("v43-forecast")).toContainText("차기 메타 후보");
+  await expect(page.getByTestId("v43-forecast")).toContainText("예측 · 랭킹 사실 아님");
   for (let index = 1; index <= 5; index += 1) await expect(page.getByTestId(`deck-slot-${index}`)).toBeVisible();
   await expect(page.locator(".v4-deck-grid img[data-dice-id]")).toHaveCount(5);
   await expect(page.locator("body")).not.toContainText(/IPA/i);
@@ -206,7 +210,7 @@ test("V4 Deck Lab keeps live meta claims source-gated and opens its primary deal
   expect(errors).toEqual([]);
 });
 
-test("V4.2 Purchase Value ranks game packages by profile and goal without inventing live prices", async ({ page, isMobile }) => {
+test("V4.3 Purchase Value uses won in Korean and dollars in English", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
   await page.getByRole("button", { name: "구매 효율" }).click();
@@ -226,7 +230,12 @@ test("V4.2 Purchase Value ranks game packages by profile and goal without invent
   await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 재설계 보따리");
   await expect(page.getByTestId("v41-top-pick")).toContainText("₩12,000");
   await expect(page.getByTestId("v41-intro-offer")).toContainText("₩3,300");
-  await page.screenshot({ path: `test-results/qa-v41-purchase-value-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
+  await expect(page.getByTestId("v41-purchase-efficiency")).not.toContainText("$");
+  await page.screenshot({ path: `test-results/qa-v43-purchase-value-ko-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
+  await page.getByRole("button", { name: "EN" }).click();
+  await expect(page.locator(".v41-price strong").first()).toContainText("$");
+  await expect(page.getByTestId("v41-purchase-efficiency")).not.toContainText("₩");
+  await page.screenshot({ path: `test-results/qa-v43-purchase-value-en-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
   expect(errors).toEqual([]);
 });
 

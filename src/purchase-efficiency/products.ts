@@ -20,12 +20,28 @@ export interface PurchaseProduct {
   sourceTables: string[];
 }
 
+export type PurchaseDisplayPrice =
+  | { currency: "KRW"; value: number; basis: "official" | "converted-reference" }
+  | { currency: "USD"; value: number; basis: "game-reference" };
+
+export const REFERENCE_KRW_PER_USD = 1_650;
+
+export function purchaseDisplayPrice(product: PurchaseProduct, locale: "ko" | "en"): PurchaseDisplayPrice {
+  if (locale === "en") return { currency: "USD", value: product.priceUsd, basis: "game-reference" };
+  if (product.officialKrw) return { currency: "KRW", value: product.officialKrw, basis: "official" };
+  return {
+    currency: "KRW",
+    value: Math.round((product.priceUsd * REFERENCE_KRW_PER_USD) / 100) * 100,
+    basis: "converted-reference",
+  };
+}
+
 export const OFFICIAL_APP_STORE_KR_URL = "https://apps.apple.com/kr/app/%EB%9E%9C%EB%8D%A4-%EB%8B%A4%EC%9D%B4%EC%8A%A4-2/id6748432502?platform=ipad";
 
 /**
- * Static projection of the 1.0.1 client tables. This is intentionally kept
- * separate from live prices: `priceUsd` is ShopProductTable data, while
- * `officialKrw` is present only when the Korean App Store currently exposes it.
+ * Static product projection. This is intentionally kept separate from live
+ * prices: `priceUsd` is an in-game reference, while `officialKrw` is present
+ * only when the Korean App Store currently exposes it.
  */
 export const PURCHASE_PRODUCTS_V41: readonly PurchaseProduct[] = [
   {

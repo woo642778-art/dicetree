@@ -17,8 +17,7 @@ export interface DeckRecommendationV4 {
   primaryDiceId: string;
   goal: DeckGoalV4;
   spendProfile: SpendProfileV4;
-  source: "ipa-client-synergy";
-  liveMetaVerified: false;
+  source: "game-data-synergy";
 }
 
 const CONTROL_TERMS = [
@@ -137,7 +136,6 @@ export function recommendDeckV4(
     primaryDiceId: primary.diceId,
     goal,
     spendProfile,
-    source: "ipa-client-synergy",
-    liveMetaVerified: false,
+    source: "game-data-synergy",
   };
 }
