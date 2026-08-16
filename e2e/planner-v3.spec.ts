@@ -23,12 +23,18 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await page.getByRole("spinbutton", { name: "보유 다이스 코어" }).fill("9999");
   const reachable = page.locator('[data-tree-node="true"][data-can-increment="true"]').first();
   await expect(reachable).toBeVisible();
+  const nodeTestId = await reachable.getAttribute("data-testid");
+  expect(nodeTestId).toBeTruthy();
+  const beforeSimulatedRank = Number(await reachable.getAttribute("data-simulated-rank") ?? "0");
   await reachable.click();
   await expect(page.getByTestId("v3-node-detail-sheet")).toBeVisible();
   await page.screenshot({ path: `test-results/qa-v3-node-detail-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
   const increment = page.getByRole("button", { name: "가상 랭크 올리기" });
   await expect(increment).toBeEnabled();
   await increment.click();
+  await expect(reachable).toHaveAttribute("data-simulated-rank", String(beforeSimulatedRank + 1));
+  const simulatedRank = await reachable.getAttribute("data-simulated-rank");
+  expect(simulatedRank).not.toBeNull();
 
   await page.getByRole("button", { name: "공유" }).click();
   await expect.poll(() => page.url()).toContain("#b=v3.");
@@ -40,7 +46,7 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await shared.goto(sharedUrl);
   await expect(shared.getByRole("spinbutton", { name: "보유 골드" })).toHaveValue("9999999");
   await expect(shared.getByRole("spinbutton", { name: "보유 다이스 코어" })).toHaveValue("9999");
-  await expect(shared.locator('[data-tree-node="true"][data-node-state="simulated"]').first()).toBeVisible();
+  await expect(shared.getByTestId(nodeTestId!)).toHaveAttribute("data-simulated-rank", simulatedRank!);
   expect(errors).toEqual([]);
   expect(sharedErrors).toEqual([]);
   await context.close();
