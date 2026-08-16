@@ -36,8 +36,8 @@ export function DamageGraph({ outcome, locale }: DamageGraphProps) {
       })}
     </svg>
     <div className="v3-damage-checkpoints">
-      {outcome.checkpoints.map((point) => <div key={point.seconds}><span>{point.seconds}s</span><strong>{num(point.average)}</strong></div>)}
-      <div><span>{locale === "ko" ? "예상 처치" : "Kill time"}</span><strong>{outcome.killTimeSeconds ? `${num(outcome.killTimeSeconds.average)}s` : "—"}</strong></div>
+      {outcome.checkpoints.map((point) => <div key={point.seconds} data-testid={`damage-${point.seconds}s`}><span>{point.seconds}s</span><strong>{num(point.average)}</strong></div>)}
+      <div data-testid="damage-kill-time"><span>{locale === "ko" ? "예상 처치" : "Kill time"}</span><strong>{outcome.killTimeSeconds ? `${num(outcome.killTimeSeconds.average)}s` : "—"}</strong></div>
     </div>
   </section>;
 }
