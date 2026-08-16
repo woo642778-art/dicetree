@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CanonicalGameData, DiceTreeNodeV3 } from "../../../game-data/types";
 import type { PlannerStateV3 } from "../../../planner-v3/types";
 import { NodeDetailSheet } from "./NodeDetailSheet";
+import { planNextRankRouteV3 } from "../../../planner-v3/routes";
 
 afterEach(cleanup);
 
@@ -24,7 +25,7 @@ const data: CanonicalGameData = {
     confidence: "verified", sourceRefs: ["passive-source"],
   }],
   localization: {
-    ko: { "node.root": "모든 주사위 대미지", "node.root.desc": "모든 주사위의 공격 피해를 증가시킵니다.", "node.child": "포식 강화", "node.child.desc": "포식 강화 효과" },
+    ko: { "node.root": "모든 주사위 대미지", "node.root.desc": "<tag>BULLET</tag> 대미지 {0}% <color=#00FF00>(+{1}%)</color> 증가", "node.child": "포식 강화", "node.child.desc": "포식 강화 효과", "valuetype_percent": "%" },
     en: { "node.root": "All Dice Damage", "node.root.desc": "Increases all dice attack damage.", "node.child": "Predator Boost", "node.child.desc": "Predator boost effect" },
   },
 };
@@ -44,6 +45,8 @@ describe("NodeDetailSheet", () => {
     expect(screen.getByText("5 %")).toBeInTheDocument();
     expect(screen.getByText("6.2 %")).toBeInTheDocument();
     expect(screen.getByText("+1.2")).toBeInTheDocument();
+    expect(screen.getByText("불렛 대미지 5% (+1.2%) 증가")).toBeInTheDocument();
+    expect(screen.queryByText(/valuetype_percent|<tag>|\{0\}/)).not.toBeInTheDocument();
     expect(screen.getByTestId("v3-next-cost")).toHaveTextContent("200 골드 · 1 다이스 코어");
     expect(screen.queryByText(/상세 확인 중/)).not.toBeInTheDocument();
   });
@@ -84,5 +87,20 @@ describe("NodeDetailSheet", () => {
       onSetSimulatedRank={() => {}}
     />);
     expect(screen.getByTestId("v3-node-impact")).toHaveTextContent("부분 검증");
+  });
+
+  it("shows and applies the complete prerequisite purchase route", () => {
+    const applyRoute = vi.fn();
+    const route = planNextRankRouteV3(data.tree, { root: 1 }, "child");
+    render(<NodeDetailSheet
+      node={child} data={data} state={state()} locale="ko" route={route} routeAffordable={false}
+      onApplyRoute={applyRoute} onSetSimulatedRank={() => {}}
+    />);
+    expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("모든 주사위 대미지Lv.1 → 2");
+    expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("포식 강화Lv.0 → 1");
+    expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("3,200 골드 · 3 다이스 코어");
+    expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("현재 재화가 부족");
+    fireEvent.click(screen.getByRole("button", { name: "경로 가상 적용" }));
+    expect(applyRoute).toHaveBeenCalledWith({ root: 2, child: 1 });
   });
 });

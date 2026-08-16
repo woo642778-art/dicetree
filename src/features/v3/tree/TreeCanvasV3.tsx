@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { DiceFamilyV3, DiceTreeNodeV3 } from "../../../game-data/types";
 import { localizeGameKey } from "../../../game-data/load";
+import { nextRankCost } from "../../../planner-v3/costs";
 import { usePanZoom } from "../../tree/usePanZoom";
 import { TreeNodeV3 } from "./TreeNodeV3";
 
@@ -173,6 +174,7 @@ export function TreeCanvasV3({
             recommended={recommendedIds.has(node.id)}
             dimmed={!visibleIds.has(node.id)}
             canIncrement={canIncrementNodeV3(node, ownedRanks, simulatedRanks)}
+            nextCost={nextRankCost(node, simulatedRank)}
             onSelect={onSelect}
           />;
         })}

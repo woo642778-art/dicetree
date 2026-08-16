@@ -4,6 +4,7 @@ import { gameDataV3 } from "../../../game-data/load";
 import { useI18n } from "../../../i18n/I18nContext";
 import { recommendTreeInvestmentsV3, type V3RecommendationSet } from "../../../optimizer/recommendV3";
 import { projectResources, simulatedInvestmentCost } from "../../../planner-v3/costs";
+import { planNextRankRouteV3 } from "../../../planner-v3/routes";
 import { createPlannerHistoryV3, effectiveRankV3, plannerReducerV3 } from "../../../planner-v3/reducer";
 import type { PlannerActionV3, PlannerStateV3 } from "../../../planner-v3/types";
 import { resolveEnemyPresetV3 } from "../../../simulation/enemies/presets";
@@ -11,12 +12,14 @@ import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { evaluateNodeV3 } from "../../../simulation/marginal/evaluateNode";
 import { decodeV3FromHash, encodeV3 } from "../../../share/codecV3";
 import { CompareView } from "../compare/CompareView";
+import { DeckLabView } from "../decks/DeckLabView";
+import { PurchaseEfficiencyView } from "../shop/PurchaseEfficiencyView";
 import { SimulatorView } from "../simulator/SimulatorView";
 import { NodeDetailSheet } from "../tree/NodeDetailSheet";
 import { RecommendationStrip } from "../tree/RecommendationStrip";
 import { TreeCanvasV3 } from "../tree/TreeCanvasV3";
 
-type Tab = "tree" | "simulator" | "compare";
+type Tab = "tree" | "simulator" | "decks" | "compare" | "shop";
 
 const limits = {
   validNodeIds: new Set(gameDataV3.tree.map((node) => node.id)),
@@ -25,6 +28,13 @@ const limits = {
 const validDiceIds = new Set(gameDataV3.dice.map((dice) => dice.id));
 const defaultDiceId = gameDataV3.dice.some((dice) => dice.id === "predator") ? "predator" : gameDataV3.dice[0]?.id ?? "";
 const EMPTY_RECOMMENDATIONS: V3RecommendationSet = { verified: [], partial: [] };
+const FAMILY_NAMES: Record<DiceFamilyV3, { ko: string; en: string }> = {
+  nature: { ko: "자연", en: "Nature" },
+  chaos: { ko: "혼돈", en: "Chaos" },
+  order: { ko: "질서", en: "Order" },
+  engineering: { ko: "공학", en: "Engineering" },
+  magic: { ko: "마법", en: "Magic" },
+};
 
 function initialState(): PlannerStateV3 {
   return {
@@ -71,6 +81,8 @@ export function V3Shell() {
   const [shareNotice, setShareNotice] = useState<string>();
   const [compareDiceId, setCompareDiceId] = useState(defaultDiceId);
   const [compareTreeMode, setCompareTreeMode] = useState<"current" | "none">("none");
+  const [deckGoal, setDeckGoal] = useState<"dealer" | "support" | "balanced">("balanced");
+  const [spendProfile, setSpendProfile] = useState<"free" | "light" | "invested">("free");
   const [history, dispatchBase] = useReducer(
     (current: ReturnType<typeof createPlannerHistoryV3>, action: PlannerActionV3) => plannerReducerV3(current, action, limits),
     undefined,
@@ -95,7 +107,16 @@ export function V3Shell() {
   const spent = useMemo(() => simulatedInvestmentCost(gameDataV3.tree, state), [state]);
   const resources = useMemo(() => projectResources(state.inventory, spent), [spent, state.inventory]);
   const selectedNode = gameDataV3.tree.find((node) => node.id === selectedNodeId);
+  const currentRanks = useMemo(() => rankMap(state), [state]);
   const currentInput = useMemo(() => simulationInput(state), [state]);
+  const selectedRoute = useMemo(() => {
+    if (!selectedNodeId) return undefined;
+    try { return planNextRankRouteV3(gameDataV3.tree, currentRanks, selectedNodeId); } catch { return undefined; }
+  }, [currentRanks, selectedNodeId]);
+  const selectedRouteAffordable = !selectedRoute || (
+    selectedRoute.totalCost.gold <= resources.remaining.gold
+    && selectedRoute.totalCost.stone <= resources.remaining.stone
+  );
   const marginal = useMemo(() => {
     if (!selectedNodeId) return undefined;
     try { return evaluateNodeV3(currentInput, gameDataV3, selectedNodeId); } catch { return undefined; }
@@ -127,18 +148,19 @@ export function V3Shell() {
     }
   };
 
-  return <div className="v3-app" data-testid="v3-app">
+  return <div className={`v3-app v41-mode-${tab}`} data-testid="v3-app">
     <header className="v3-header">
       <button className="v3-brand" type="button" onClick={() => setTab("tree")} aria-label="Random Dice 2 V3">
         <span className="v3-brand-mark"><b>RD</b><i>2</i></span>
         <span><strong>RANDOM DICE 2</strong><small>{locale === "ko" ? "IPA 기반 다이스 트리" : "IPA-backed Dice Tree"}</small></span>
       </button>
       <nav className="v3-nav" aria-label={locale === "ko" ? "주요 화면" : "Primary views"}>
-        {(["tree", "simulator", "compare"] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>
-          {item === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : item === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : (locale === "ko" ? "비교" : "Compare")}
+        {(["tree", "simulator", "decks", "compare", "shop"] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>
+          {item === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : item === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : item === "decks" ? (locale === "ko" ? "덱 연구소" : "Deck Lab") : item === "compare" ? (locale === "ko" ? "비교" : "Compare") : (locale === "ko" ? "구매 효율" : "Purchase Value")}
         </button>)}
       </nav>
       <div className="v3-header-actions">
+        <span className="v41-creator-credit">{locale === "ko" ? "제작자 모님" : "Created by Monim"}</span>
         <button type="button" onClick={share}>{locale === "ko" ? "공유" : "Share"}</button>
         <button type="button" onClick={() => setLocale(locale === "ko" ? "en" : "ko")}>{locale === "ko" ? "EN" : "KO"}</button>
       </div>
@@ -148,17 +170,17 @@ export function V3Shell() {
       <div className="v3-resource-item gold"><span className="v3-resource-icon">●</span><label>{locale === "ko" ? "골드" : "Gold"}<input aria-label={locale === "ko" ? "보유 골드" : "Owned Gold"} type="number" min="0" value={state.inventory.gold} onChange={(event) => dispatch({ type: "setInventory", inventory: { gold: Math.max(0, Number(event.target.value) || 0) } })} /></label><small>−{spent.gold.toLocaleString()}</small></div>
       <div className="v3-resource-item stone"><span className="v3-resource-icon">◆</span><label>{locale === "ko" ? "다이스 코어" : "Dice Core"}<input aria-label={locale === "ko" ? "보유 다이스 코어" : "Owned Dice Core"} type="number" min="0" value={state.inventory.stone} onChange={(event) => dispatch({ type: "setInventory", inventory: { stone: Math.max(0, Number(event.target.value) || 0) } })} /></label><small>−{spent.stone.toLocaleString()}</small></div>
       <div className={`v3-resource-status ${resources.affordable ? "is-ok" : "is-short"}`}><strong>{resources.affordable ? (locale === "ko" ? "투자 가능" : "Affordable") : (locale === "ko" ? "재화 부족" : "Shortfall")}</strong><span>{locale === "ko" ? "가상 투자 비용" : "Simulated cost"}: {spent.gold.toLocaleString()} G · {spent.stone.toLocaleString()} C</span></div>
-      <div className="v3-history-actions"><button type="button" onClick={() => dispatch({ type: "undo" })} disabled={!history.past.length}>{locale === "ko" ? "실행 취소" : "Undo"}</button><button type="button" onClick={() => dispatch({ type: "redo" })} disabled={!history.future.length}>{locale === "ko" ? "다시 실행" : "Redo"}</button></div>
+      <div className="v3-history-actions"><button type="button" onClick={() => dispatch({ type: "clearSimulatedRanks" })} disabled={!Object.keys(state.simulatedRanks).length}>{locale === "ko" ? "전체 계획 취소" : "Clear plan"}</button><button type="button" onClick={() => dispatch({ type: "undo" })} disabled={!history.past.length}>{locale === "ko" ? "실행 취소" : "Undo"}</button><button type="button" onClick={() => dispatch({ type: "redo" })} disabled={!history.future.length}>{locale === "ko" ? "다시 실행" : "Redo"}</button></div>
     </section>
 
     {shareNotice && <div className="v3-notice" role="status"><span>{shareNotice}</span><button type="button" onClick={() => setShareNotice(undefined)}>×</button></div>}
 
-    {tab === "tree" && <main className="v3-tree-view" data-testid="v3-tree-view">
+    {tab === "tree" && <main className={`v3-tree-view ${selectedNode ? "has-detail" : ""}`} data-testid="v3-tree-view">
       <section className="v3-tree-main">
         <div className="v3-tree-toolbar">
           <div className="v3-family-filter">
             <button type="button" className={familyFilter === "all" ? "is-active" : ""} onClick={() => setFamilyFilter("all")}>{locale === "ko" ? "전체" : "All"}</button>
-            {(["nature", "chaos", "order", "engineering", "magic"] as DiceFamilyV3[]).map((family) => <button key={family} type="button" className={familyFilter === family ? `is-active family-${family}` : `family-${family}`} onClick={() => setFamilyFilter(family)}>{family}</button>)}
+            {(["nature", "chaos", "order", "engineering", "magic"] as DiceFamilyV3[]).map((family) => <button key={family} type="button" className={familyFilter === family ? `is-active family-${family}` : `family-${family}`} onClick={() => setFamilyFilter(family)}>{FAMILY_NAMES[family][locale]}</button>)}
           </div>
           <input aria-label={locale === "ko" ? "트리 검색" : "Tree search"} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={locale === "ko" ? "노드·효과 검색" : "Search node or effect"} />
         </div>
@@ -188,12 +210,29 @@ export function V3Shell() {
         locale={locale}
         selectedDiceId={state.scenario.diceId}
         marginal={marginal}
+        route={selectedRoute}
+        routeAffordable={selectedRouteAffordable}
+        onApplyRoute={(ranks) => dispatch({ type: "applyRoute", ranks })}
+        onCancelPlan={() => dispatch({ type: "setSimulatedRank", nodeId: selectedNode.id, rank: state.ownedRanks[selectedNode.id] ?? 0 })}
         onSetSimulatedRank={(nodeId, rank) => dispatch({ type: "setSimulatedRank", nodeId, rank })}
         onClose={() => setSelectedNodeId(undefined)}
       />}
     </main>}
 
     {tab === "simulator" && <SimulatorView data={gameDataV3} state={state} locale={locale} onScenarioChange={(patch) => dispatch({ type: "setScenario", scenario: patch })} />}
+
+    {tab === "decks" && <DeckLabView
+      data={gameDataV3}
+      locale={locale}
+      goal={deckGoal}
+      spendProfile={spendProfile}
+      onGoalChange={setDeckGoal}
+      onSpendProfileChange={setSpendProfile}
+      onSimulate={(diceId) => {
+        dispatch({ type: "setScenario", scenario: { diceId, conditionValues: {} } });
+        setTab("simulator");
+      }}
+    />}
 
     {tab === "compare" && <section className="v3-compare-shell">
       <div className="v3-compare-controls">
@@ -202,5 +241,7 @@ export function V3Shell() {
       </div>
       <CompareView data={gameDataV3} locale={locale} left={currentInput} right={compareInput} />
     </section>}
+
+    {tab === "shop" && <PurchaseEfficiencyView locale={locale} />}
   </div>;
 }

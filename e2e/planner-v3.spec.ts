@@ -35,6 +35,9 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await expect(page.getByTestId("v3-tree-canvas")).toBeVisible();
   await expect(page.getByLabel("다이스 트리 재화")).toContainText("골드");
   await expect(page.getByLabel("다이스 트리 재화")).toContainText("다이스 코어");
+  await expect(page.getByText(/제작자 모님/)).toBeVisible();
+  await expect(page.locator('[data-testid^="v41-cost-"]').first()).toBeAttached();
+  await expect(page.locator(".v3-tree-wrap")).not.toHaveCSS("background-image", "none");
   await expect(page.locator("body")).not.toContainText("파란 재화");
   await expect(page.locator("body")).not.toContainText("빨간 재화");
   await expect(page.locator("body")).not.toContainText("프리즘 재화");
@@ -74,6 +77,32 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await context.close();
 });
 
+test("V4 route planner applies prerequisites as one preview and supports cancellation", async ({ page, isMobile }) => {
+  test.skip(isMobile, "desktop verifies the full route and header-level clear action; route logic is covered by unit tests on all viewports");
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("spinbutton", { name: "보유 골드" }).fill("9999999");
+  await page.getByRole("spinbutton", { name: "보유 다이스 코어" }).fill("9999");
+  await page.getByTestId("v3-node-1205").click();
+
+  const route = page.getByTestId("v4-route-plan");
+  await expect(route).toBeVisible();
+  await expect(route.locator("li")).toHaveCount(3);
+  await expect(route).not.toContainText("<tag>");
+  await expect(route).not.toContainText("{0}");
+  await route.getByRole("button", { name: "경로 가상 적용" }).click();
+  await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-simulated-rank", "1");
+  await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-simulated-rank", "1");
+  await expect(page.getByTestId("v3-node-1205")).toHaveAttribute("data-simulated-rank", "1");
+
+  await route.getByRole("button", { name: "이 노드 계획 취소" }).click();
+  await expect(page.getByTestId("v3-node-1205")).toHaveAttribute("data-simulated-rank", "0");
+  await page.getByRole("button", { name: "전체 계획 취소" }).click();
+  await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-simulated-rank", "0");
+  await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-simulated-rank", "0");
+  expect(errors).toEqual([]);
+});
+
 test("V3 Simulator exposes dice-specific conditions and partial-safe Predator output", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
@@ -109,7 +138,9 @@ test("V3 client-table projection reacts to permanent level and battle upgrade wi
   await expect(page.getByTestId("stat-attackInterval")).toContainText("0.425");
   await expect(page.getByTestId("stat-projectedBasicAttackDps")).toContainText("705.88");
   await expect(page.getByTestId("v3-stat-panel")).toContainText(/표 기반 예상|Table projection/);
-  await expect(page.getByTestId("stat-practical-dps")).toHaveText("—");
+  await expect(page.getByTestId("stat-practical-dps")).toHaveAttribute("data-dps-kind", "projected");
+  await expect(page.getByTestId("stat-practical-dps")).toContainText("705.88");
+  await expect(page.getByTestId("v3-damage-graph")).toContainText("특수효과 제외 기본 공격 피해");
   await page.screenshot({ path: `test-results/qa-v3-wind-growth-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
   expect(errors).toEqual([]);
 });
@@ -147,7 +178,48 @@ test("V3 real Wind Dice Tree path changes the selected dice tree stat without fa
   const bullet = page.getByTestId("stat-bulletDamagePercent");
   await expect(bullet).toBeVisible();
   await expect.poll(async () => Number((await bullet.locator("strong").textContent())?.replaceAll(",", "") ?? "0")).toBeGreaterThan(0);
-  await expect(page.getByTestId("stat-practical-dps")).toHaveText("—");
+  await expect(page.getByTestId("stat-practical-dps")).toHaveAttribute("data-dps-kind", "baseline");
+  await expect(page.getByTestId("stat-practical-dps")).not.toHaveText("—");
+  expect(errors).toEqual([]);
+});
+
+test("V4 Deck Lab keeps live meta claims source-gated and opens its primary dealer in Simulator", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "덱 연구소" }).click();
+  await expect(page.getByTestId("v4-deck-lab")).toBeVisible();
+  await expect(page.getByTestId("v4-meta-status")).toContainText("라이브 메타 미검증");
+  await expect(page.getByTestId("v4-meta-status")).toContainText("랭킹·사용률 데이터가 없습니다");
+  for (let index = 1; index <= 5; index += 1) await expect(page.getByTestId(`deck-slot-${index}`)).toBeVisible();
+  await page.getByLabel("플레이 역할").selectOption("support");
+  await page.getByLabel("투자 성향").selectOption("invested");
+  await page.screenshot({ path: `test-results/qa-v4-deck-lab-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
+  await page.getByRole("button", { name: "주 딜러 시뮬레이션" }).click();
+  await expect(page.getByTestId("v3-simulator-view")).toBeVisible();
+  await expect(page.getByTestId("stat-practical-dps")).not.toHaveText("—");
+  expect(errors).toEqual([]);
+});
+
+test("V4.1 Purchase Value ranks IPA packages by profile and goal without inventing live prices", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "구매 효율" }).click();
+  await expect(page.getByTestId("v41-purchase-efficiency")).toBeVisible();
+  await expect(page.getByTestId("v41-purchase-source")).toContainText("SpecialPackageTable");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 재설계 보따리");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("400");
+
+  await page.getByLabel("과금 성향").selectOption("invested");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 코어 보따리");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("510");
+
+  await page.getByLabel("우선 목표").selectOption("gold");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 골드 보따리");
+  await page.getByLabel("우선 목표").selectOption("redesign");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 재설계 보따리");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("₩12,000");
+  await expect(page.getByTestId("v41-intro-offer")).toContainText("₩3,300");
+  await page.screenshot({ path: `test-results/qa-v41-purchase-value-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
   expect(errors).toEqual([]);
 });
 

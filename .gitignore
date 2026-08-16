@@ -3,7 +3,10 @@ dist/
 playwright-report/
 test-results/
 .vite/
+.codex-progress.json
 *.ipa
 tools/rd2-extract/work/
 tools/rd2-extract/raw/
 tools/rd2-extract/**/*.app/
+*.tsbuildinfo
+**/__pycache__/

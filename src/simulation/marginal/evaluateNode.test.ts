@@ -39,7 +39,7 @@ function result(dps: number | null): TreeAwareSimulationResultV3 {
 }
 
 describe("V3 marginal node evaluation", () => {
-  it("simulates identical scenarios twice with only the target rank changed", () => {
+  it("simulates the complete purchasable route instead of an unreachable target alone", () => {
     const seen: SimulationInputV3[] = [];
     const evaluated = evaluateNodeV3(input, data, "n", (next) => {
       seen.push(next);
@@ -47,7 +47,7 @@ describe("V3 marginal node evaluation", () => {
     });
     expect(seen).toHaveLength(2);
     expect(seen[0]).toEqual(input);
-    expect(seen[1]).toEqual({ ...input, treeRanks: { n: 1 } });
+    expect(seen[1]).toEqual({ ...input, treeRanks: { p: 2, n: 1 } });
     expect(evaluated.absoluteGain).toBe(25);
     expect(evaluated.percentGain).toBe(25);
     expect(evaluated.cost).toEqual({ gold: 1000, stone: 1 });

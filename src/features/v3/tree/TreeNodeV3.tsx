@@ -1,5 +1,5 @@
 import type { CSSProperties, KeyboardEvent } from "react";
-import type { DiceTreeNodeV3 } from "../../../game-data/types";
+import type { DiceTreeNodeV3, TreeCost } from "../../../game-data/types";
 
 const FAMILY_COLOR: Record<DiceTreeNodeV3["family"], string> = {
   core: "#6f5de7",
@@ -19,7 +19,14 @@ export interface TreeNodeV3Props {
   recommended: boolean;
   dimmed: boolean;
   canIncrement: boolean;
+  nextCost: TreeCost | null;
   onSelect: (nodeId: string) => void;
+}
+
+function compactCost(value: number) {
+  if (value >= 1_000_000) return `${Number((value / 1_000_000).toFixed(1))}M`;
+  if (value >= 10_000) return `${Number((value / 1_000).toFixed(1))}K`;
+  return value.toLocaleString("en-US");
 }
 
 function glyphFor(node: DiceTreeNodeV3) {
@@ -47,6 +54,7 @@ export function TreeNodeV3({
   recommended,
   dimmed,
   canIncrement,
+  nextCost,
   onSelect,
 }: TreeNodeV3Props) {
   const rank = Math.max(ownedRank, simulatedRank);
@@ -89,6 +97,19 @@ export function TreeNodeV3({
     onClick={(event) => { event.stopPropagation(); onSelect(node.id); }}
     onKeyDown={activate}
   >
+    {nextCost && (nextCost.gold > 0 || nextCost.stone > 0) && <g
+      className="v41-node-cost"
+      data-testid={`v41-cost-${node.id}`}
+      transform={`translate(0 ${-radius - 47})`}
+      aria-hidden="true"
+    >
+      <rect x={nextCost.gold > 0 && nextCost.stone > 0 ? -78 : -52} y="-18" width={nextCost.gold > 0 && nextCost.stone > 0 ? 156 : 104} height="36" rx="11" />
+      <text textAnchor="middle" dominantBaseline="central">
+        {nextCost.gold > 0 ? `● ${compactCost(nextCost.gold)}` : ""}
+        {nextCost.gold > 0 && nextCost.stone > 0 ? "   " : ""}
+        {nextCost.stone > 0 ? `◆ ${compactCost(nextCost.stone)}` : ""}
+      </text>
+    </g>}
     {recommended && <circle className="v3-recommend-orbit" r={radius + 24} aria-hidden="true" />}
     {selected && <circle className="v3-selection-halo" r={radius + 15} aria-hidden="true" />}
     {square

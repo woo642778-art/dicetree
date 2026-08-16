@@ -141,6 +141,17 @@ export function plannerReducerV3(
     if (rank > owned) simulatedRanks[action.nodeId] = rank;
     else delete simulatedRanks[action.nodeId];
     next = { ...next, simulatedRanks };
+  } else if (action.type === "applyRoute") {
+    const simulatedRanks = { ...next.simulatedRanks };
+    for (const [nodeId, rawRank] of Object.entries(action.ranks)) {
+      const rank = clampRank(nodeId, rawRank, limits);
+      if (rank === null) return history;
+      const owned = next.ownedRanks[nodeId] ?? 0;
+      if (rank > owned) simulatedRanks[nodeId] = Math.max(simulatedRanks[nodeId] ?? 0, rank);
+    }
+    next = { ...next, simulatedRanks };
+  } else if (action.type === "clearSimulatedRanks") {
+    next = { ...next, simulatedRanks: {} };
   } else if (action.type === "incrementSimulatedRank") {
     if (!limits.validNodeIds.has(action.nodeId)) return history;
     const maximum = limits.maxRanks.get(action.nodeId);

@@ -1,7 +1,9 @@
 import type { CanonicalGameData, DiceTreeNodeV3, PassiveDefinitionV3, RuneDefinitionV3 } from "../../../game-data/types";
+import { formatGameText, type GameTextValue } from "../../../game-data/formatGameText";
 import { nextRankCost } from "../../../planner-v3/costs";
 import { effectiveRankV3 } from "../../../planner-v3/reducer";
 import type { PlannerStateV3 } from "../../../planner-v3/types";
+import type { PlannedRouteV3 } from "../../../planner-v3/routes";
 import type { CalculationTraceStepV3 } from "../../../simulation/engine/types";
 import type { MarginalNodeResultV3 } from "../../../simulation/marginal/evaluateNode";
 import { runeNumberAtRank } from "../../../simulation/mechanics/runeValues";
@@ -16,6 +18,10 @@ export interface NodeDetailSheetProps {
   selectedDiceId?: string;
   marginal?: MarginalNodeResultV3;
   trace?: readonly CalculationTraceStepV3[];
+  route?: PlannedRouteV3 | null;
+  routeAffordable?: boolean;
+  onApplyRoute?: (ranks: Record<string, number>) => void;
+  onCancelPlan?: () => void;
   onSetSimulatedRank: (nodeId: string, rank: number) => void;
   onClose?: () => void;
 }
@@ -25,7 +31,7 @@ interface EffectSnapshot {
   next?: number;
   unit?: string;
   scope: string;
-  sourceLabel: string;
+  templateValues: GameTextValue[];
 }
 
 function passiveValue(passive: PassiveDefinitionV3, rank: number) {
@@ -53,6 +59,18 @@ function runePrimaryValue(rune: RuneDefinitionV3, rank: number) {
   }
 }
 
+function runeTemplateValues(rune: RuneDefinitionV3, rank: number): GameTextValue[] {
+  const displayRank = Math.max(1, rank);
+  const output: GameTextValue[] = [];
+  for (const key of ["Value1", "Value2", "Duration"]) {
+    if (typeof rune.values[key] !== "number") continue;
+    output.push(runeNumberAtRank(rune, displayRank, key));
+    const rankAdd = rune.values[`${key}_RankAdd`];
+    if (typeof rankAdd === "number") output.push(rankAdd);
+  }
+  return output;
+}
+
 function effectSnapshot(
   node: DiceTreeNodeV3,
   data: CanonicalGameData,
@@ -67,9 +85,9 @@ function effectSnapshot(
     return {
       current: passiveValue(passive, rank),
       next: rank < node.maxRank ? passiveValue(passive, rank + 1) : undefined,
-      unit: passive.valueType ?? undefined,
+      unit: passive.valueType ? localized(data, passive.valueType, locale, passive.valueType) : undefined,
       scope: passiveScope(passive, locale),
-      sourceLabel: passive.id,
+      templateValues: [passiveValue(passive, Math.max(1, rank)), passive.valuePerRank],
     };
   }
   if (linked.startsWith("rune:")) {
@@ -80,7 +98,7 @@ function effectSnapshot(
       current: runePrimaryValue(rune, rank),
       next: rank < node.maxRank ? runePrimaryValue(rune, rank + 1) : undefined,
       scope: targets.length ? targets.join(", ") : (locale === "ko" ? "연결 룬 효과" : "Linked rune effect"),
-      sourceLabel: rune.id,
+      templateValues: runeTemplateValues(rune, rank),
     };
   }
   return undefined;
@@ -111,6 +129,10 @@ export function NodeDetailSheet({
   selectedDiceId,
   marginal,
   trace = [],
+  route,
+  routeAffordable,
+  onApplyRoute,
+  onCancelPlan,
   onSetSimulatedRank,
   onClose,
 }: NodeDetailSheetProps) {
@@ -119,7 +141,8 @@ export function NodeDetailSheet({
   const cost = nextRankCost(node, rank);
   const effect = effectSnapshot(node, data, rank, locale);
   const name = localized(data, node.nameKey, locale, node.id);
-  const description = localized(data, node.descriptionKey, locale, node.passiveOrRuneRef ?? node.id);
+  const rawDescription = localized(data, node.descriptionKey, locale, node.passiveOrRuneRef ?? node.id);
+  const description = formatGameText(rawDescription, locale, effect?.templateValues);
   const canIncrement = canIncrementNodeV3(node, state.ownedRanks, state.simulatedRanks);
   const canDecrement = rank > ownedRank;
   const prerequisiteRows = node.prerequisites.map((prerequisite) => {
@@ -157,7 +180,6 @@ export function NodeDetailSheet({
         <div><span>{locale === "ko" ? "다음 랭크" : "Next rank"}</span><strong>{formatNumber(effect.next)}{effect.unit ? ` ${effect.unit}` : ""}</strong></div>
         {effect.current !== undefined && effect.next !== undefined && <div><span>{locale === "ko" ? "증가량" : "Delta"}</span><strong>+{formatNumber(effect.next - effect.current)}</strong></div>}
         <div><span>{locale === "ko" ? "적용 대상" : "Applies to"}</span><strong>{effect.scope}</strong></div>
-        <small>{effect.sourceLabel}</small>
       </> : <p>{description}</p>}
     </section>
 
@@ -169,6 +191,25 @@ export function NodeDetailSheet({
     <section className="v3-node-prerequisites">
       <h3>{locale === "ko" ? "선행 조건" : "Prerequisites"}</h3>
       {prerequisiteRows.length ? <ul>{prerequisiteRows.map((row) => <li key={row.id}>{row.label} <strong>Lv.{row.rank}</strong></li>)}</ul> : <p>{locale === "ko" ? "없음" : "None"}</p>}
+    </section>
+
+    <section className="v4-route-plan" data-testid="v4-route-plan">
+      <h3>{locale === "ko" ? "가상 구매 경로" : "Virtual purchase route"}</h3>
+      {route?.steps.length ? <>
+        <ol>{route.steps.map((step) => {
+          const routeNode = data.tree.find((candidate) => candidate.id === step.nodeId);
+          const label = routeNode ? localized(data, routeNode.nameKey, locale, step.nodeId) : step.nodeId;
+          return <li key={step.nodeId} className={step.target ? "is-target" : ""}>
+            <span>{label}</span><strong>Lv.{step.fromRank} → {step.toRank}</strong>
+          </li>;
+        })}</ol>
+        <div className="v4-route-total"><span>{locale === "ko" ? "경로 총비용" : "Total route cost"}</span><strong>{formatCost(route.totalCost.gold, route.totalCost.stone, locale)}</strong></div>
+        <p className={routeAffordable ? "is-affordable" : "is-short"}>{routeAffordable
+          ? (locale === "ko" ? "현재 남은 재화로 적용 가능합니다." : "Affordable with remaining resources.")
+          : (locale === "ko" ? "현재 재화가 부족하지만 실제 재화 소모 없이 결과를 미리 볼 수 있습니다." : "Resources are short, but you can still preview without spending in game.")}</p>
+        {onApplyRoute && <button className="v4-route-apply" type="button" onClick={() => onApplyRoute(route.targetRanks)}>{locale === "ko" ? "경로 가상 적용" : "Apply virtual route"}</button>}
+      </> : <p>{locale === "ko" ? "추가로 구매할 랭크가 없습니다." : "No additional ranks are required."}</p>}
+      {canDecrement && onCancelPlan && <button className="v4-route-cancel" type="button" onClick={onCancelPlan}>{locale === "ko" ? "이 노드 계획 취소" : "Cancel this node plan"}</button>}
     </section>
 
     <section className="v3-node-impact" data-testid="v3-node-impact">

@@ -7,6 +7,8 @@ import "./app/app-v3.css";
 import "./app/recommend-v3.css";
 import "./app/motion-v3.css";
 import "./app/mobile-v3.css";
+import "./app/product-v4.css";
+import "./app/ingame-v41.css";
 import "./app/accessibility.css";
 
 createRoot(document.getElementById("root")!).render(

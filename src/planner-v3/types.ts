@@ -31,6 +31,8 @@ export interface PlannerHistoryV3 {
 export type PlannerActionV3 =
   | { type: "setOwnedRank"; nodeId: string; rank: number }
   | { type: "setSimulatedRank"; nodeId: string; rank: number }
+  | { type: "applyRoute"; ranks: Record<string, number> }
+  | { type: "clearSimulatedRanks" }
   | { type: "incrementSimulatedRank"; nodeId: string }
   | { type: "decrementSimulatedRank"; nodeId: string }
   | { type: "setInventory"; inventory: Partial<PlannerStateV3["inventory"]> }
