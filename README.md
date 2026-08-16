@@ -1,88 +1,67 @@
-# Random Dice 2 Tree Planner
+# Random Dice 2 Tree Planner V3
 
-A public, login-free Random Dice 2 Dice Tree planner focused on screenshot-sourced topology, simulated progression costs, explainable route recommendations, and shareable builds.
+A public, login-free Random Dice 2 Dice Tree planner and condition-based combat simulator backed by statically extracted client data.
 
 Public site: **https://woo642778-art.github.io/dicetree/**
 
-## V2 principles
+## V3 data model
 
-The planner does not pretend that every hidden value is known.
+V3 replaces the old screenshot-first progression model with canonical data extracted from the supplied Random Dice 2 iOS client. The uploaded package is a modified 1.0.1 IPA and is therefore treated as untrusted input: the extractor reads archive members, serialized game tables, localization and static IL2CPP metadata only. It never launches the app, executes the client binary, loads injected dylibs, or executes bundled scripts.
 
-- Tree geometry can be known even when a node's effect is not.
-- Rank, cost, effect, identity, prerequisites, and family each carry their own confidence state.
-- Clear in-game screenshots are the primary source for current Random Dice 2 numeric values.
-- Current official 111% material is preferred for game-level rules and terminology.
-- Community strategy is stored separately from canonical game facts.
-- Random Dice: Defense upgrade tables are **not** reused as Random Dice 2 progression data.
-- Exact DPS is never claimed when the Random Dice 2 formula is not verified.
+Current canonical coverage includes 55 dice, 239 Dice Tree nodes, 111 passive rows, 153 rune rows, enemy/wave data, Korean/English localization and mechanic evidence. Provenance is pinned by the client SHA-256 in `src/game-data/manifest.json` and documented in `docs/data/v3-client-1.0.1-extraction.md`.
 
-## What the V2 dataset currently contains
+## Dice Tree currencies
 
-- 100+ screenshot-mapped structural nodes, including grey locked/unknown slots
-- Five central family directions: Nature, Chaos, Order, Engineering, Magic
-- Four observed tree resources: Gold plus the blue-card, red-card, and prism/cube-like resources
-- Screenshot-observed node costs including 2,000 through 100,000 Gold and mixed-resource gates
-- Screenshot-observed rank examples such as 5/100, 17/50, and 1/15 where the labels can be associated safely
-- Earlier detail evidence for the all-dice bullet-damage and Chaos attack-speed upgrade steps
-- Separate community strategy notes for Devour, Corruption, Taeguk, early Magic utility, and Engineering routes
+Dice Tree rank costs come directly from the client arrays:
 
-The non-Gold resource icons are real observed resources, but their official current-game names are not yet verified. The UI therefore uses neutral labels rather than inventing names.
+- `RankUpGoldArr` → `골드` / `Gold`
+- `RankUpStoneArr` → `다이스 코어` / `Dice Core`
 
-## Rank-by-rank cost policy
+V3 does not use the old V2 `blueCard`, `redCard` or `prismCube` assumptions in the live app, affordability calculations or recommendations. Rank costs are exact client-array entries; missing levels are never extrapolated.
 
-A photographed price is stored as the **observed next-step cost at that photographed rank**. It is not repeated across all remaining ranks.
+## Simulation confidence
 
-For example, if a screenshot confirms a node at 5/100 and shows the next cost, that creates one evidence point. If another current screenshot later shows the same node at 6/100, the second point can be added. Over time this produces a real cost ladder rather than an inferred one.
+The shared V3 engine combines verified base stats, permanent dice progression, in-battle upgrades and verified Dice Tree modifiers. Dice-specific mechanics use isolated rule modules and expose only the conditions required by the selected dice.
 
-See:
+`verified` results may produce practical DPS, 5/10/30-second cumulative damage and kill time. `partial` results preserve known stats and mechanic parameters but do not invent unresolved operation order, attack-speed formulas, proc behavior or special-dice timing. Predator/포식 is the first complex golden-reference dice; its extracted values are visible even while unresolved runtime ordering remains excluded from exact practical DPS.
 
-- `docs/data/cost-evidence-matrix.md`
-- `docs/data/random-dice-2-v2-source-notes.md`
-- `docs/data/community-research-2026-08-15.md`
+Direct client-table `LvAdd` and `UpAdd` deltas are also exposed as **table-projected stats**. This lets permanent level and in-battle power-up controls visibly change attack, attack interval, range and projected basic-attack DPS while keeping those projections separate from verified practical DPS until runtime operation order is recovered. The UI labels these values as `표 기반 예상` / `Table projection` rather than presenting them as exact combat formulas.
 
-## Features
+Tree marginal-value recommendations run the same simulation before and after a one-rank change. Only positive verified gains are allowed into the exact ranking. Partial candidates are shown separately and cannot outrank verified candidates with fabricated utility.
 
-- White-first responsive game-companion UI
-- Screenshot-calibrated SVG Dice Tree with locked structural slots
-- Mouse pan/wheel zoom and mobile touch pan/pinch
-- Family filters and search
-- Virtual next-step investment planning
-- Four-resource inventory/spend/remaining calculations
-- Focus-die and progression-profile recommendation weighting
-- Separate canonical facts and community strategy notes
-- Korean default UI and English toggle
-- Login-free V2 share URLs
-- Safe malformed/older-state handling
-- Reduced-motion accessibility support
-- Automated unit/component, production build, desktop/mobile browser, console-error, and screenshot QA in GitHub Actions
+## Product surfaces
+
+- IPA-backed Dice Tree with canonical positions, prerequisites, max ranks and Gold/Dice Core costs
+- owned vs simulated rank states, pan/wheel zoom, touch/pinch, family navigation and node detail sheets
+- all-dice Simulator with permanent level, battle upgrade, dice-specific conditions, enemy presets/editable HP and explainable calculation traces
+- table-projected level/power-up stat changes that remain visibly separated from unresolved practical-DPS formulas
+- shared-engine Compare view for dice/tree configurations
+- simulation-backed next-investment analysis that withholds guessed rankings when formulas are partial
+- Korean/English presentation without mutating semantic state
+- login-free V3 share URLs that preserve ranks, inventory and simulation scenario
+- white/pearl responsive game-companion UI with reduced-motion fallbacks
 
 ## Development
 
-Requires Node.js 22.12+.
+Requires Node.js 22.12+ and Python 3.11+.
 
 ```bash
 npm install
-npm run dev
+python3 -m unittest discover tools/rd2-extract/tests -p 'test_*.py'
 npm test
 npm run build
 npx playwright install chromium
 npm run test:e2e
 ```
 
-The Vite base path is `/dicetree/` for GitHub Pages.
+The Vite base path is `/dicetree/` for GitHub Pages. GitHub Actions runs extractor fixture validation, unit/component tests, production build, desktop/mobile Playwright flows and screenshot QA before Pages deployment.
 
-## Adding current-game data
+## Importing a future client safely
 
-Canonical current-game data lives under `src/tree-data-v2/`.
+Do not replace canonical data by hand and do not run an IPA. Use `tools/rd2-extract/extract.py` against the new archive in a local static-analysis environment, verify its fingerprint intentionally, and generate a separate output dataset. Then run `tools/rd2-extract/diff_clients.py` to review semantic changes in dice stats, tree topology/costs, passives, runes, enemies, localization and mechanic evidence before updating `src/game-data/`.
 
-A new numeric field should include:
+A symbol name or serialized numeric field is evidence, not automatically a proven combat formula. New exact arithmetic requires enough static code-path evidence and golden tests to establish operation order, clamping and interactions.
 
-1. the exact value visible in the source,
-2. the specific node/rank context when known,
-3. a `SourceRef`,
-4. field-level confidence,
-5. no extrapolation beyond what the source proves.
+## Share-state contract
 
-Community opinions belong under `src/strategy/` and must not mutate canonical costs/effects.
-
-Before merging data changes, run the full validation suite and browser QA. The repository workflow also stores desktop/mobile screenshots as Actions artifacts for manual visual review.
+V3 links encode semantic `PlannerStateV3`: owned ranks, simulated target ranks, Gold/Dice Core inventory and the simulation scenario. Presentation-only state such as current language or open panel is not encoded. Malformed or incompatible links fail safely to a fresh planner state.
