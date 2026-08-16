@@ -1,8 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DiceTreeNodeV3 } from "../../../game-data/types";
 import { TreeCanvasV3, canIncrementNodeV3, prerequisitesSatisfiedV3 } from "./TreeCanvasV3";
+
+afterEach(cleanup);
 
 const nodes: DiceTreeNodeV3[] = [
   {
