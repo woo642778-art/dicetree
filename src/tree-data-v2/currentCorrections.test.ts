@@ -14,4 +14,12 @@ describe("current-game evidence corrections", () => {
     expect(byId.get("chaos-attack-speed-observed-next")?.displayedRank).toBeUndefined();
     expect(byId.get("chaos-attack-speed-observed-next")?.fieldConfidence.rank).toBe("unknown");
   });
+
+  it("does not simulate the nearby 16/50 cost until exact attribution is confirmed", () => {
+    const node = byId.get("chaos-rank-16-50");
+    expect(node?.displayedRank?.value).toEqual({ current: 16, max: 50 });
+    expect(node?.observedNextCost?.confidence).toBe("partial");
+    expect(node?.fieldConfidence.cost).toBe("partial");
+    expect(node?.investable).toBe(false);
+  });
 });
