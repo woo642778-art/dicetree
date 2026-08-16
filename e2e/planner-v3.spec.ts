@@ -35,6 +35,9 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await expect(page.getByTestId("v3-tree-canvas")).toBeVisible();
   await expect(page.getByLabel("다이스 트리 재화")).toContainText("골드");
   await expect(page.getByLabel("다이스 트리 재화")).toContainText("다이스 코어");
+  await expect(page.getByText(/제작자 모님/)).toBeVisible();
+  await expect(page.locator('[data-testid^="v41-cost-"]').first()).toBeAttached();
+  await expect(page.locator(".v3-tree-wrap")).not.toHaveCSS("background-image", "none");
   await expect(page.locator("body")).not.toContainText("파란 재화");
   await expect(page.locator("body")).not.toContainText("빨간 재화");
   await expect(page.locator("body")).not.toContainText("프리즘 재화");
@@ -194,6 +197,29 @@ test("V4 Deck Lab keeps live meta claims source-gated and opens its primary deal
   await page.getByRole("button", { name: "주 딜러 시뮬레이션" }).click();
   await expect(page.getByTestId("v3-simulator-view")).toBeVisible();
   await expect(page.getByTestId("stat-practical-dps")).not.toHaveText("—");
+  expect(errors).toEqual([]);
+});
+
+test("V4.1 Purchase Value ranks IPA packages by profile and goal without inventing live prices", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "구매 효율" }).click();
+  await expect(page.getByTestId("v41-purchase-efficiency")).toBeVisible();
+  await expect(page.getByTestId("v41-purchase-source")).toContainText("SpecialPackageTable");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 재설계 보따리");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("400");
+
+  await page.getByLabel("과금 성향").selectOption("invested");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 코어 보따리");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("510");
+
+  await page.getByLabel("우선 목표").selectOption("gold");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 골드 보따리");
+  await page.getByLabel("우선 목표").selectOption("redesign");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("몰래 빼돌린 재설계 보따리");
+  await expect(page.getByTestId("v41-top-pick")).toContainText("₩12,000");
+  await expect(page.getByTestId("v41-intro-offer")).toContainText("₩3,300");
+  await page.screenshot({ path: `test-results/qa-v41-purchase-value-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
   expect(errors).toEqual([]);
 });
 

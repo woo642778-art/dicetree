@@ -45,6 +45,8 @@ describe("TreeCanvasV3", () => {
     expect(screen.getAllByRole("treeitem")).toHaveLength(nodes.length);
     expect(screen.getByTestId("v3-edge-root-child")).toBeInTheDocument();
     expect(screen.getByTestId("v3-edge-root-locked")).toBeInTheDocument();
+    expect(screen.getByTestId("v41-cost-root")).toHaveTextContent("200");
+    expect(screen.getByTestId("v41-cost-root")).toHaveTextContent("1");
   });
 
   it("separates owned, simulated, reachable, locked and maxed state", () => {
