@@ -1,8 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CanonicalGameData, DiceTreeNodeV3 } from "../../../game-data/types";
 import type { PlannerStateV3 } from "../../../planner-v3/types";
 import { NodeDetailSheet } from "./NodeDetailSheet";
+
+afterEach(cleanup);
 
 const root: DiceTreeNodeV3 = {
   id: "root", family: "core", kind: "passive", position: { x: 0, y: 0 }, prerequisites: [], maxRank: 2,
