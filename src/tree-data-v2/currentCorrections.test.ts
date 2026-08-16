@@ -18,7 +18,7 @@ describe("current-game evidence corrections", () => {
   it("does not simulate the nearby 16/50 cost until exact attribution is confirmed", () => {
     const node = byId.get("chaos-rank-16-50");
     expect(node?.displayedRank?.value).toEqual({ current: 16, max: 50 });
-    expect(node?.observedNextCost?.confidence).toBe("partial");
+    expect(node?.observedNextCost).toBeUndefined();
     expect(node?.fieldConfidence.cost).toBe("partial");
     expect(node?.investable).toBe(false);
   });
