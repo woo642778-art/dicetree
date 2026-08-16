@@ -9,6 +9,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from rd2_extract.archive import discover_client_files
+from rd2_extract.compact import compact_dataset
 from rd2_extract.fingerprint import EXPECTED_101_SHA256, assert_client_fingerprint, sha256_file
 from rd2_extract.normalize import generate_canonical_data
 from rd2_extract.unity_assets import read_member
@@ -44,19 +45,18 @@ def _emit_dataset(ipa_path: Path, emit_dir: Path, source_sha256: str) -> None:
         unity_framework,
         source_sha256=source_sha256,
     )
+    compact = compact_dataset(data)
 
     emit_dir.mkdir(parents=True, exist_ok=True)
     _write_json(emit_dir / "manifest.json", data["manifest"])
-    _write_json(emit_dir / "dice.json", data["dice"])
-    _write_json(emit_dir / "tree.json", data["tree"])
-    _write_json(emit_dir / "passives.json", data["passives"])
-    _write_json(emit_dir / "runes.json", data["runes"])
-    _write_json(emit_dir / "enemies.json", data["enemies"])
+    _write_json(emit_dir / "dice.compact.json", compact["dice"])
+    _write_json(emit_dir / "tree.compact.json", compact["tree"])
+    _write_json(emit_dir / "passives.compact.json", compact["passives"])
+    _write_json(emit_dir / "runes.compact.json", compact["runes"])
+    _write_json(emit_dir / "enemies.compact.json", compact["enemies"])
+    _write_json(emit_dir / "localization.compact.json", compact["localization"])
+    _write_json(emit_dir / "mechanics.compact.json", compact["mechanics"])
     _write_json(emit_dir / "waves.json", data["waves"])
-    _write_json(emit_dir / "mechanic-evidence.json", data["mechanicEvidence"])
-    localization = data["localization"]
-    _write_json(emit_dir / "localization.ko.json", localization["ko"])
-    _write_json(emit_dir / "localization.en.json", localization["en"])
 
 
 def main(argv: list[str] | None = None) -> int:
