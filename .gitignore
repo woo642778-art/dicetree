@@ -3,6 +3,7 @@ dist/
 playwright-report/
 test-results/
 .vite/
+.codex-progress.json
 *.ipa
 tools/rd2-extract/work/
 tools/rd2-extract/raw/

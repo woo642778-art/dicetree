@@ -71,6 +71,22 @@ describe("plannerReducerV3", () => {
     expect("locale" in history.present).toBe(false);
   });
 
+  it("applies a complete route as one undoable transaction", () => {
+    let history = createPlannerHistoryV3(initial());
+    history = plannerReducerV3(history, { type: "applyRoute", ranks: { "5007": 1, "5207": 8 } }, limits);
+    expect(history.present.simulatedRanks).toEqual({ "5207": 8 });
+    expect(history.past).toHaveLength(1);
+    history = plannerReducerV3(history, { type: "undo" }, limits);
+    expect(history.present.simulatedRanks).toEqual({});
+  });
+
+  it("clears only virtual purchases and preserves combat inputs", () => {
+    const seeded = { ...initial(), simulatedRanks: { "5207": 8 }, scenario: { ...initial().scenario, conditionValues: { predatorStacks: 4 } } };
+    const history = plannerReducerV3(createPlannerHistoryV3(seeded), { type: "clearSimulatedRanks" }, limits);
+    expect(history.present.simulatedRanks).toEqual({});
+    expect(history.present.scenario.conditionValues).toEqual({ predatorStacks: 4 });
+  });
+
   it("resetSimulation preserves owned progression and real currency inventory", () => {
     let state = initial();
     state = {

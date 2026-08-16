@@ -31,7 +31,7 @@ export function RecommendationStrip({ data, recommendations, locale, onSelectNod
     {recommendations.verified.length > 0 ? <div className="v3-recommendation-list">
       {recommendations.verified.map((entry, index) => <button key={entry.nodeId} type="button" onClick={() => onSelectNode(entry.nodeId)}>
         <span>{index + 1}</span>
-        <div><strong>{localizedNodeName(data, entry.nodeId, locale)}</strong><small>{costText(entry.totalRouteCost.gold, entry.totalRouteCost.stone, locale)}</small></div>
+        <div><strong>{localizedNodeName(data, entry.nodeId, locale)}</strong><small>{costText(entry.totalRouteCost.gold, entry.totalRouteCost.stone, locale)} · {locale === "ko" ? `${entry.routeNodeIds?.length ?? 1}개 노드 경로` : `${entry.routeNodeIds?.length ?? 1}-node route`}</small></div>
         <em>+{entry.percentGain!.toFixed(2)}%</em>
       </button>)}
     </div> : <div className="v3-recommendation-partial">

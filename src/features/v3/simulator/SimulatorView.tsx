@@ -115,7 +115,7 @@ export function SimulatorView({ data, state, locale, onScenarioChange }: Simulat
 
     <section className="v3-simulator-results">
       <StatPanel result={result} locale={locale} />
-      <DamageGraph outcome={result.outcome} locale={locale} />
+      <DamageGraph outcome={result.outcome} basicAttackOutcome={result.basicAttackOutcome} basicAttackOutcomeKind={result.basicAttackOutcomeKind} locale={locale} />
       {Object.keys(result.mechanic.values).length > 0 && <section className="v3-mechanic-values" data-testid="v3-mechanic-values">
         <h3>{locale === "ko" ? "고유 효과 입력/해석" : "Mechanic inputs / interpretation"}</h3>
         <dl>{Object.entries(result.mechanic.values).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value === null ? "—" : String(value)}</dd></div>)}</dl>

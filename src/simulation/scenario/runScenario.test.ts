@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CanonicalGameData } from "../../game-data/types";
 import type { SimulationInputV3 } from "../engine/types";
+import { gameDataV3 } from "../../game-data/load";
 import { runScenarioV3 } from "./runScenario";
 
 const exactData: CanonicalGameData = {
@@ -33,5 +34,18 @@ describe("runScenarioV3", () => {
     expect(result.simulation.confidence).toBe("partial");
     expect(result.simulation.practicalDps).toBeNull();
     expect(result.outcome).toBeNull();
+    expect(result.basicAttackOutcomeKind).toBe("verified");
+    expect(result.basicAttackOutcome?.checkpoints[0].average).toBe(250);
+  });
+
+  it("preserves a no-tree basic attack baseline when a partial tree formula blocks current DPS", () => {
+    const result = runScenarioV3({
+      ...input,
+      diceId: "wind",
+      treeRanks: { "1001": 1, "1005": 1, "1205": 1 },
+    }, gameDataV3);
+    expect(result.simulation.basicAttackDps).toBeNull();
+    expect(result.basicAttackOutcomeKind).toBe("tree-excluded-verified");
+    expect(result.basicAttackOutcome?.dps.average).toBeCloseTo(100 / 0.45, 10);
   });
 });

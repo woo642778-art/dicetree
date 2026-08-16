@@ -9,6 +9,8 @@ export interface ScenarioResultV3 {
   simulation: TreeAwareSimulationResultV3;
   mechanic: MechanicEvaluationV3;
   outcome: DamageOutcomeV3 | null;
+  basicAttackOutcome: DamageOutcomeV3 | null;
+  basicAttackOutcomeKind: "verified" | "projected" | "tree-excluded-verified" | "tree-excluded-projected" | null;
 }
 
 export function runScenarioV3(
@@ -29,5 +31,29 @@ export function runScenarioV3(
         [5, 10, 30],
       );
 
-  return { simulation, mechanic, outcome };
+  let baselineSimulation = simulation;
+  let treeExcluded = false;
+  if (simulation.basicAttackDps === null && simulation.projectedBasicAttackDps == null && Object.values(input.treeRanks).some((rank) => rank > 0)) {
+    baselineSimulation = simulateDiceWithTreeV3({ ...input, treeRanks: {} }, data);
+    treeExcluded = true;
+  }
+  const projectedDps = baselineSimulation.projectedBasicAttackDps;
+  const useProjection = projectedDps !== null
+    && projectedDps !== undefined
+    && (baselineSimulation.basicAttackDps === null || Math.abs(projectedDps - baselineSimulation.basicAttackDps) > 1e-12);
+  const basicAttackDps = useProjection ? projectedDps : baselineSimulation.basicAttackDps;
+  const basicAttackOutcome = basicAttackDps === null || basicAttackDps === undefined
+    ? null
+    : buildDamageOutcomeV3(
+        deterministicDpsRange(basicAttackDps),
+        input.enemy.hp,
+        [5, 10, 30],
+      );
+  const basicAttackOutcomeKind = basicAttackOutcome
+    ? treeExcluded
+      ? (useProjection ? "tree-excluded-projected" : "tree-excluded-verified")
+      : (useProjection ? "projected" : "verified")
+    : null;
+
+  return { simulation, mechanic, outcome, basicAttackOutcome, basicAttackOutcomeKind };
 }
