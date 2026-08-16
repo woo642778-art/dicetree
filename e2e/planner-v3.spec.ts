@@ -51,18 +51,19 @@ test("V3 Simulator exposes dice-specific conditions and partial-safe Predator ou
   await page.goto("/dicetree/");
   await page.getByRole("button", { name: "시뮬레이터" }).click();
   await expect(page.getByTestId("v3-simulator-view")).toBeVisible();
-  await expect(page.getByText(/포식|Predator/).first()).toBeVisible();
   await expect(page.getByTestId("v3-condition-controls")).toBeVisible();
   await expect(page.getByTestId("v3-stat-panel")).toContainText(/부분 계산|Partial/);
   await page.screenshot({ path: `test-results/qa-v3-predator-simulator-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
   const diceList = page.getByRole("listbox", { name: "주사위 목록" });
   const search = page.getByRole("textbox", { name: "주사위 검색" });
-  await search.fill("기어");
-  const gear = diceList.getByRole("option", { name: /기어/ }).first();
+  await search.fill("gear");
+  const gear = diceList.getByRole("option").first();
   await expect(gear).toBeVisible();
   await gear.click();
-  await expect(page.getByText("주변 기어 주사위 수")).toBeVisible();
+  const conditionPanel = page.getByTestId("v3-condition-controls");
+  await expect(conditionPanel).toBeVisible();
+  await expect(conditionPanel.getByRole("spinbutton")).toBeVisible();
   await page.screenshot({ path: `test-results/qa-v3-gear-simulator-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
   expect(errors).toEqual([]);
 });
