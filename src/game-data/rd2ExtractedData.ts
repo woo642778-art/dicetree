@@ -28,6 +28,21 @@ function text(ko: unknown, en: unknown) {
   return { ko: String(ko ?? ""), en: String(en ?? "") };
 }
 
+function stripGameMarkup(value: unknown) {
+  return String(value ?? "")
+    .replace(/<br\s*\/?\s*>/gi, " ")
+    .replace(/<tag>(.*?)<\/tag>/gi, "$1")
+    .replace(/<color=[^>]+>/gi, "")
+    .replace(/<\/color>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function plainText(ko: unknown, en: unknown) {
+  return { ko: stripGameMarkup(ko), en: stripGameMarkup(en) };
+}
+
 const treeRows = [
   ...treePart1, ...treePart2, ...treePart3, ...treePart4, ...treePart5, ...treePart6, ...treePart7,
 ] as readonly Raw[];
@@ -43,8 +58,8 @@ const dice = diceRows.map((r) => ({
   attackInterval: Number(r[13]), attackIntervalUpgradeAdd: Number(r[14]),
   bossAttackPercent: Number(r[15]), bossAttackPercentUpgradeAdd: Number(r[16]),
   cooldown: Number(r[17]), cooldownLevelAdd: Number(r[18]), projectileAbilityId: String(r[19]),
-  skillKinds: r[20] as readonly string[], name: text(r[21], r[22]), description: text(r[23], r[24]),
-  level7Description: text(r[25], r[26]),
+  skillKinds: r[20] as readonly string[], name: text(r[21], r[22]), description: plainText(r[23], r[24]),
+  level7Description: plainText(r[25], r[26]),
 }));
 const diceById = new Map(dice.map((entry) => [entry.numericId, entry]));
 
@@ -52,22 +67,22 @@ const runes = runeRows.map((r) => ({
   id: Number(r[0]), kind: String(r[1]), grade: String(r[2]), use: Boolean(r[3]), maxRank: Number(r[4]),
   value1: Number(r[5]), value1RankAdd: Number(r[6]), value2: Number(r[7]), value2RankAdd: Number(r[8]),
   duration: Number(r[9]), durationRankAdd: Number(r[10]), diceType: String(r[11]), family: String(r[12]),
-  name: text(r[13], r[14]), description: text(r[15], r[16]),
+  name: text(r[13], r[14]), description: plainText(r[15], r[16]),
 }));
 const runeById = new Map(runes.map((entry) => [entry.id, entry]));
 
 const passives = passiveRows.map((r) => ({
   numericId: Number(r[0]), kind: String(r[1]), family: String(r[2]), groupInternal: String(r[3]),
   maxRank: Number(r[4]), value: Number(r[5]), valueRankAdd: Number(r[6]), valueType: String(r[7]),
-  name: text(r[8], r[9]), description: text(r[10], r[11]),
+  name: text(r[8], r[9]), description: plainText(r[10], r[11]),
 }));
 const passiveById = new Map(passives.map((entry) => [entry.numericId, entry]));
 
 const perks = (perkPart1 as readonly Raw[]).map((r) => ({
   numericId: Number(r[0]), kind: String(r[1]), family: String(r[2]), groupInternal: String(r[3]),
   maxCount: Number(r[4]), startDelay: Number(r[5]), delay: Number(r[6]), passiveId: Number(r[7]),
-  name: text(r[8], r[9]), description: text(r[10], r[11]), passiveDescription: text(r[12], r[13]),
-  flavor: text(r[14], r[15]),
+  name: text(r[8], r[9]), description: plainText(r[10], r[11]), passiveDescription: plainText(r[12], r[13]),
+  flavor: plainText(r[14], r[15]),
 }));
 const perkById = new Map(perks.map((entry) => [entry.numericId, entry]));
 
