@@ -1,5 +1,4 @@
 import type { CanonicalGameData, DiceTreeNodeV3, PassiveDefinitionV3, RuneDefinitionV3 } from "../../../game-data/types";
-import { localizeGameKey } from "../../../game-data/load";
 import { nextRankCost } from "../../../planner-v3/costs";
 import { effectiveRankV3 } from "../../../planner-v3/reducer";
 import type { PlannerStateV3 } from "../../../planner-v3/types";
@@ -99,6 +98,11 @@ function formatCost(gold: number, stone: number, locale: "ko" | "en") {
   return parts.length ? parts.join(" · ") : (locale === "ko" ? "무료" : "Free");
 }
 
+function localized(data: CanonicalGameData, key: string | null | undefined, locale: "ko" | "en", fallback: string) {
+  if (!key) return fallback;
+  return data.localization[locale][key] ?? data.localization.ko[key] ?? data.localization.en[key] ?? fallback;
+}
+
 export function NodeDetailSheet({
   node,
   data,
@@ -114,8 +118,8 @@ export function NodeDetailSheet({
   const rank = effectiveRankV3(state, node.id);
   const cost = nextRankCost(node, rank);
   const effect = effectSnapshot(node, data, rank, locale);
-  const name = localizeGameKey(node.nameKey ?? undefined, locale, node.id);
-  const description = localizeGameKey(node.descriptionKey ?? undefined, locale, node.passiveOrRuneRef ?? node.id);
+  const name = localized(data, node.nameKey, locale, node.id);
+  const description = localized(data, node.descriptionKey, locale, node.passiveOrRuneRef ?? node.id);
   const canIncrement = canIncrementNodeV3(node, state.ownedRanks, state.simulatedRanks);
   const canDecrement = rank > ownedRank;
   const prerequisiteRows = node.prerequisites.map((prerequisite) => {
@@ -123,7 +127,7 @@ export function NodeDetailSheet({
     return {
       id: prerequisite.nodeId,
       rank: prerequisite.minRank,
-      label: prerequisiteNode ? localizeGameKey(prerequisiteNode.nameKey ?? undefined, locale, prerequisite.nodeId) : prerequisite.nodeId,
+      label: prerequisiteNode ? localized(data, prerequisiteNode.nameKey, locale, prerequisite.nodeId) : prerequisite.nodeId,
     };
   });
 
