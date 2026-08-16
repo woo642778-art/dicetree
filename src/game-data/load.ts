@@ -194,13 +194,13 @@ export const gameDataV3 = loadCanonicalGameData({
   passives: ([...passives01, ...passives02] as unknown as PassiveCompactRow[]).map(expandPassive),
   runes: ([...runes01, ...runes02, ...runes03, ...runes04] as unknown as RuneCompactRow[]).map(expandRune),
   enemies: enemiesJson as unknown as EnemyDefinitionV3[],
-  localization: mergeLocalization([
+  localization: mergeLocalization(([
     localization01,
     localization02,
     localization03,
     localization04,
     localization05,
-  ] as LocalizationCompact[]),
+  ] as unknown) as LocalizationCompact[]),
 });
 
 export const mechanicEvidenceV3 = mechanicEvidenceJson as unknown as MechanicEvidenceV3[];
