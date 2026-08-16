@@ -19,6 +19,12 @@ interface ExactTreeCanvasProps {
   onSelect: (id: number) => void;
 }
 
+interface ViewState {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 const FAMILY_COLOR: Record<RD2Family, string> = {
   nature: "#28a96b",
   engineering: "#657388",
@@ -27,7 +33,7 @@ const FAMILY_COLOR: Record<RD2Family, string> = {
   chaos: "#d95b72",
 };
 
-const FIT_VIEW = { x: 0, y: 20, scale: 0.92 } as const;
+const FIT_VIEW: ViewState = { x: 0, y: 20, scale: 0.92 };
 const VIEWBOX_WIDTH = 9800;
 const VIEWBOX_HEIGHT = 7800;
 
@@ -66,7 +72,7 @@ export function ExactTreeCanvas({
   familyFilter,
   onSelect,
 }: ExactTreeCanvasProps) {
-  const [view, setView] = useState({ ...FIT_VIEW });
+  const [view, setView] = useState<ViewState>({ ...FIT_VIEW });
   const drag = useRef<{ id: number; x: number; y: number } | null>(null);
   const nodeMap = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const normalizedQuery = query.trim().toLocaleLowerCase();
