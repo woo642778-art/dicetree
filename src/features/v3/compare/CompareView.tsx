@@ -1,6 +1,7 @@
 import type { CanonicalGameData } from "../../../game-data/types";
 import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { runScenarioV3 } from "../../../simulation/scenario/runScenario";
+import { CalculationDetails } from "../tree/CalculationDetails";
 
 export interface CompareViewProps {
   data: CanonicalGameData;
@@ -20,6 +21,10 @@ function diceName(data: CanonicalGameData, diceId: string, locale: "ko" | "en") 
   return key ? data.localization[locale][key] ?? data.localization.ko[key] ?? diceId : diceId;
 }
 
+function checkpointMap(result: ReturnType<typeof runScenarioV3>) {
+  return new Map((result.outcome?.checkpoints ?? []).map((point) => [point.seconds, point.average]));
+}
+
 export function CompareView({ data, locale, left, right }: CompareViewProps) {
   const leftResult = runScenarioV3(left, data);
   const rightResult = runScenarioV3(right, data);
@@ -34,6 +39,18 @@ export function CompareView({ data, locale, left, right }: CompareViewProps) {
   const winner = exact
     ? delta === 0 ? "tie" : delta! > 0 ? "right" : "left"
     : "partial";
+  const leftCheckpoints = checkpointMap(leftResult);
+  const rightCheckpoints = checkpointMap(rightResult);
+  const checkpointDeltas = [5, 10, 30].map((seconds) => {
+    const leftDamage = leftCheckpoints.get(seconds);
+    const rightDamage = rightCheckpoints.get(seconds);
+    return { seconds, delta: exact && leftDamage !== undefined && rightDamage !== undefined ? rightDamage - leftDamage : null };
+  });
+  const leftKill = leftResult.outcome?.killTimeSeconds?.average;
+  const rightKill = rightResult.outcome?.killTimeSeconds?.average;
+  const killDelta = exact && leftKill !== undefined && rightKill !== undefined && Number.isFinite(leftKill) && Number.isFinite(rightKill)
+    ? rightKill - leftKill
+    : null;
 
   return <main className="v3-compare-view" data-testid="v3-compare-view">
     <header>
@@ -49,12 +66,20 @@ export function CompareView({ data, locale, left, right }: CompareViewProps) {
           <div><dt>{locale === "ko" ? "기본 공격 DPS" : "Basic DPS"}</dt><dd>{number(leftResult.simulation.basicAttackDps)}</dd></div>
           <div><dt>{locale === "ko" ? "공격력" : "Attack"}</dt><dd>{number(leftResult.simulation.stats.attack)}</dd></div>
           <div><dt>{locale === "ko" ? "공격 간격" : "Attack interval"}</dt><dd>{number(leftResult.simulation.stats.attackInterval)}</dd></div>
+          <div><dt>5s</dt><dd>{number(leftCheckpoints.get(5))}</dd></div>
+          <div><dt>10s</dt><dd>{number(leftCheckpoints.get(10))}</dd></div>
+          <div><dt>30s</dt><dd>{number(leftCheckpoints.get(30))}</dd></div>
+          <div><dt>{locale === "ko" ? "처치시간" : "Kill time"}</dt><dd>{leftKill === undefined ? "—" : `${number(leftKill)}s`}</dd></div>
         </dl>
+        <CalculationDetails trace={leftResult.simulation.trace} locale={locale} />
       </section>
       <section className={`v3-compare-delta is-${winner}`} data-testid="compare-delta">
-        <span>{locale === "ko" ? "차이" : "Delta"}</span>
+        <span>{locale === "ko" ? "DPS 차이" : "DPS delta"}</span>
         <strong>{delta === null ? "—" : `${delta >= 0 ? "+" : ""}${number(delta)}`}</strong>
         <em>{percent === null ? (locale === "ko" ? "부분 계산" : "Partial") : `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%`}</em>
+        <dl>{checkpointDeltas.map((point) => <div key={point.seconds}><dt>{point.seconds}s</dt><dd>{point.delta === null ? "—" : `${point.delta >= 0 ? "+" : ""}${number(point.delta)}`}</dd></div>)}
+          <div><dt>{locale === "ko" ? "처치시간 차이" : "Kill-time delta"}</dt><dd>{killDelta === null ? "—" : `${killDelta >= 0 ? "+" : ""}${number(killDelta)}s`}</dd></div>
+        </dl>
         {winner === "partial" && <p>{locale === "ko" ? "어느 한쪽이라도 공식이 부분 검증이면 정확한 승자를 표시하지 않습니다." : "No exact winner is shown when either side is partial."}</p>}
       </section>
       <section data-testid="compare-right" className={winner === "right" ? "is-winner" : ""}>
@@ -64,7 +89,12 @@ export function CompareView({ data, locale, left, right }: CompareViewProps) {
           <div><dt>{locale === "ko" ? "기본 공격 DPS" : "Basic DPS"}</dt><dd>{number(rightResult.simulation.basicAttackDps)}</dd></div>
           <div><dt>{locale === "ko" ? "공격력" : "Attack"}</dt><dd>{number(rightResult.simulation.stats.attack)}</dd></div>
           <div><dt>{locale === "ko" ? "공격 간격" : "Attack interval"}</dt><dd>{number(rightResult.simulation.stats.attackInterval)}</dd></div>
+          <div><dt>5s</dt><dd>{number(rightCheckpoints.get(5))}</dd></div>
+          <div><dt>10s</dt><dd>{number(rightCheckpoints.get(10))}</dd></div>
+          <div><dt>30s</dt><dd>{number(rightCheckpoints.get(30))}</dd></div>
+          <div><dt>{locale === "ko" ? "처치시간" : "Kill time"}</dt><dd>{rightKill === undefined ? "—" : `${number(rightKill)}s`}</dd></div>
         </dl>
+        <CalculationDetails trace={rightResult.simulation.trace} locale={locale} />
       </section>
     </div>
   </main>;
