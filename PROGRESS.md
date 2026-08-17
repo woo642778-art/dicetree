@@ -1,16 +1,12 @@
-# Progress: Random Dice 2 player intelligence suite V4.7
+# Progress: Random Dice 2 V4.8.1 tree unlock and production deployment
 
-- Status: complete
-- Milestone: 8/8 (100%)
-- Updated: 2026-08-16T18:55:00
-- Current work: 전체 회귀 검증 및 시각 QA 완료
+- Status: active
+- Milestone: 4/6 (67%)
+- Updated: 2026-08-16T19:42:56
+- Current work: Complete: 198 unit/component tests, 15 extractor tests, 3 data validations, production build, 35 full browser passes with 5 intended skips, and desktop/mobile visual inspection passed.
 
 ## Log
-- 2026-08-16T18:16:12 | 1/8 | 플레이 가능 주사위 공용 필터를 적용하고 SP 광석·분쇄기·폭탄을 시뮬레이터/비교/추천/트리 선택에서 제외, 회귀 테스트 통과
-- 2026-08-16T18:16:12 | 2/8 | 내 덱 분석기 7개 점수·역할 충돌·시너지·슬롯별 교체 후보 3개와 전후 점수 구현, 단위/UI 테스트와 production build 통과
-- 2026-08-16T18:37:12 | 3/8 | 목표별 3단계 성장 로드맵과 경로 포함 ROI 히트맵 구현 및 단위 테스트 통과
-- 2026-08-16T18:37:12 | 4/8 | 예산 제한 상품 조합 최적화 구현 및 단위 테스트 통과
-- 2026-08-16T18:37:12 | 5/8 | 공식 업데이트 센터, 패치 diff 영향 분석, 메타 스냅샷 보존과 타임머신 구현
-- 2026-08-16T18:37:12 | 6/8 | HP·시간 16조건 일괄 시뮬레이션, A/B 조건표, 추천 계산 트레이스 구현
-- 2026-08-16T18:37:13 | 7/8 | 다중 로컬 프로필과 전용 공유 결과 페이지 구현
-- 2026-08-16T18:55:00 | 8/8 | 63개 테스트 파일 187개 테스트, 데이터 검증, production build, 데스크톱·모바일 Playwright 29개 통과 및 신규 화면 시각 QA 완료
+- 2026-08-16T19:39:55 | 1/6 | Complete: verified branch, client hash, deterministic static re-extraction, and the direct-purchase root cause.
+- 2026-08-16T19:39:55 | 2/6 | Complete: added failing component and browser regressions for direct purchase, ownership entry, unlock propagation, and live balance.
+- 2026-08-16T19:39:55 | 3/6 | Complete: separated direct purchase from prerequisite routes and added prerequisite-aware owned-rank entry.
+- 2026-08-16T19:42:56 | 4/6 | Complete: 198 unit/component tests, 15 extractor tests, 3 data validations, production build, 35 full browser passes with 5 intended skips, and desktop/mobile visual inspection passed.

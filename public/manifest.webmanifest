@@ -1,0 +1,14 @@
+{
+  "name": "Random Dice 2 Dice Tree Lab",
+  "short_name": "DiceTree",
+  "description": "Dice Tree planning, deck analysis, simulation and account optimization",
+  "start_url": "/dicetree/",
+  "scope": "/dicetree/",
+  "display": "standalone",
+  "background_color": "#100d1c",
+  "theme_color": "#24153a",
+  "lang": "ko",
+  "icons": [
+    { "src": "/dicetree/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

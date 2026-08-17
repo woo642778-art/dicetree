@@ -115,4 +115,29 @@ describe("NodeDetailSheet", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "선행 노드 포함 가상 구매" })[0]);
     expect(applyRoute).toHaveBeenCalledWith({ root: 2, child: 1 });
   });
+
+  it("treats an affordable route with no missing prerequisites as a direct purchase", () => {
+    const applyRoute = vi.fn();
+    const route = planNextRankRouteV3(data.tree, { root: 1 }, "root");
+    render(<NodeDetailSheet
+      node={root} data={data} state={state()} locale="ko" route={route} routeAffordable
+      onApplyRoute={applyRoute} onSetSimulatedRank={() => {}}
+    />);
+
+    expect(screen.queryByRole("button", { name: "선행 노드 포함 가상 구매" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("선행 조건 충족");
+    fireEvent.click(screen.getByRole("button", { name: "이 노드 가상 구매" }));
+    expect(applyRoute).toHaveBeenCalledWith({ root: 2 });
+  });
+
+  it("lets users record an already-owned rank separately from a simulated purchase", () => {
+    const setOwned = vi.fn();
+    render(<NodeDetailSheet
+      node={root} data={data} state={state()} locale="ko"
+      onSetOwnedRank={setOwned} onSetSimulatedRank={() => {}}
+    />);
+
+    fireEvent.click(screen.getByRole("button", { name: "보유 랭크 올리기" }));
+    expect(setOwned).toHaveBeenCalledWith("root", 2);
+  });
 });

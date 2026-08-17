@@ -14,6 +14,7 @@ import "./app/v45-guided-analysis.css";
 import "./app/v46-tree-core.css";
 import "./app/v47-player-intelligence.css";
 import "./app/v47-new-features.css";
+import "./app/v48-account-intelligence.css";
 import "./app/accessibility.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -23,3 +24,7 @@ createRoot(document.getElementById("root")!).render(
     </I18nProvider>
   </StrictMode>,
 );
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/dicetree/sw.js", { scope: "/dicetree/" }).catch(() => undefined));
+}

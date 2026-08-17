@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import type { DiceFamilyV3 } from "../../../game-data/types";
 import { gameDataV3 } from "../../../game-data/load";
 import { playableDiceV3 } from "../../../game-data/playableDice";
+import { createDigitalTwinV48, digitalTwinFromProfileV48, updateTwinPlannerV48 } from "../../../account/digitalTwinV48";
 import { recommendDeckV4 } from "../../../deck-lab/recommendDeck";
 import { useI18n } from "../../../i18n/I18nContext";
 import { recommendTreeInvestmentsV3, type V3RecommendationSet } from "../../../optimizer/recommendV3";
@@ -28,8 +29,9 @@ import { NodeDetailSheet } from "../tree/NodeDetailSheet";
 import { GuidedRoutePlanner } from "../tree/GuidedRoutePlanner";
 import { RecommendationStrip } from "../tree/RecommendationStrip";
 import { TreeCanvasV3 } from "../tree/TreeCanvasV3";
+import { AccountIntelligenceView } from "../account/AccountIntelligenceView";
 
-type Tab = "tree" | "simulator" | "decks" | "compare" | "shop" | "updates";
+type Tab = "account" | "tree" | "simulator" | "decks" | "compare" | "shop" | "updates";
 
 const limits = {
   validNodeIds: new Set(gameDataV3.tree.map((node) => node.id)),
@@ -97,8 +99,11 @@ export function V3Shell() {
   const [deckGoal, setDeckGoal] = useState<"dealer" | "support" | "balanced">("balanced");
   const [spendProfile, setSpendProfile] = useState<"free" | "light" | "invested">("free");
   const [activeDeckIds, setActiveDeckIds] = useState<string[]>(DEFAULT_DECK_IDS);
+  const [digitalTwin, setDigitalTwin] = useState(() => createDigitalTwinV48({ planner: initialState(), activeDeckIds: DEFAULT_DECK_IDS, deckGoal: "balanced", spendProfile: "free" }));
   const [profileOpen, setProfileOpen] = useState(false);
   const [shareComposerOpen, setShareComposerOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
   const [shareTitle, setShareTitle] = useState(locale === "ko" ? "내 다이스 트리 빌드" : "My Dice Tree Build");
   const [shareNote, setShareNote] = useState("");
   const [sharedResult, setSharedResult] = useState<SharedResultV47 | null>(() => {
@@ -126,11 +131,24 @@ export function V3Shell() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen((open) => !open);
+      }
+      if (event.key === "Escape") setCommandOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const spent = useMemo(() => simulatedInvestmentCost(gameDataV3.tree, state), [state]);
   const resources = useMemo(() => projectResources(state.inventory, spent), [spent, state.inventory]);
   const selectedNode = gameDataV3.tree.find((node) => node.id === selectedNodeId);
   const currentRanks = useMemo(() => rankMap(state), [state]);
   const currentInput = useMemo(() => simulationInput(state), [state]);
+  const currentTwin = useMemo(() => updateTwinPlannerV48(digitalTwin, state, activeDeckIds), [activeDeckIds, digitalTwin, state]);
   const selectedRoute = useMemo(() => {
     if (!selectedNodeId) return undefined;
     try { return planNextRankRouteV3(gameDataV3.tree, currentRanks, selectedNodeId); } catch { return undefined; }
@@ -152,6 +170,23 @@ export function V3Shell() {
     () => new Set(recommendations.verified.map((entry) => entry.nodeId)),
     [recommendations],
   );
+  const commandResults = useMemo(() => {
+    const normalized = commandQuery.trim().toLocaleLowerCase();
+    const tabs: Array<{ id: string; kind: "tab"; tab: Tab; label: string }> = (["account", "tree", "simulator", "decks", "compare", "shop", "updates"] as Tab[]).map((target) => ({
+      id: `tab:${target}`, kind: "tab", tab: target,
+      label: target === "account" ? (locale === "ko" ? "내 계정 인텔리전스" : "Account Intelligence") : target === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : target === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : target === "decks" ? (locale === "ko" ? "덱 연구소" : "Deck Lab") : target === "compare" ? (locale === "ko" ? "비교" : "Compare") : target === "shop" ? (locale === "ko" ? "구매 효율" : "Purchase Value") : (locale === "ko" ? "업데이트" : "Updates"),
+    }));
+    const dice = selectableDice.map((entry) => ({ id: `dice:${entry.id}`, kind: "dice" as const, diceId: entry.id, label: entry.nameKey ? gameDataV3.localization[locale][entry.nameKey] ?? entry.id : entry.id }));
+    const nodes = gameDataV3.tree.filter((node) => node.kind !== "connector").map((node) => ({ id: `node:${node.id}`, kind: "node" as const, nodeId: node.id, label: node.nameKey ? gameDataV3.localization[locale][node.nameKey] ?? node.id : node.id, effect: node.descriptionKey ? gameDataV3.localization[locale][node.descriptionKey] ?? "" : "" }));
+    return [...tabs, ...dice, ...nodes].filter((entry) => !normalized || `${entry.label} ${"effect" in entry ? entry.effect : ""} ${entry.id}`.toLocaleLowerCase().includes(normalized)).slice(0, 12);
+  }, [commandQuery, locale]);
+  const openCommandResult = (entry: (typeof commandResults)[number]) => {
+    if (entry.kind === "tab") setTab(entry.tab);
+    if (entry.kind === "dice") { dispatch({ type: "setScenario", scenario: { diceId: entry.diceId, conditionValues: {} } }); setTab("simulator"); }
+    if (entry.kind === "node") { setSelectedNodeId(entry.nodeId); setQuery(entry.label); setTab("tree"); }
+    setCommandOpen(false);
+    setCommandQuery("");
+  };
 
   const share = async () => {
     const encoded = encodeV3(state);
@@ -181,6 +216,7 @@ export function V3Shell() {
     setActiveDeckIds(profile.activeDeckIds);
     setDeckGoal(profile.deckGoal);
     setSpendProfile(profile.spendProfile);
+    setDigitalTwin(digitalTwinFromProfileV48(profile));
     setProfileOpen(false);
     setShareNotice(locale === "ko" ? `${profile.name} 프로필을 불러왔습니다.` : `Loaded ${profile.name}.`);
   };
@@ -199,17 +235,18 @@ export function V3Shell() {
 
   return <div className={`v3-app v41-mode-${tab}`} data-testid="v3-app">
     <header className="v3-header">
-      <button className="v3-brand" type="button" onClick={() => setTab("tree")} aria-label="Random Dice 2 V3">
+      <button className="v3-brand" type="button" onClick={() => setTab("account")} aria-label="Random Dice 2 V3">
         <span className="v3-brand-mark"><b>RD</b><i>2</i></span>
         <span><strong>RANDOM DICE 2</strong><small>{locale === "ko" ? "다이스 트리 연구소" : "Dice Tree Lab"}</small></span>
       </button>
       <nav className="v3-nav" aria-label={locale === "ko" ? "주요 화면" : "Primary views"}>
-        {(["tree", "simulator", "decks", "compare", "shop", "updates"] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>
-          {item === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : item === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : item === "decks" ? (locale === "ko" ? "덱 연구소" : "Deck Lab") : item === "compare" ? (locale === "ko" ? "비교" : "Compare") : item === "shop" ? (locale === "ko" ? "구매 효율" : "Purchase Value") : (locale === "ko" ? "업데이트" : "Updates")}
+        {(["account", "tree", "simulator", "decks", "compare", "shop", "updates"] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>
+          {item === "account" ? (locale === "ko" ? "내 계정" : "My Account") : item === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : item === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : item === "decks" ? (locale === "ko" ? "덱 연구소" : "Deck Lab") : item === "compare" ? (locale === "ko" ? "비교" : "Compare") : item === "shop" ? (locale === "ko" ? "구매 효율" : "Purchase Value") : (locale === "ko" ? "업데이트" : "Updates")}
         </button>)}
       </nav>
       <div className="v3-header-actions">
         <span className="v41-creator-credit">{locale === "ko" ? "제작자 모님" : "Created by Monim"}</span>
+        <button className="v48-command-open" type="button" onClick={() => setCommandOpen(true)} aria-label={locale === "ko" ? "통합 검색" : "Universal search"}>⌕ <span>⌘K</span></button>
         <button className="v47-profile-button" type="button" onClick={() => setProfileOpen(true)}>{locale === "ko" ? "내 프로필" : "Profiles"}</button>
         <button className="v47-result-button" type="button" onClick={() => setShareComposerOpen(true)}>{locale === "ko" ? "결과 카드" : "Result card"}</button>
         <button className="v47-state-share-button" type="button" data-short-label={locale === "ko" ? "공유" : "Share"} aria-label={locale === "ko" ? "공유" : "Share"} onClick={share}>{locale === "ko" ? "상태 공유" : "State link"}</button>
@@ -225,8 +262,23 @@ export function V3Shell() {
     </section>
 
     {shareNotice && <div className="v3-notice" role="status"><span>{shareNotice}</span><button type="button" onClick={() => setShareNotice(undefined)}>×</button></div>}
-    {profileOpen && <ProfileManagerV3 locale={locale} state={state} activeDeckIds={activeDeckIds} deckGoal={deckGoal} spendProfile={spendProfile} onLoad={loadProfile} onClose={() => setProfileOpen(false)} />}
+    {commandOpen && <div className="v48-command-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCommandOpen(false); }}><section className="v48-command-palette" role="dialog" aria-modal="true" aria-label={locale === "ko" ? "통합 검색" : "Universal search"}><header><input autoFocus aria-label={locale === "ko" ? "통합 검색어" : "Universal search query"} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commandResults[0]) openCommandResult(commandResults[0]); }} placeholder={locale === "ko" ? "화면, 주사위, 노드, 효과 검색" : "Search views, dice, nodes, effects"} /><kbd>ESC</kbd></header><div>{commandResults.map((entry) => <button key={entry.id} type="button" onClick={() => openCommandResult(entry)}><span>{entry.kind === "tab" ? (locale === "ko" ? "화면" : "View") : entry.kind === "dice" ? (locale === "ko" ? "주사위" : "Dice") : (locale === "ko" ? "노드" : "Node")}</span><b>{entry.label}</b>{"effect" in entry && entry.effect ? <small>{entry.effect}</small> : null}</button>)}</div><footer>{locale === "ko" ? "Enter로 이동 · Esc로 닫기" : "Enter to open · Esc to close"}</footer></section></div>}
+    {profileOpen && <ProfileManagerV3 locale={locale} state={state} activeDeckIds={activeDeckIds} deckGoal={deckGoal} spendProfile={spendProfile} digitalTwin={currentTwin} onLoad={loadProfile} onClose={() => setProfileOpen(false)} />}
     {shareComposerOpen && <ShareResultComposer locale={locale} title={shareTitle} note={shareNote} onTitleChange={setShareTitle} onNoteChange={setShareNote} onCreate={createResultShare} onClose={() => setShareComposerOpen(false)} />}
+
+    {tab === "account" && <AccountIntelligenceView
+      data={gameDataV3}
+      locale={locale}
+      state={state}
+      input={currentInput}
+      deckIds={activeDeckIds}
+      twin={currentTwin}
+      onTwinChange={setDigitalTwin}
+      onApplyRanks={(ranks) => dispatch({ type: "applyRoute", ranks })}
+      onDeckChange={setActiveDeckIds}
+      onOpenTree={() => setTab("tree")}
+      onOpenSimulator={() => setTab("simulator")}
+    />}
 
     {tab === "tree" && <main className={`v3-tree-view ${selectedNode || guidedRouteOpen ? "has-detail" : ""}`} data-testid="v3-tree-view">
       <section className="v3-tree-main">
@@ -271,6 +323,7 @@ export function V3Shell() {
         routeAffordable={selectedRouteAffordable}
         onApplyRoute={(ranks) => dispatch({ type: "applyRoute", ranks })}
         onCancelPlan={() => dispatch({ type: "setSimulatedRank", nodeId: selectedNode.id, rank: state.ownedRanks[selectedNode.id] ?? 0 })}
+        onSetOwnedRank={(nodeId, rank) => dispatch({ type: "setOwnedRank", nodeId, rank })}
         onSetSimulatedRank={(nodeId, rank) => dispatch({ type: "setSimulatedRank", nodeId, rank })}
         onClose={() => setSelectedNodeId(undefined)}
       />}
