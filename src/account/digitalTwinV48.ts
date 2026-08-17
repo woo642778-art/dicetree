@@ -1,5 +1,6 @@
 import type { PlannerStateV3 } from "../planner-v3/types";
 import type { StoredDeckGoalV3, StoredProfileV3, StoredSpendProfileV3 } from "../storage/profileStorageV3";
+import type { AccountIdentityV49 } from "./accountImportV49";
 
 export type AccountModeV48 = "coop" | "arena" | "all";
 export type AccountUiModeV48 = "beginner" | "advanced";
@@ -57,6 +58,7 @@ export interface UserDigitalTwinV48 {
   preferences: AccountPreferencesV48;
   resources: AccountResourcesV48;
   decisions: AccountDecisionV48[];
+  identity?: AccountIdentityV49;
 }
 
 export function createDigitalTwinV48(input: {
@@ -100,7 +102,11 @@ export function isDigitalTwinV48(value: unknown): value is UserDigitalTwinV48 {
     && stringArray(twin.preferences?.lockedNodeIds)
     && stringArray(twin.preferences?.bannedNodeIds)
     && typeof twin.resources?.dailyGold === "number"
-    && typeof twin.resources?.dailyCore === "number";
+    && typeof twin.resources?.dailyCore === "number"
+    && (twin.identity === undefined || (typeof twin.identity.nickname === "string"
+      && ["verified-import", "observed-ranking"].includes(twin.identity.source)
+      && typeof twin.identity.importedAt === "string"
+      && (twin.identity.pid === undefined || typeof twin.identity.pid === "string")));
 }
 
 export function digitalTwinFromProfileV48(profile: StoredProfileV3): UserDigitalTwinV48 {

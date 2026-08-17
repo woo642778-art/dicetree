@@ -13,6 +13,8 @@ import { analyzeRosterMeta, NEXT_META_FORECASTS } from "../../../deck-lab/metaFo
 import { DiceIcon } from "../shared/DiceIcon";
 import { MyDeckAnalyzer } from "./MyDeckAnalyzer";
 import { MetaTimeMachine } from "./MetaTimeMachine";
+import { RivalBuilderV49 } from "./RivalBuilderV49";
+import { DiceRankingV49 } from "./DiceRankingV49";
 
 export interface DeckLabViewProps {
   data: CanonicalGameData;
@@ -86,7 +88,7 @@ export function DeckLabView(props: DeckLabViewProps) {
       <div>
         <small>{locale === "ko" ? "협동 랭킹 · 전체 주사위 분석" : "CO-OP RANKING · FULL ROSTER ANALYSIS"}</small>
         <h1>{locale === "ko" ? "덱 연구소" : "Deck Lab"}</h1>
-        <p>{locale === "ko" ? "최신 협동 랭킹의 실제 조합과 55종 주사위의 능력치·효과를 함께 분석합니다." : "Combines observed co-op ranking compositions with stats and effects across all 55 dice."}</p>
+        <p>{locale === "ko" ? "최신 협동 랭킹의 실제 조합과 전체 플레이 가능 주사위의 능력치·효과를 함께 분석합니다." : "Combines observed co-op ranking compositions with stats and effects across every playable die."}</p>
       </div>
       <aside className="v4-meta-status" data-testid="v4-meta-status">
         <strong>{locale === "ko" ? `${CO_OP_RANKING_SNAPSHOT_DATE.replaceAll("-", ".")} 협동 랭킹 스냅샷` : `Co-op ranking snapshot · ${CO_OP_RANKING_SNAPSHOT_DATE}`}</strong>
@@ -101,6 +103,10 @@ export function DeckLabView(props: DeckLabViewProps) {
       onChange={props.onActiveDeckChange ?? (() => undefined)}
       onSimulate={props.onSimulate}
     />
+
+    <RivalBuilderV49 data={data} locale={locale} diceIds={props.activeDeckIds ?? recommendation.dice.map((entry) => entry.diceId)} onApplyRevision={props.onActiveDeckChange ?? (() => undefined)} />
+
+    <DiceRankingV49 data={data} locale={locale} onSelectDice={props.onSimulate} />
 
     <section className="v43-ranking-snapshot" data-testid="v43-ranking-snapshot">
       <header className="v43-section-heading">
