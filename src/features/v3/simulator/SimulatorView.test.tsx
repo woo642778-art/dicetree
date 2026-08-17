@@ -71,7 +71,7 @@ describe("SimulatorView", () => {
     expect(screen.queryByText("주변 기어 주사위 수")).not.toBeInTheDocument();
     const list = screen.getByRole("listbox", { name: "주사위 목록" });
     fireEvent.click(within(list).getByRole("option", { name: /기어/ }));
-    expect(screen.getByText("주변 기어 주사위 수")).toBeInTheDocument();
+    expect(within(screen.getByTestId("v3-condition-controls")).getByText("주변 기어 주사위 수")).toBeInTheDocument();
     expect(screen.getByTestId("v3-condition-controls")).toHaveTextContent("주변 기어 주사위 수");
   });
 
@@ -84,5 +84,11 @@ describe("SimulatorView", () => {
 
     fireEvent.change(screen.getByRole("spinbutton", { name: "적 HP" }), { target: { value: "2000" } });
     expect(screen.getByTestId("v3-damage-graph")).toHaveTextContent("40s");
+    fireEvent.change(screen.getByRole("spinbutton", { name: "적 HP" }), { target: { value: "" } });
+    expect(screen.getByRole("spinbutton", { name: "적 HP" })).toHaveValue(null);
+    expect(screen.getByTestId("v45-scenario-summary")).toHaveTextContent("미입력");
+    fireEvent.change(screen.getByRole("spinbutton", { name: "영구 주사위 레벨" }), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "입력 초기화" }));
+    expect(screen.getByRole("spinbutton", { name: "영구 주사위 레벨" })).toHaveValue(1);
   });
 });

@@ -40,7 +40,7 @@ function fallbackLabel(key: string, locale: "ko" | "en") {
     .join(" ");
 }
 
-function resolveLabel(
+export function conditionLabelV3(
   key: string,
   locale: "ko" | "en",
   labelForKey?: (labelKey: string) => string,
@@ -58,7 +58,7 @@ export function ConditionControls({ definitions, values, locale, labelForKey, on
   return <section className="v3-condition-controls" data-testid="v3-condition-controls">
     <h3>{locale === "ko" ? "특수 조건" : "Special conditions"}</h3>
     {definitions.map((definition) => {
-      const label = resolveLabel(definition.labelKey, locale, labelForKey);
+      const label = conditionLabelV3(definition.labelKey, locale, labelForKey);
       const value = values[definition.key] ?? definition.defaultValue;
       if (definition.type === "boolean") {
         return <label key={definition.key} className="v3-toggle-row">
@@ -75,7 +75,7 @@ export function ConditionControls({ definitions, values, locale, labelForKey, on
           <span>{label}</span>
           <select value={String(value)} onChange={(event) => onChange(definition.key, event.target.value)}>
             {(definition.options ?? []).map((option) => <option key={option.value} value={option.value}>
-              {resolveLabel(option.labelKey, locale, labelForKey)}
+              {conditionLabelV3(option.labelKey, locale, labelForKey)}
             </option>)}
           </select>
         </label>;

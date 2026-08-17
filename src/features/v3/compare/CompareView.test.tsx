@@ -12,7 +12,7 @@ const data: CanonicalGameData = {
     { id: "a", nameKey: "dice.a", baseStats: { attack: 100, attackInterval: 2, extra: {} }, levelGrowth: [], battleUpgradeGrowth: [], sourceRefs: [] },
     { id: "b", nameKey: "dice.b", baseStats: { attack: 120, attackInterval: 2, extra: {} }, levelGrowth: [], battleUpgradeGrowth: [], sourceRefs: [] },
     { id: "partial", nameKey: "dice.partial", mechanicRuleId: "Unknown", baseStats: { attack: 200, attackInterval: 1, extra: {} }, levelGrowth: [], battleUpgradeGrowth: [], sourceRefs: [] },
-  ], tree: [], passives: [], runes: [], enemies: [],
+  ], tree: [{ id: "unknown-tree", family: "core", kind: "perk", position: { x: 0, y: 0 }, prerequisites: [], maxRank: 1, costsByRank: [{ gold: 1, stone: 0 }], passiveOrRuneRef: "rune:unknown", sourceRefs: [] }], passives: [], runes: [{ id: "unknown", kind: "unknown", values: {}, confidence: "verified", sourceRefs: [] }], enemies: [],
   localization: { ko: { "dice.a": "A 주사위", "dice.b": "B 주사위", "dice.partial": "부분 주사위" }, en: {} },
 };
 
@@ -30,10 +30,17 @@ describe("CompareView", () => {
     expect(screen.getByTestId("compare-right")).toHaveClass("is-winner");
   });
 
-  it("does not declare a numeric winner when either configuration is partial", () => {
+  it("compares the shared basic-attack scope when a special mechanic is partial", () => {
     render(<CompareView data={data} locale="ko" left={input("a")} right={input("partial")} />);
-    expect(screen.getByTestId("compare-delta")).toHaveTextContent("부분 계산");
-    expect(screen.getByTestId("compare-right")).not.toHaveClass("is-winner");
-    expect(screen.getByTestId("compare-left")).not.toHaveClass("is-winner");
+    expect(screen.getByTestId("compare-delta")).toHaveTextContent("추정 비교");
+    expect(screen.getByTestId("compare-delta")).toHaveTextContent("+150");
+    expect(screen.getByTestId("compare-right")).toHaveClass("is-winner");
+  });
+
+  it("removes tree effects from both sides when either tree path is unresolved", () => {
+    render(<CompareView data={data} locale="ko" left={{ ...input("a"), treeRanks: { "unknown-tree": 1 } }} right={input("b")} />);
+    expect(screen.getByTestId("compare-left")).toHaveTextContent("트리·특수효과 제외 예상 DPS");
+    expect(screen.getByTestId("compare-right")).toHaveTextContent("트리·특수효과 제외 예상 DPS");
+    expect(screen.getByTestId("compare-delta")).toHaveTextContent("추정 비교");
   });
 });

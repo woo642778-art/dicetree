@@ -23,7 +23,8 @@ export function runScenarioV3(
   if (!dice) throw new Error(`Unknown dice id: ${input.diceId}`);
   const mechanic = mechanicRule.evaluate({ dice, input, data });
 
-  const outcome = simulation.practicalDps === null
+  const hasUnresolvedTreeEffect = simulation.tree.unresolvedNodeIds.length > 0;
+  const outcome = simulation.practicalDps === null || hasUnresolvedTreeEffect
     ? null
     : buildDamageOutcomeV3(
         deterministicDpsRange(simulation.practicalDps),
@@ -33,7 +34,10 @@ export function runScenarioV3(
 
   let baselineSimulation = simulation;
   let treeExcluded = false;
-  if (simulation.basicAttackDps === null && simulation.projectedBasicAttackDps == null && Object.values(input.treeRanks).some((rank) => rank > 0)) {
+  if ((
+    hasUnresolvedTreeEffect
+    || (simulation.basicAttackDps === null && simulation.projectedBasicAttackDps == null)
+  ) && Object.values(input.treeRanks).some((rank) => rank > 0)) {
     baselineSimulation = simulateDiceWithTreeV3({ ...input, treeRanks: {} }, data);
     treeExcluded = true;
   }
