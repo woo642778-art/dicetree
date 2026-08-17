@@ -1,14 +1,16 @@
-# Progress: Random Dice 2 center tree hub and fear icon V4.6
+# Progress: Random Dice 2 player intelligence suite V4.7
 
-- Status: completed
-- Milestone: 5/5 (100%)
-- Updated: 2026-08-16T17:58:04
-- Current work: Completed and verified locally; external deployment intentionally not performed without approval for this change.
+- Status: complete
+- Milestone: 8/8 (100%)
+- Updated: 2026-08-16T18:55:00
+- Current work: 전체 회귀 검증 및 시각 QA 완료
 
 ## Log
-- 2026-08-16T17:49:51 | 1/5 | Confirmed Fear used Runenode_Fear_0 incorrectly; screenshot and extracted artwork identify Dice_TRANSFER3. Defined family counters as effective invested ranks.
-- 2026-08-16T17:52:56 | 2/5 | Replaced Fear rune badge with Dice_TRANSFER3, regenerated the icon, and added an exact-source regression test.
-- 2026-08-16T17:52:56 | 3/5 | Added the in-game center plaque, five localized family counters, effective-rank aggregation, live update animation, and component coverage.
-- 2026-08-16T17:55:59 | 4/5 | Passed desktop and mobile Playwright checks for the center hub, live increment/decrement, Fear asset URL, and reviewed both QA screenshots.
-- 2026-08-16T17:57:55 | 5/5 | Full verification passed: extractor tests 15, Vitest 165, production build, Playwright 26 passed with 4 intentional project skips; final diff and assets reviewed.
-- 2026-08-16T17:58:04 | 5/5 | Completed and verified locally; external deployment intentionally not performed without approval for this change.
+- 2026-08-16T18:16:12 | 1/8 | 플레이 가능 주사위 공용 필터를 적용하고 SP 광석·분쇄기·폭탄을 시뮬레이터/비교/추천/트리 선택에서 제외, 회귀 테스트 통과
+- 2026-08-16T18:16:12 | 2/8 | 내 덱 분석기 7개 점수·역할 충돌·시너지·슬롯별 교체 후보 3개와 전후 점수 구현, 단위/UI 테스트와 production build 통과
+- 2026-08-16T18:37:12 | 3/8 | 목표별 3단계 성장 로드맵과 경로 포함 ROI 히트맵 구현 및 단위 테스트 통과
+- 2026-08-16T18:37:12 | 4/8 | 예산 제한 상품 조합 최적화 구현 및 단위 테스트 통과
+- 2026-08-16T18:37:12 | 5/8 | 공식 업데이트 센터, 패치 diff 영향 분석, 메타 스냅샷 보존과 타임머신 구현
+- 2026-08-16T18:37:12 | 6/8 | HP·시간 16조건 일괄 시뮬레이션, A/B 조건표, 추천 계산 트레이스 구현
+- 2026-08-16T18:37:13 | 7/8 | 다중 로컬 프로필과 전용 공유 결과 페이지 구현
+- 2026-08-16T18:55:00 | 8/8 | 63개 테스트 파일 187개 테스트, 데이터 검증, production build, 데스크톱·모바일 Playwright 29개 통과 및 신규 화면 시각 QA 완료

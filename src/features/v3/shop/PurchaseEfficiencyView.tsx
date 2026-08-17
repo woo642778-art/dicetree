@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { OFFICIAL_APP_STORE_KR_URL, purchaseDisplayPrice, REFERENCE_KRW_PER_USD, type PurchaseGoal, type PurchaseProduct, type PurchaseProfile } from "../../../purchase-efficiency/products";
 import { findIntroOffer, recommendPurchasesV41 } from "../../../purchase-efficiency/recommend";
+import { optimizePurchaseBudgetV47 } from "../../../purchase-efficiency/optimizeBudget";
 
 function rewardText(product: PurchaseProduct, locale: "ko" | "en") {
   const rewards = product.rewards;
@@ -25,9 +26,14 @@ function Price({ product, locale }: { product: PurchaseProduct; locale: "ko" | "
 export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
   const [profile, setProfile] = useState<PurchaseProfile>("light");
   const [goal, setGoal] = useState<PurchaseGoal>("overall");
+  const [budgets, setBudgets] = useState({ ko: 30_000, en: 30 });
+  const [currentCore, setCurrentCore] = useState(420);
+  const [targetCore, setTargetCore] = useState(500);
   const ranking = useMemo(() => recommendPurchasesV41(profile, goal), [goal, profile]);
   const intro = findIntroOffer();
   const top = ranking[0];
+  const optimized = useMemo(() => optimizePurchaseBudgetV47({ locale, budget: budgets[locale], goal, currentCore, targetCore }), [budgets, currentCore, goal, locale, targetCore]);
+  const money = (value: number) => locale === "ko" ? `₩${value.toLocaleString("ko-KR")}` : `$${value.toFixed(2)}`;
 
   return <main className="v41-shop" data-testid="v41-purchase-efficiency">
     <header className="v41-shop-hero">
@@ -60,6 +66,21 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
         </select>
       </label>
       <p>{locale === "ko" ? "효율 수치는 게임 내부의 패키지 효율 지표이며 할인율이나 수익률을 뜻하지 않습니다." : "The value is an in-game package-efficiency metric, not a discount or financial return."}</p>
+    </section>
+
+    <section className="v47-budget-optimizer" data-testid="v47-budget-optimizer">
+      <header><div><small>{locale === "ko" ? "배낭 최적화 · 상품별 1회" : "KNAPSACK OPTIMIZATION · ONE OF EACH"}</small><h2>{locale === "ko" ? "예산으로 최적 과금 조합 찾기" : "Best package combination for a budget"}</h2><p>{locale === "ko" ? "예산 안의 모든 상품 조합을 계산해 목표 코어까지의 부족분과 낭비를 최소화합니다." : "Evaluates every package combination under budget to minimize target shortfall and waste."}</p></div><strong>{optimized.evaluatedCombinations.toLocaleString()}<span>{locale === "ko" ? "개 조합 검토" : " combinations"}</span></strong></header>
+      <div className="v47-budget-inputs">
+        <label>{locale === "ko" ? "최대 예산" : "Maximum budget"}<input aria-label={locale === "ko" ? "최대 예산" : "Maximum budget"} type="number" min="0" value={budgets[locale]} onChange={(event) => setBudgets((current) => ({ ...current, [locale]: Math.max(0, Number(event.target.value) || 0) }))} /></label>
+        <label>{locale === "ko" ? "현재 코어" : "Current Core"}<input aria-label={locale === "ko" ? "현재 코어" : "Current Core"} type="number" min="0" value={currentCore} onChange={(event) => setCurrentCore(Math.max(0, Number(event.target.value) || 0))} /></label>
+        <label>{locale === "ko" ? "목표 코어" : "Target Core"}<input aria-label={locale === "ko" ? "목표 코어" : "Target Core"} type="number" min="0" value={targetCore} onChange={(event) => setTargetCore(Math.max(0, Number(event.target.value) || 0))} /></label>
+      </div>
+      <div className="v47-budget-result">
+        <div className="v47-combo-summary"><small>{optimized.reachesTarget ? (locale === "ko" ? "목표 도달 최소 낭비 조합" : "Target-reaching minimum-waste combination") : (locale === "ko" ? "예산 내 목표에 가장 가까운 조합" : "Closest combination under budget")}</small><strong>{money(optimized.spent)}</strong><p>{locale === "ko" ? `잔액 ${money(optimized.remainingBudget)} · 코어 ${optimized.rewards.core.toLocaleString()} · 골드 ${optimized.rewards.gold.toLocaleString()}` : `Remaining ${money(optimized.remainingBudget)} · Core ${optimized.rewards.core.toLocaleString()} · Gold ${optimized.rewards.gold.toLocaleString()}`}</p><b className={optimized.reachesTarget ? "is-reached" : "is-short"}>{optimized.reachesTarget ? (locale === "ko" ? `목표 도달 · 잉여 코어 ${optimized.coreWaste}` : `Target reached · ${optimized.coreWaste} extra Core`) : (locale === "ko" ? `목표까지 코어 ${optimized.coreShortfall} 부족` : `${optimized.coreShortfall} Core short`)}</b></div>
+        <ol>{optimized.products.length ? optimized.products.map((product) => <li key={product.id}><span>{product.nameKo}</span><strong>{money(purchaseDisplayPrice(product, locale).value)}</strong><small>{rewardText(product, locale).join(" · ")}</small></li>) : <li><span>{locale === "ko" ? "예산 안에 포함 가능한 상품이 없습니다." : "No listed package fits the budget."}</span></li>}</ol>
+      </div>
+      {optimized.nextUpgrade && <footer>{locale === "ko" ? `${money(optimized.nextUpgrade.extraSpend)}를 더 쓰면 목표 가중 가치 지수가 ${optimized.nextUpgrade.valueGain.toLocaleString()} 상승하는 다음 조합이 있습니다.` : `The next higher-value combination costs ${money(optimized.nextUpgrade.extraSpend)} more and adds ${optimized.nextUpgrade.valueGain.toLocaleString()} weighted-value points.`}</footer>}
+      <p className="v47-budget-limit">{locale === "ko" ? "판매 횟수와 실시간 노출 여부는 확인할 수 없어 각 상품을 최대 1개로 계산합니다. 사이트에서 결제는 이루어지지 않습니다." : "Availability limits are not live, so each listed package is capped at one. No purchase occurs on this site."}</p>
     </section>
 
     {top && <section className="v41-top-pick" data-testid="v41-top-pick">

@@ -2,6 +2,7 @@ import type { CanonicalGameData } from "../../../game-data/types";
 import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { runScenarioV3 } from "../../../simulation/scenario/runScenario";
 import { summarizeScenarioV3, type ScenarioMetricKindV3, type ScenarioSummaryV3 } from "../../../simulation/scenario/summarizeScenario";
+import { runScenarioSweepV3 } from "../../../simulation/scenario/runScenarioSweep";
 import { CalculationDetails } from "../tree/CalculationDetails";
 
 export interface CompareViewProps {
@@ -94,6 +95,10 @@ export function CompareView({ data, locale, left, right }: CompareViewProps) {
   const killDelta = comparable && leftKill !== undefined && rightKill !== undefined && Number.isFinite(leftKill) && Number.isFinite(rightKill)
     ? rightKill - leftKill
     : null;
+  const sweepHp = [100_000, 500_000, 1_000_000, 5_000_000];
+  const sweepDurations = [5, 10, 30, 60];
+  const leftSweep = runScenarioSweepV3(mustExcludeTree ? { ...left, treeRanks: {} } : left, data, sweepHp, sweepDurations);
+  const rightSweep = runScenarioSweepV3(mustExcludeTree ? { ...right, treeRanks: {} } : right, data, sweepHp, sweepDurations);
 
   return <main className="v3-compare-view" data-testid="v3-compare-view">
     <header>
@@ -141,5 +146,21 @@ export function CompareView({ data, locale, left, right }: CompareViewProps) {
         <CalculationDetails trace={rightResult.simulation.trace} locale={locale} />
       </section>
     </div>
+    <section className="v47-compare-sweep" data-testid="v47-compare-sweep">
+      <header><div><small>{locale === "ko" ? "조건별 A/B 자동 계산" : "AUTOMATED A/B CONDITIONS"}</small><h2>{locale === "ko" ? "어느 조건에서 강한가" : "Where each setup wins"}</h2></div><p>{locale === "ko" ? "각 칸은 같은 HP와 전투 시간에서 누적 피해가 더 큰 설정을 표시합니다." : "Each cell shows the setup with greater total damage at identical HP and duration."}</p></header>
+      <div className="v47-compare-sweep-grid"><div className="is-head">HP</div>{sweepDurations.map((duration) => <div className="is-head" key={duration}>{duration}s</div>)}
+        {sweepHp.flatMap((hp) => [<div className="is-head" key={`${hp}-head`}>{new Intl.NumberFormat(undefined, { notation: "compact" }).format(hp)}</div>, ...sweepDurations.map((duration) => {
+          const a = leftSweep.cells.find((cell) => cell.enemyHp === hp && cell.durationSeconds === duration);
+          const b = rightSweep.cells.find((cell) => cell.enemyHp === hp && cell.durationSeconds === duration);
+          const aDamage = a?.totalDamage;
+          const bDamage = b?.totalDamage;
+          const available = aDamage !== null && aDamage !== undefined && bDamage !== null && bDamage !== undefined;
+          const side = !available ? "?" : aDamage === bDamage ? "=" : aDamage > bDamage ? "A" : "B";
+          const deltaValue = available && aDamage !== 0 ? ((bDamage - aDamage) / aDamage) * 100 : null;
+          return <div className={`is-${side === "A" ? "a" : side === "B" ? "b" : "tie"}`} key={`${hp}-${duration}`}><strong>{side}</strong><small>{deltaValue === null ? "—" : `${deltaValue >= 0 ? "+" : ""}${deltaValue.toFixed(1)}% B`}</small></div>;
+        })])}
+      </div>
+      <footer>{locale === "ko" ? "특수 효과나 트리가 공통으로 검증되지 않으면 두 설정 모두에서 제외한 기본 공격 범위로 비교합니다." : "If mechanics or tree effects are not commonly verified, both sides are compared using the same basic-attack scope."}</footer>
+    </section>
   </main>;
 }

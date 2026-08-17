@@ -1,6 +1,7 @@
 import type { CSSProperties, KeyboardEvent } from "react";
 import type { DiceTreeNodeV3, TreeCost } from "../../../game-data/types";
 import { diceIconUrl } from "../shared/DiceIcon";
+import type { TreeHeatmapEntryV3 } from "../../../optimizer/treeHeatmapV3";
 
 const FAMILY_COLOR: Record<DiceTreeNodeV3["family"], string> = {
   core: "#6f5de7",
@@ -21,6 +22,7 @@ export interface TreeNodeV3Props {
   dimmed: boolean;
   canIncrement: boolean;
   nextCost: TreeCost | null;
+  heatmap?: TreeHeatmapEntryV3;
   onSelect: (nodeId: string) => void;
   onPointerSelect?: (nodeId: string) => void;
 }
@@ -56,6 +58,7 @@ export function TreeNodeV3({
   dimmed,
   canIncrement,
   nextCost,
+  heatmap,
   onSelect,
   onPointerSelect,
 }: TreeNodeV3Props) {
@@ -72,6 +75,7 @@ export function TreeNodeV3({
     selected ? "is-selected" : "",
     recommended ? "is-recommended" : "",
     dimmed ? "is-dimmed" : "",
+    heatmap ? `is-heat-${heatmap.grade.toLowerCase().replace("?", "unknown")}` : "",
   ].filter(Boolean).join(" ");
 
   const activate = (event: KeyboardEvent<SVGGElement>) => {
@@ -89,6 +93,7 @@ export function TreeNodeV3({
     data-can-increment={String(canIncrement)}
     data-owned-rank={ownedRank}
     data-simulated-rank={simulatedRank}
+    data-roi-grade={heatmap?.grade}
     transform={`translate(${node.position.x} ${-node.position.y})`}
     style={{ "--family": FAMILY_COLOR[node.family] } as CSSProperties}
     role="treeitem"
@@ -137,5 +142,6 @@ export function TreeNodeV3({
       <text textAnchor="middle" dominantBaseline="central">{maxed ? "M" : rank}</text>
     </g>}
     {simulatedOnly && <circle className="v3-simulated-dot" cx={-radius + 5} cy={-radius + 5} r="10" aria-hidden="true" />}
+    {heatmap && <g className={`v47-heat-grade is-${heatmap.grade.toLowerCase().replace("?", "unknown")}`} transform={`translate(${-radius + 2} ${radius - 2})`} aria-hidden="true"><circle r="22" /><text textAnchor="middle" dominantBaseline="central">{heatmap.grade}</text></g>}
   </g>;
 }

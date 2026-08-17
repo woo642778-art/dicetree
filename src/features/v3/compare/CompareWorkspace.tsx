@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { playableDiceV3 } from "../../../game-data/playableDice";
 import type { CanonicalGameData } from "../../../game-data/types";
 import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { mechanicConditionDefinitionsV3 } from "../../../simulation/mechanics/registry";
@@ -72,7 +73,7 @@ function SideEditor({
       <label>{locale === "ko" ? "주사위" : "Dice"}<select aria-label={`${id} ${locale === "ko" ? "주사위" : "dice"}`} value={side.diceId} onChange={(event) => {
         const diceId = event.target.value;
         onChange({ ...side, diceId, conditionValues: conditionDefaults(data, diceId, treeRanks) });
-      }}>{data.dice.map((dice) => <option key={dice.id} value={dice.id}>{diceName(data, dice.id, locale)}</option>)}</select></label>
+      }}>{playableDiceV3(data).map((dice) => <option key={dice.id} value={dice.id}>{diceName(data, dice.id, locale)}</option>)}</select></label>
       <label>{locale === "ko" ? "트리" : "Tree"}<select aria-label={`${id} ${locale === "ko" ? "트리" : "tree"}`} value={side.treeMode} onChange={(event) => {
         const treeMode = event.target.value as TreeMode;
         const nextRanks = treeMode === "current" ? baseTreeRanks : {};

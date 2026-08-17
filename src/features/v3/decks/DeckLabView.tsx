@@ -11,6 +11,8 @@ import {
 } from "../../../deck-lab/coOpRankingSnapshot";
 import { analyzeRosterMeta, NEXT_META_FORECASTS } from "../../../deck-lab/metaForecast";
 import { DiceIcon } from "../shared/DiceIcon";
+import { MyDeckAnalyzer } from "./MyDeckAnalyzer";
+import { MetaTimeMachine } from "./MetaTimeMachine";
 
 export interface DeckLabViewProps {
   data: CanonicalGameData;
@@ -20,6 +22,8 @@ export interface DeckLabViewProps {
   onGoalChange: (goal: DeckGoalV4) => void;
   onSpendProfileChange: (profile: SpendProfileV4) => void;
   onSimulate: (diceId: string) => void;
+  activeDeckIds?: string[];
+  onActiveDeckChange?: (diceIds: string[]) => void;
 }
 
 const ROLE_LABELS: Record<DeckRoleV4, { ko: string; en: string }> = {
@@ -90,6 +94,14 @@ export function DeckLabView(props: DeckLabViewProps) {
       </aside>
     </header>
 
+    <MyDeckAnalyzer
+      data={data}
+      locale={locale}
+      diceIds={props.activeDeckIds ?? recommendation.dice.map((entry) => entry.diceId)}
+      onChange={props.onActiveDeckChange ?? (() => undefined)}
+      onSimulate={props.onSimulate}
+    />
+
     <section className="v43-ranking-snapshot" data-testid="v43-ranking-snapshot">
       <header className="v43-section-heading">
         <div><small>{locale === "ko" ? "관측 데이터" : "OBSERVED DATA"}</small><h2>{locale === "ko" ? "랭킹 덱 역할 분류" : "Ranked decks by role"}</h2></div>
@@ -109,6 +121,8 @@ export function DeckLabView(props: DeckLabViewProps) {
       </div>
       <footer>{locale === "ko" ? "딜러 덱은 포식·전기·톱날처럼 직접 피해 핵심이 확인된 조합, 서포트 덱은 해당 핵심 없이 제어·전개에 집중한 조합으로 분류했습니다." : "Dealer decks contain an observed direct-damage core such as Predator, Electric or Saw. Support decks focus on control and board development without one of those cores."}</footer>
     </section>
+
+    <MetaTimeMachine data={data} locale={locale} />
 
     <section className="v43-forecast" data-testid="v43-forecast">
       <header className="v43-section-heading">

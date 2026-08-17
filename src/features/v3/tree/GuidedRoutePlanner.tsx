@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { playableDiceV3 } from "../../../game-data/playableDice";
 import type { CanonicalGameData, TreeCost } from "../../../game-data/types";
 import { formatGameText } from "../../../game-data/formatGameText";
 import {
@@ -10,6 +11,7 @@ import {
   type GuidedRouteStyleV3,
 } from "../../../optimizer/planGuidedRouteV3";
 import { DiceIcon } from "../shared/DiceIcon";
+import { buildGrowthRoadmapV3 } from "../../../optimizer/planGrowthRoadmapV3";
 
 export interface GuidedRoutePlannerProps {
   data: CanonicalGameData;
@@ -119,6 +121,7 @@ export function GuidedRoutePlanner({ data, locale, selectedDiceId, currentRanks,
   const [variant, setVariant] = useState(0);
   const settings: GuidedRouteSettingsV3 = { ...applied, currentRanks, budget, variant };
   const plan = useMemo(() => planGuidedRouteV3(data, settings), [data, settings.diceId, settings.role, settings.focus, settings.style, settings.length, settings.currentRanks, settings.budget, settings.variant]);
+  const roadmap = useMemo(() => buildGrowthRoadmapV3(data, plan), [data, plan]);
   const selectedName = diceName(data, applied.diceId, locale);
   const isValid = Object.values(plan.validity).every(Boolean);
 
@@ -130,7 +133,7 @@ export function GuidedRoutePlanner({ data, locale, selectedDiceId, currentRanks,
 
     <section className="v45-route-settings">
       <h3>{locale === "ko" ? "원하는 방향" : "Desired direction"}</h3>
-      <label>{locale === "ko" ? "중심 주사위" : "Primary dice"}<select value={draft.diceId} onChange={(event) => setDraft({ ...draft, diceId: event.target.value })}>{data.dice.map((dice) => <option key={dice.id} value={dice.id}>{diceName(data, dice.id, locale)}</option>)}</select></label>
+      <label>{locale === "ko" ? "중심 주사위" : "Primary dice"}<select value={draft.diceId} onChange={(event) => setDraft({ ...draft, diceId: event.target.value })}>{playableDiceV3(data).map((dice) => <option key={dice.id} value={dice.id}>{diceName(data, dice.id, locale)}</option>)}</select></label>
       <label>{locale === "ko" ? "역할" : "Role"}<select value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value as GuidedRouteRoleV3 })}><option value="dealer">{locale === "ko" ? "딜러" : "Dealer"}</option><option value="support">{locale === "ko" ? "서포트" : "Support"}</option><option value="balanced">{locale === "ko" ? "균형" : "Balanced"}</option></select></label>
       <label>{locale === "ko" ? "핵심 목표" : "Primary focus"}<select value={draft.focus} onChange={(event) => setDraft({ ...draft, focus: event.target.value as GuidedRouteFocusV3 })}><option value="selected-dice">{locale === "ko" ? "선택 주사위 강화" : "Selected dice"}</option><option value="damage">{locale === "ko" ? "대미지" : "Damage"}</option><option value="attack-speed">{locale === "ko" ? "공격속도" : "Attack speed"}</option><option value="critical">{locale === "ko" ? "치명타" : "Critical"}</option><option value="economy">{locale === "ko" ? "SP·성장 경제" : "SP and economy"}</option><option value="survival">{locale === "ko" ? "생존·제어" : "Survival and control"}</option><option value="special">{locale === "ko" ? "고유 효과" : "Special mechanics"}</option></select></label>
       <label>{locale === "ko" ? "우선순위" : "Priority"}<select value={draft.style} onChange={(event) => setDraft({ ...draft, style: event.target.value as GuidedRouteStyleV3 })}><option value="efficient">{locale === "ko" ? "재화 효율" : "Resource efficiency"}</option><option value="power">{locale === "ko" ? "최대 영향력" : "Maximum impact"}</option><option value="specialized">{locale === "ko" ? "주사위 특화" : "Dice specialization"}</option></select></label>
@@ -146,6 +149,16 @@ export function GuidedRoutePlanner({ data, locale, selectedDiceId, currentRanks,
       <dl><div><dt>{locale === "ko" ? "총비용" : "Total cost"}</dt><dd>{formatCost(plan.totalCost, locale)}</dd></div><div><dt>{locale === "ko" ? "완료 후 잔액" : "Remaining"}</dt><dd>{plan.remaining.gold.toLocaleString()} G · {plan.remaining.stone.toLocaleString()} C</dd></div><div><dt>{locale === "ko" ? "구매 단계" : "Purchase steps"}</dt><dd>{plan.steps.length}</dd></div><div><dt>{locale === "ko" ? "목표 도달" : "Target reached"}</dt><dd>{plan.goal.reached ? (locale === "ko" ? "도달" : "Reached") : plan.goal.stopReason === "budget" ? (locale === "ko" ? "예산 부족" : "Budget limited") : plan.goal.stopReason === "length" ? (locale === "ko" ? "경로 길이 제한" : "Length limited") : (locale === "ko" ? "전용 노드 없음" : "No dedicated node")}</dd></div><div><dt>{locale === "ko" ? "근거 수준" : "Evidence level"}</dt><dd>{plan.confidence === "verified-effects" ? (locale === "ko" ? "효과 데이터 검증" : "Verified effect data") : (locale === "ko" ? "경로 구조 검증" : "Verified route structure")}</dd></div></dl>
       <div className="v45-route-validity"><span className={plan.validity.prerequisitesSatisfied ? "is-ok" : "is-bad"}>{locale === "ko" ? "선행 조건" : "Prerequisites"}</span><span className={plan.validity.exactCosts ? "is-ok" : "is-bad"}>{locale === "ko" ? "비용 합계" : "Exact costs"}</span><span className={plan.validity.withinBudget ? "is-ok" : "is-bad"}>{locale === "ko" ? "예산 이내" : "Within budget"}</span></div>
       <p className="v45-route-limit">{locale === "ko" ? "효과의 적용 대상과 비용은 데이터로 검증합니다. 공식이 미검증인 효과는 정확한 DPS 증가량으로 과장하지 않고 방향 추천에만 사용합니다." : "Effect scope and costs are data-verified. Unverified formulas influence route direction but are never presented as exact DPS gains."}</p>
+    </section>
+
+    <section className="v47-growth-roadmap" data-testid="v47-growth-roadmap">
+      <h3>{locale === "ko" ? "목표 달성 로드맵" : "Goal achievement roadmap"}</h3>
+      <div>{roadmap.stages.map((stage, index) => <article key={stage.id}>
+        <header><span>{locale === "ko" ? `${index + 1}차` : `Stage ${index + 1}`}</span><strong>{stage.id === "foundation" ? (locale === "ko" ? "기반" : "Foundation") : stage.id === "core" ? (locale === "ko" ? "핵심" : "Core") : (locale === "ko" ? "완성" : "Complete")}</strong></header>
+        <p>{stage.purpose[locale]}</p>
+        <dl><div><dt>{locale === "ko" ? "단계 비용" : "Stage cost"}</dt><dd>{formatCost(stage.cost, locale)}</dd></div><div><dt>{locale === "ko" ? "완료 후 보유" : "After stage"}</dt><dd>{stage.remaining.gold.toLocaleString()} G · {stage.remaining.stone.toLocaleString()} C</dd></div><div><dt>{locale === "ko" ? "노드" : "Nodes"}</dt><dd>{stage.steps.length}</dd></div></dl>
+      </article>)}</div>
+      <aside className={roadmap.reserve.shouldSave ? "is-save" : "is-ready"}><strong>{roadmap.reserve.shouldSave ? (locale === "ko" ? "투자보다 비축 우선" : "Save before spending") : (locale === "ko" ? "단계 투자 가능" : "Ready to invest")}</strong><p>{roadmap.reserve.reason[locale]}</p>{roadmap.reserve.shouldSave && <small>{locale === "ko" ? "목표 부족분" : "Target shortfall"}: {roadmap.reserve.shortfall.gold.toLocaleString()} G · {roadmap.reserve.shortfall.stone.toLocaleString()} C</small>}</aside>
     </section>
 
     <section className="v45-route-steps" data-testid="v45-route-steps">

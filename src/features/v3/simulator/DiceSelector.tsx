@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { playableDiceV3 } from "../../../game-data/playableDice";
 import type { CanonicalGameData, DiceFamilyV3 } from "../../../game-data/types";
 import { DiceIcon } from "../shared/DiceIcon";
 
@@ -24,7 +25,7 @@ export function DiceSelector({ data, locale, selectedDiceId, onSelect }: DiceSel
   const [family, setFamily] = useState<DiceFamilyV3 | "all">("all");
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
-    return data.dice
+    return playableDiceV3(data)
       .filter((dice) => family === "all" || dice.family === family)
       .map((dice) => ({ dice, name: diceName(data, dice.id, dice.nameKey, locale) }))
       .filter(({ dice, name }) => !normalized || `${name} ${dice.id}`.toLocaleLowerCase().includes(normalized))

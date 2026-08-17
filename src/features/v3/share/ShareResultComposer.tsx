@@ -1,0 +1,5 @@
+export function ShareResultComposer({ locale, title, note, onTitleChange, onNoteChange, onCreate, onClose }: {
+  locale: "ko" | "en"; title: string; note: string; onTitleChange: (value: string) => void; onNoteChange: (value: string) => void; onCreate: () => void; onClose: () => void;
+}) {
+  return <aside className="v47-share-composer" data-testid="v47-share-composer"><header><div><small>{locale === "ko" ? "전용 결과 페이지" : "DEDICATED RESULT PAGE"}</small><h2>{locale === "ko" ? "덱 공유 카드" : "Deck share card"}</h2></div><button type="button" onClick={onClose}>×</button></header><label>{locale === "ko" ? "빌드 이름" : "Build title"}<input value={title} maxLength={80} onChange={(event) => onTitleChange(event.target.value)} /></label><label>{locale === "ko" ? "작성자 메모" : "Author note"}<textarea value={note} maxLength={500} onChange={(event) => onNoteChange(event.target.value)} /></label><button className="v47-create-share" type="button" onClick={onCreate}>{locale === "ko" ? "결과 페이지 링크 복사" : "Copy result page link"}</button><p>{locale === "ko" ? "덱 5칸, 트리, 재화, 성능 요약이 같이 표시됩니다." : "Includes five dice, tree, resources, and performance summary."}</p></aside>;
+}

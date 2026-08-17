@@ -12,6 +12,8 @@ import "./app/ingame-v41.css";
 import "./app/assets-v42.css";
 import "./app/v45-guided-analysis.css";
 import "./app/v46-tree-core.css";
+import "./app/v47-player-intelligence.css";
+import "./app/v47-new-features.css";
 import "./app/accessibility.css";
 
 createRoot(document.getElementById("root")!).render(

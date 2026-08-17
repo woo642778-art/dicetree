@@ -408,3 +408,48 @@ test("mobile V3 tree supports touch pan and bottom-sheet node details", async ({
   expect(navButtons.every(({ height, lines }) => height <= 48 && lines === 1)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("V4.7 filters non-dice records and exposes scenario sweeps, deck analysis and updates", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await expect(page.getByTestId("v47-scenario-sweep")).toBeVisible();
+  const diceList = page.getByRole("listbox", { name: "주사위 목록" });
+  await expect(diceList.locator('[data-dice-id="spgemstone"]')).toHaveCount(0);
+  await expect(diceList.locator('[data-dice-id="altar"]')).toHaveCount(0);
+  await expect(diceList.locator('[data-dice-id="bomb"]')).toHaveCount(0);
+  await page.screenshot({ path: `test-results/qa-v47-scenario-sweep-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
+
+  await page.getByRole("button", { name: "비교" }).click();
+  await expect(page.getByTestId("v47-compare-sweep")).toBeVisible();
+  await page.getByRole("button", { name: "덱 연구소" }).click();
+  await expect(page.getByTestId("v47-my-deck-analyzer")).toBeVisible();
+  await page.screenshot({ path: `test-results/qa-v47-deck-analyzer-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
+  await page.getByRole("button", { name: "업데이트" }).click();
+  await expect(page.getByTestId("v47-update-center")).toBeVisible();
+  await expect(page.getByTestId("v47-update-center")).toContainText("1.0.1");
+  await page.screenshot({ path: `test-results/qa-v47-updates-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
+  expect(errors).toEqual([]);
+});
+
+test("V4.7 saves local profiles and creates a dedicated shared result page", async ({ page, isMobile }) => {
+  test.skip(isMobile, "desktop composer verification");
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "내 프로필" }).click();
+  await page.getByRole("textbox", { name: "프로필 이름" }).fill("본계정");
+  await page.getByRole("button", { name: "현재 상태 저장" }).click();
+  await expect(page.getByTestId("v47-profile-panel")).toContainText("본계정");
+  await page.getByRole("button", { name: "닫기" }).click();
+  await page.getByRole("button", { name: "결과 카드" }).click();
+  await page.getByLabel("빌드 이름").fill("포식 성장 빌드");
+  await page.getByLabel("작성자 메모").fill("초반 안정성을 우선한 세팅");
+  await page.getByRole("button", { name: "결과 페이지 링크 복사" }).click();
+  await expect(page.getByTestId("v47-shared-build")).toBeVisible();
+  await expect(page.getByTestId("v47-shared-build")).toContainText("포식 성장 빌드");
+  await expect(page).toHaveURL(/#r=r47\./);
+  await page.screenshot({ path: "test-results/qa-v47-shared-build-desktop.png", fullPage: true });
+  await page.getByRole("button", { name: "이 빌드 복사" }).click();
+  await expect(page.getByTestId("v3-tree-view")).toBeVisible();
+  expect(errors).toEqual([]);
+});

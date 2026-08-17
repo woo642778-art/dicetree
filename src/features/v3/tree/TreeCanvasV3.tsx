@@ -4,6 +4,7 @@ import { localizeGameKey } from "../../../game-data/load";
 import { nextRankCost } from "../../../planner-v3/costs";
 import { usePanZoom } from "../../tree/usePanZoom";
 import { TreeNodeV3 } from "./TreeNodeV3";
+import type { TreeHeatmapEntryV3, TreeHeatmapModeV3 } from "../../../optimizer/treeHeatmapV3";
 
 export interface TreeCanvasV3Props {
   nodes: readonly DiceTreeNodeV3[];
@@ -12,6 +13,8 @@ export interface TreeCanvasV3Props {
   selectedNodeId?: string;
   selectedDiceId?: string;
   recommendedIds?: ReadonlySet<string>;
+  heatmap?: ReadonlyMap<string, TreeHeatmapEntryV3>;
+  heatmapMode?: TreeHeatmapModeV3;
   familyFilter?: DiceFamilyV3 | "all";
   query?: string;
   locale: "ko" | "en";
@@ -165,6 +168,8 @@ export function TreeCanvasV3({
   selectedNodeId,
   selectedDiceId,
   recommendedIds = new Set<string>(),
+  heatmap = new Map<string, TreeHeatmapEntryV3>(),
+  heatmapMode = "none",
   familyFilter = "all",
   query = "",
   locale,
@@ -297,6 +302,7 @@ export function TreeCanvasV3({
             dimmed={!visibleIds.has(node.id)}
             canIncrement={canIncrementNodeV3(node, ownedRanks, simulatedRanks)}
             nextCost={nextRankCost(node, simulatedRank)}
+            heatmap={heatmap.get(node.id)}
             onSelect={onSelect}
             onPointerSelect={selectFromPointer}
           />;
@@ -311,6 +317,8 @@ export function TreeCanvasV3({
         ? (locale === "ko" ? "결과 위치로 이동했습니다." : "View moved to the results.")
         : (locale === "ko" ? "이름이나 효과를 다시 확인해 주세요." : "Try another node or effect term.")}</small>
     </div>}
+
+    {heatmapMode !== "none" && <div className="v47-heat-legend" data-testid="v47-heat-legend"><strong>{heatmapMode === "gold" ? (locale === "ko" ? "골드 1만당 효과" : "Effect per 10k Gold") : heatmapMode === "stone" ? (locale === "ko" ? "코어 1개당 효과" : "Effect per Core") : (locale === "ko" ? "경로 포함 ROI" : "Path-inclusive ROI")}</strong><span><i className="is-s">S</i><i className="is-a">A</i><i className="is-b">B</i><i className="is-c">C</i><i className="is-unknown">?</i></span><small>{heatmapMode === "path" ? (locale === "ko" ? "대미지 증가·골드·코어를 동시에 비교한 파레토 등급" : "Pareto grade across gain, Gold, and Core") : (locale === "ko" ? "검증된 기본 DPS 증가 후보 내 상대 등급" : "Relative grade among verified basic-DPS gains")}</small></div>}
 
     <div className="v3-tree-family-jumps" aria-label={locale === "ko" ? "계열로 이동" : "Jump to family"}>
       {FAMILY_ORDER.map((family) => <button key={family} type="button" onClick={() => jumpToNodes(nodes.filter((node) => node.family === family))}>
