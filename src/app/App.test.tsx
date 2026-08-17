@@ -46,6 +46,26 @@ describe("V3 planner shell", () => {
     expect(document.body).not.toHaveTextContent(/IPA/i);
   });
 
+  it("opens account intelligence, encyclopedia, meta clusters, and universal search", () => {
+    render(<I18nProvider><App /></I18nProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "내 계정" }));
+    expect(screen.getByTestId("v48-account-intelligence")).toHaveTextContent("빌드 건강도");
+    expect(screen.queryByText("계정 전체 다음 행동")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "주사위 백과" }));
+    expect(screen.getByText("이 주사위 왜 쓰는 거야?")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "백과사전 검색" }), { target: { value: "원자" } });
+    expect(screen.getByRole("button", { name: /원자/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "메타 인텔리전스" }));
+    expect(screen.getByText("메타 군집과 환경 점수")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "통합 검색" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "통합 검색어" }), { target: { value: "시뮬레이터" } });
+    fireEvent.click(screen.getByRole("button", { name: /화면\s*시뮬레이터/ }));
+    expect(screen.getByTestId("v3-simulator-view")).toBeInTheDocument();
+  });
+
   it("keeps V3 share state semantic and restorable", async () => {
     const clipboard = { writeText: async () => undefined };
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: clipboard });

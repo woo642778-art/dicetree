@@ -83,6 +83,35 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await context.close();
 });
 
+test("V4.8 account intelligence exposes optimizer, encyclopedia, meta clusters and install manifest", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "내 계정" }).click();
+  await expect(page.getByTestId("v48-account-intelligence")).toBeVisible();
+  await expect(page.getByText("빌드 건강도")).toBeVisible();
+  await page.screenshot({ path: `test-results/qa-v48-account-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+
+  await page.getByRole("button", { name: "전역 최적화" }).click();
+  await expect(page.getByText("목표 성능 역산")).toBeVisible();
+  await page.getByRole("button", { name: "역산 시작" }).click();
+  await expect(page.getByTestId("v48-reverse-result")).toBeVisible();
+
+  await page.getByRole("button", { name: "주사위 백과" }).click();
+  await page.getByRole("textbox", { name: "백과사전 검색" }).fill("원자");
+  await expect(page.getByRole("button", { name: /원자/ })).toBeVisible();
+  await page.getByRole("button", { name: /원자/ }).click();
+  await expect(page.getByText("함께 쓰기 좋은 주사위")).toBeVisible();
+
+  await page.getByRole("button", { name: "메타 인텔리전스" }).click();
+  await expect(page.getByText("메타 군집과 환경 점수")).toBeVisible();
+  await expect(page.locator(".v48-cluster-grid > article")).toHaveCount(3);
+
+  const manifest = await page.request.get("/dicetree/manifest.webmanifest");
+  expect(manifest.ok()).toBe(true);
+  expect((await manifest.json()).display).toBe("standalone");
+  expect(errors).toEqual([]);
+});
+
 test("V4.6 center hub mirrors family investment levels and uses the full Terror dice art", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");

@@ -1,20 +1,22 @@
 import { useState } from "react";
 import type { PlannerStateV3 } from "../../../planner-v3/types";
+import type { UserDigitalTwinV48 } from "../../../account/digitalTwinV48";
 import { deleteProfileV3, listProfilesV3, saveProfileV3, type StoredDeckGoalV3, type StoredProfileV3, type StoredSpendProfileV3 } from "../../../storage/profileStorageV3";
 
-export function ProfileManagerV3({ locale, state, activeDeckIds, deckGoal, spendProfile, onLoad, onClose }: {
+export function ProfileManagerV3({ locale, state, activeDeckIds, deckGoal, spendProfile, digitalTwin, onLoad, onClose }: {
   locale: "ko" | "en";
   state: PlannerStateV3;
   activeDeckIds: string[];
   deckGoal: StoredDeckGoalV3;
   spendProfile: StoredSpendProfileV3;
+  digitalTwin?: UserDigitalTwinV48;
   onLoad: (profile: StoredProfileV3) => void;
   onClose: () => void;
 }) {
   const [profiles, setProfiles] = useState(() => listProfilesV3());
   const [name, setName] = useState("");
   const save = () => {
-    saveProfileV3({ name, state, activeDeckIds, deckGoal, spendProfile });
+    saveProfileV3({ name, state, activeDeckIds, deckGoal, spendProfile, digitalTwin });
     setProfiles(listProfilesV3());
     setName("");
   };

@@ -1,4 +1,5 @@
 import type { PlannerStateV3 } from "../planner-v3/types";
+import type { UserDigitalTwinV48 } from "../account/digitalTwinV48";
 
 const STORAGE_KEY = "dicetree.profiles.v3";
 
@@ -14,6 +15,7 @@ export interface StoredProfileV3 {
   spendProfile: StoredSpendProfileV3;
   createdAt: string;
   modifiedAt: string;
+  digitalTwin?: UserDigitalTwinV48;
 }
 
 function valid(value: unknown): value is StoredProfileV3 {
@@ -41,7 +43,7 @@ function write(profiles: StoredProfileV3[]) {
 }
 
 export function saveProfileV3(
-  input: Pick<StoredProfileV3, "name" | "state" | "activeDeckIds" | "deckGoal" | "spendProfile">,
+  input: Pick<StoredProfileV3, "name" | "state" | "activeDeckIds" | "deckGoal" | "spendProfile"> & Pick<Partial<StoredProfileV3>, "digitalTwin">,
   id?: string,
 ): StoredProfileV3 {
   const current = listProfilesV3();
@@ -51,6 +53,7 @@ export function saveProfileV3(
     ...input,
     state: structuredClone(input.state),
     activeDeckIds: [...input.activeDeckIds],
+    ...(input.digitalTwin ? { digitalTwin: structuredClone(input.digitalTwin) } : {}),
     id: id ?? crypto.randomUUID(),
     name: input.name.trim() || "Untitled",
     createdAt: existing?.createdAt ?? now,
