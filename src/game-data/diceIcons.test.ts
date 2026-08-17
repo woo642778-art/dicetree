@@ -14,4 +14,9 @@ describe("dice icon assets", () => {
       expect(entry.sourceSprite.length).toBeGreaterThan(2);
     }
   });
+
+  it("uses the full Terror dice artwork instead of its rune-node badge", () => {
+    expect(manifest.fear.sourceSprite).toBe("Dice_TRANSFER3");
+    expect(manifest.fear.sourceSprite).not.toMatch(/^Runenode_/);
+  });
 });

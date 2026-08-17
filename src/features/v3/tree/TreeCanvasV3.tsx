@@ -4,6 +4,7 @@ import { localizeGameKey } from "../../../game-data/load";
 import { nextRankCost } from "../../../planner-v3/costs";
 import { usePanZoom } from "../../tree/usePanZoom";
 import { TreeNodeV3 } from "./TreeNodeV3";
+import type { TreeHeatmapEntryV3, TreeHeatmapModeV3 } from "../../../optimizer/treeHeatmapV3";
 
 export interface TreeCanvasV3Props {
   nodes: readonly DiceTreeNodeV3[];
@@ -12,6 +13,8 @@ export interface TreeCanvasV3Props {
   selectedNodeId?: string;
   selectedDiceId?: string;
   recommendedIds?: ReadonlySet<string>;
+  heatmap?: ReadonlyMap<string, TreeHeatmapEntryV3>;
+  heatmapMode?: TreeHeatmapModeV3;
   familyFilter?: DiceFamilyV3 | "all";
   query?: string;
   locale: "ko" | "en";
@@ -28,6 +31,15 @@ const FAMILY_LABEL: Record<DiceFamilyV3, { ko: string; en: string }> = {
 
 const FAMILY_ORDER: DiceFamilyV3[] = ["nature", "chaos", "order", "engineering", "magic"];
 const INITIAL_VIEW = { x: 0, y: 0, scale: 0.92 };
+const TREE_BASE_IMAGE_URL = `${import.meta.env.BASE_URL}tree-assets/dice-tree-base.webp`;
+
+const FAMILY_COUNTER_POSITION: Record<DiceFamilyV3, { x: number; y: number }> = {
+  nature: { x: 0, y: -154 },
+  chaos: { x: 226, y: -18 },
+  order: { x: -226, y: -18 },
+  engineering: { x: -124, y: 158 },
+  magic: { x: 124, y: 158 },
+};
 
 function rankFor(
   nodeId: string,
@@ -35,6 +47,80 @@ function rankFor(
   simulatedRanks: Record<string, number>,
 ) {
   return Math.max(ownedRanks[nodeId] ?? 0, simulatedRanks[nodeId] ?? 0);
+}
+
+export type FamilyInvestmentLevelsV3 = Record<DiceFamilyV3, number>;
+
+export function familyInvestmentLevelsV3(
+  nodes: readonly DiceTreeNodeV3[],
+  ownedRanks: Record<string, number>,
+  simulatedRanks: Record<string, number>,
+): FamilyInvestmentLevelsV3 {
+  const levels: FamilyInvestmentLevelsV3 = {
+    nature: 0,
+    chaos: 0,
+    order: 0,
+    engineering: 0,
+    magic: 0,
+  };
+  for (const node of nodes) {
+    if (node.family === "core" || node.kind === "connector") continue;
+    levels[node.family] += Math.min(node.maxRank, rankFor(node.id, ownedRanks, simulatedRanks));
+  }
+  return levels;
+}
+
+function DiceTreeCoreV3({
+  levels,
+  locale,
+}: {
+  levels: FamilyInvestmentLevelsV3;
+  locale: "ko" | "en";
+}) {
+  const summary = FAMILY_ORDER
+    .map((family) => `${FAMILY_LABEL[family][locale]} ${levels[family]}`)
+    .join(", ");
+
+  return <g
+    className="v46-tree-core"
+    data-testid="v46-tree-core"
+    role="group"
+    aria-label={`${locale === "ko" ? "다이스 트리" : "Dice Tree"}: ${summary}`}
+  >
+    <image
+      className="v46-tree-core-base"
+      href={TREE_BASE_IMAGE_URL}
+      x="-150"
+      y="-103"
+      width="300"
+      height="206"
+      preserveAspectRatio="xMidYMid meet"
+      aria-hidden="true"
+    />
+    <g className="v46-tree-core-mark" aria-hidden="true">
+      <path className="v46-tree-core-cube is-blue" d="M-31-42l20-11 20 11v23L-11-8l-20-11z" />
+      <path className="v46-tree-core-cube is-violet" d="M2-36l18-10 18 10v21L20-5 2-15z" />
+      <path className="v46-tree-core-cube-line" d="M-31-42l20 11 20-11M-11-31v23M2-36l18 10 18-10M20-26v21" />
+    </g>
+    <text className="v46-tree-core-title" x="0" y="39" textAnchor="middle">
+      {locale === "ko" ? "다이스 트리" : "DICE TREE"}
+    </text>
+    {FAMILY_ORDER.map((family) => {
+      const position = FAMILY_COUNTER_POSITION[family];
+      const level = levels[family];
+      return <g
+        key={`${family}-${level}`}
+        className={`v46-tree-family-count family-${family}`}
+        data-testid={`v46-family-count-${family}`}
+        data-level={level}
+        transform={`translate(${position.x} ${position.y})`}
+        aria-hidden="true"
+      >
+        <text className="v46-tree-family-label" x="0" y="-7" textAnchor="middle">{FAMILY_LABEL[family][locale]}</text>
+        <text className="v46-tree-family-level" x="0" y="30" textAnchor="middle">{level}</text>
+      </g>;
+    })}
+  </g>;
 }
 
 export function prerequisitesSatisfiedV3(
@@ -82,6 +168,8 @@ export function TreeCanvasV3({
   selectedNodeId,
   selectedDiceId,
   recommendedIds = new Set<string>(),
+  heatmap = new Map<string, TreeHeatmapEntryV3>(),
+  heatmapMode = "none",
   familyFilter = "all",
   query = "",
   locale,
@@ -97,6 +185,10 @@ export function TreeCanvasV3({
     y: (bounds.minY + bounds.maxY) / 2,
   }), [bounds.maxX, bounds.maxY, bounds.minX, bounds.minY]);
   const normalizedQuery = normalizeTreeSearchText(query.trim());
+  const familyLevels = useMemo(
+    () => familyInvestmentLevelsV3(nodes, ownedRanks, simulatedRanks),
+    [nodes, ownedRanks, simulatedRanks],
+  );
 
   const matchingNodes = useMemo(() => {
     const matches: DiceTreeNodeV3[] = [];
@@ -195,6 +287,7 @@ export function TreeCanvasV3({
             y2={-node.position.y}
           />;
         }))}
+        <DiceTreeCoreV3 levels={familyLevels} locale={locale} />
         {nodes.map((node) => {
           const ownedRank = ownedRanks[node.id] ?? 0;
           const simulatedRank = Math.max(ownedRank, simulatedRanks[node.id] ?? ownedRank);
@@ -209,6 +302,7 @@ export function TreeCanvasV3({
             dimmed={!visibleIds.has(node.id)}
             canIncrement={canIncrementNodeV3(node, ownedRanks, simulatedRanks)}
             nextCost={nextRankCost(node, simulatedRank)}
+            heatmap={heatmap.get(node.id)}
             onSelect={onSelect}
             onPointerSelect={selectFromPointer}
           />;
@@ -223,6 +317,8 @@ export function TreeCanvasV3({
         ? (locale === "ko" ? "결과 위치로 이동했습니다." : "View moved to the results.")
         : (locale === "ko" ? "이름이나 효과를 다시 확인해 주세요." : "Try another node or effect term.")}</small>
     </div>}
+
+    {heatmapMode !== "none" && <div className="v47-heat-legend" data-testid="v47-heat-legend"><strong>{heatmapMode === "gold" ? (locale === "ko" ? "골드 1만당 효과" : "Effect per 10k Gold") : heatmapMode === "stone" ? (locale === "ko" ? "코어 1개당 효과" : "Effect per Core") : (locale === "ko" ? "경로 포함 ROI" : "Path-inclusive ROI")}</strong><span><i className="is-s">S</i><i className="is-a">A</i><i className="is-b">B</i><i className="is-c">C</i><i className="is-unknown">?</i></span><small>{heatmapMode === "path" ? (locale === "ko" ? "대미지 증가·골드·코어를 동시에 비교한 파레토 등급" : "Pareto grade across gain, Gold, and Core") : (locale === "ko" ? "검증된 기본 DPS 증가 후보 내 상대 등급" : "Relative grade among verified basic-DPS gains")}</small></div>}
 
     <div className="v3-tree-family-jumps" aria-label={locale === "ko" ? "계열로 이동" : "Jump to family"}>
       {FAMILY_ORDER.map((family) => <button key={family} type="button" onClick={() => jumpToNodes(nodes.filter((node) => node.family === family))}>

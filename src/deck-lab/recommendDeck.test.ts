@@ -9,6 +9,7 @@ describe("recommendDeckV4", () => {
     expect(new Set(result.dice.map((entry) => entry.diceId)).size).toBe(5);
     expect(result.dice.some((entry) => entry.roles.includes("dealer"))).toBe(true);
     expect(result.dice.some((entry) => entry.roles.includes("economy"))).toBe(true);
+    expect(result.dice.map((entry) => entry.diceId)).not.toEqual(expect.arrayContaining(["spgemstone", "altar", "bomb"]));
     expect(result.source).toBe("game-data-synergy");
   });
 

@@ -1,0 +1,8 @@
+{
+  "dice-tree-base": {
+    "file": "dice-tree-base.webp",
+    "sourceSprite": "DiceTreeBase",
+    "width": 234,
+    "height": 160
+  }
+}

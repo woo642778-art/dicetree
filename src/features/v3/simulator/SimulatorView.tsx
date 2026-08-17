@@ -13,6 +13,7 @@ import { DamageGraph } from "./DamageGraph";
 import { DiceSelector } from "./DiceSelector";
 import { EnemyControls } from "./EnemyControls";
 import { StatPanel } from "./StatPanel";
+import { ScenarioSweep } from "./ScenarioSweep";
 
 export interface SimulatorViewProps {
   data: CanonicalGameData;
@@ -146,6 +147,7 @@ export function SimulatorView({ data, state, locale, onScenarioChange }: Simulat
       </section>
       <StatPanel result={result} locale={locale} />
       <DamageGraph outcome={result.outcome} basicAttackOutcome={result.basicAttackOutcome} basicAttackOutcomeKind={result.basicAttackOutcomeKind} locale={locale} />
+      <ScenarioSweep data={data} input={input} locale={locale} />
       {Object.keys(result.mechanic.values).length > 0 && <section className="v3-mechanic-values" data-testid="v3-mechanic-values">
         <h3>{locale === "ko" ? "고유 효과 입력/해석" : "Mechanic inputs / interpretation"}</h3>
         <dl>{Object.entries(result.mechanic.values).map(([key, value]) => {

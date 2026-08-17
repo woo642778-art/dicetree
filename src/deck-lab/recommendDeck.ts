@@ -1,4 +1,5 @@
 import type { CanonicalGameData, DiceDefinitionV3 } from "../game-data/types";
+import { playableDiceV3 } from "../game-data/playableDice";
 
 export type DeckGoalV4 = "dealer" | "support" | "balanced";
 export type SpendProfileV4 = "free" | "light" | "invested";
@@ -105,9 +106,10 @@ export function recommendDeckV4(
   goal: DeckGoalV4,
   spendProfile: SpendProfileV4,
 ): DeckRecommendationV4 {
-  if (!data.dice.length) throw new Error("Cannot recommend a deck without dice data");
-  const analyzed = data.dice.map((dice) => analyzeDeckDiceV4(dice, data));
-  const diceById = new Map(data.dice.map((dice) => [dice.id, dice]));
+  const playable = playableDiceV3(data);
+  if (!playable.length) throw new Error("Cannot recommend a deck without dice data");
+  const analyzed = playable.map((dice) => analyzeDeckDiceV4(dice, data));
+  const diceById = new Map(playable.map((dice) => [dice.id, dice]));
   const ranked = [...analyzed].sort((left, right) => {
     const difference = score(right, diceById.get(right.diceId)!, goal, spendProfile)
       - score(left, diceById.get(left.diceId)!, goal, spendProfile);
