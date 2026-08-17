@@ -283,7 +283,7 @@
   },
   "fear": {
     "file": "fear.webp",
-    "sourceSprite": "Runenode_Fear_0",
+    "sourceSprite": "Dice_TRANSFER3",
     "width": 256,
     "height": 256
   },

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DiceTreeNodeV3 } from "../../../game-data/types";
-import { TreeCanvasV3, canIncrementNodeV3, normalizeTreeSearchText, prerequisitesSatisfiedV3 } from "./TreeCanvasV3";
+import { TreeCanvasV3, canIncrementNodeV3, familyInvestmentLevelsV3, normalizeTreeSearchText, prerequisitesSatisfiedV3 } from "./TreeCanvasV3";
 
 afterEach(cleanup);
 
@@ -70,6 +70,29 @@ describe("TreeCanvasV3", () => {
     expect(canIncrementNodeV3(nodes[2], { root: 1 }, {})).toBe(false);
     expect(canIncrementNodeV3(nodes[2], { root: 2 }, {})).toBe(true);
     expect(canIncrementNodeV3(nodes[0], { root: 2 }, {})).toBe(false);
+  });
+
+  it("counts effective invested ranks by family without double-counting simulations", () => {
+    expect(familyInvestmentLevelsV3(nodes, { root: 1, child: 1 }, { child: 3, locked: 1 })).toEqual({
+      nature: 0,
+      chaos: 4,
+      order: 0,
+      engineering: 0,
+      magic: 0,
+    });
+  });
+
+  it("renders the in-game center hub and updates its family counters", () => {
+    const { rerender } = render(<TreeCanvasV3
+      nodes={nodes} ownedRanks={{ root: 1 }} simulatedRanks={{ child: 1 }} locale="ko" onSelect={() => {}} />);
+    expect(screen.getByTestId("v46-tree-core")).toHaveTextContent("다이스 트리");
+    expect(screen.getByTestId("v46-tree-core").querySelector("image")).toHaveAttribute("href", "/tree-assets/dice-tree-base.webp");
+    expect(screen.getByTestId("v46-family-count-chaos")).toHaveAttribute("data-level", "1");
+
+    rerender(<TreeCanvasV3
+      nodes={nodes} ownedRanks={{ root: 1 }} simulatedRanks={{ child: 2, locked: 1 }} locale="ko" onSelect={() => {}} />);
+    expect(screen.getByTestId("v46-family-count-chaos")).toHaveAttribute("data-level", "3");
+    expect(screen.getByTestId("v46-tree-core")).toHaveAccessibleName(/혼돈 3/);
   });
 
   it("normalizes whitespace and punctuation in searches and focuses matching nodes", () => {

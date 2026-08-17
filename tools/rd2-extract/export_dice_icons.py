@@ -59,7 +59,7 @@ ICON_SPRITES = {
     "executioner": "Dice_Executioner3",
     "alignment": "Dice_Alignment3",
     "solitude": "Dice_Solitude_3",
-    "fear": "Runenode_Fear_0",
+    "fear": "Dice_TRANSFER3",
     "tyrant": "Dice_Tyrant3",
     "predator": "Dice_Predator3",
     "mutation": "Dice_Mutation3",

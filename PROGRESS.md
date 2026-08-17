@@ -1,17 +1,14 @@
-# Progress: Random Dice 2 simulator compare guided route V4.5
+# Progress: Random Dice 2 center tree hub and fear icon V4.6
 
 - Status: completed
-- Milestone: 7/7 (100%)
-- Updated: 2026-08-16T17:21:30
-- Current work: Completed and verified.
+- Milestone: 5/5 (100%)
+- Updated: 2026-08-16T17:58:04
+- Current work: Completed and verified locally; external deployment intentionally not performed without approval for this change.
 
 ## Log
-- 2026-08-16T16:51:08 | 1/7 | 시뮬레이터와 비교 탭 재현 완료: 시뮬레이터의 예상 기본 DPS가 비교 탭에서는 실전 DPS null 때문에 누락되고, B만 제한적으로 편집되어 독립 비교가 불가능함을 확인
-- 2026-08-16T17:01:05 | 2/7 | 공통 시나리오 결과 요약기 추가: 시뮬레이터와 비교 탭이 동일한 DPS 범위를 사용하고 실전·기본·예상·트리 제외를 구분함. 시뮬레이터 계산 범위 카드, 입력 초기화, 고유 조건 한글 라벨, HP 입력 해제 동작을 추가
-- 2026-08-16T17:01:05 | 3/7 | 비교 탭을 독립 A/B 워크스페이스로 교체: 양쪽 주사위·트리·영구 레벨·파워업·고유 조건을 따로 편집하고 공통 적/시간 기준으로 수치·차이·추정 범위를 표시
-- 2026-08-16T17:01:05 | 4/7 | 목표·역할·우선순위·길이·예산 기반 전체 트리 경로 엔진과 UI 구현: 선행 노드 자동 포함, 정확 비용/예산 검증, 완료 후 잔액, 단계별 이유, 타당성·한계·대안 경로·전체 가상 적용 제공
-- 2026-08-16T17:08:27 | 5/7 | 사용자 수정·대안 재생성 UX 보강: 주사위·역할·핵심 목표·효율/파워/특화·경로 길이를 다시 설정하고 3개 결정론적 대안을 순환 가능. 목표 전용 노드 도달 여부와 예산/길이 중단 사유를 명시
-- 2026-08-16T17:08:27 | 6/7 | 검증 통과: 52개 테스트 파일 161개 단위·컴포넌트 테스트, production build, Playwright 데스크톱·모바일 24개 통과(4개 의도적 프로젝트 skip). 비교 독립 상태, 추정 범위, 맞춤 전체 경로, 적용 후 잔액 차감까지 브라우저 검증
-- 2026-08-16T17:14:09 | 6/7 | 최종 검증 통과: 52개 테스트 파일의 162개 단위·컴포넌트 테스트, production build, Playwright 데스크톱·모바일 24개 통과와 4개 의도적 프로젝트 제외. 시뮬레이터·비교·구매 효율 스크롤, 공통 비교 범위, 전체 경로 적용과 재화 차감을 검증했고 최신 화면을 직접 확인함
-- 2026-08-16T17:21:30 | 7/7 | PR #9 병합 완료. main workflow run #31981618501에서 전체 검증과 GitHub Pages 배포가 성공했고 공개 URL에서 제작자 표기, 시뮬레이터, 독립 비교, 맞춤 전체 루트 로드 및 브라우저 오류 0건을 확인함
-- 2026-08-16T17:21:30 | 7/7 | Completed and verified.
+- 2026-08-16T17:49:51 | 1/5 | Confirmed Fear used Runenode_Fear_0 incorrectly; screenshot and extracted artwork identify Dice_TRANSFER3. Defined family counters as effective invested ranks.
+- 2026-08-16T17:52:56 | 2/5 | Replaced Fear rune badge with Dice_TRANSFER3, regenerated the icon, and added an exact-source regression test.
+- 2026-08-16T17:52:56 | 3/5 | Added the in-game center plaque, five localized family counters, effective-rank aggregation, live update animation, and component coverage.
+- 2026-08-16T17:55:59 | 4/5 | Passed desktop and mobile Playwright checks for the center hub, live increment/decrement, Fear asset URL, and reviewed both QA screenshots.
+- 2026-08-16T17:57:55 | 5/5 | Full verification passed: extractor tests 15, Vitest 165, production build, Playwright 26 passed with 4 intentional project skips; final diff and assets reviewed.
+- 2026-08-16T17:58:04 | 5/5 | Completed and verified locally; external deployment intentionally not performed without approval for this change.

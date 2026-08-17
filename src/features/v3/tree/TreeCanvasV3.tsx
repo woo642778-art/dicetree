@@ -28,6 +28,15 @@ const FAMILY_LABEL: Record<DiceFamilyV3, { ko: string; en: string }> = {
 
 const FAMILY_ORDER: DiceFamilyV3[] = ["nature", "chaos", "order", "engineering", "magic"];
 const INITIAL_VIEW = { x: 0, y: 0, scale: 0.92 };
+const TREE_BASE_IMAGE_URL = `${import.meta.env.BASE_URL}tree-assets/dice-tree-base.webp`;
+
+const FAMILY_COUNTER_POSITION: Record<DiceFamilyV3, { x: number; y: number }> = {
+  nature: { x: 0, y: -154 },
+  chaos: { x: 226, y: -18 },
+  order: { x: -226, y: -18 },
+  engineering: { x: -124, y: 158 },
+  magic: { x: 124, y: 158 },
+};
 
 function rankFor(
   nodeId: string,
@@ -35,6 +44,80 @@ function rankFor(
   simulatedRanks: Record<string, number>,
 ) {
   return Math.max(ownedRanks[nodeId] ?? 0, simulatedRanks[nodeId] ?? 0);
+}
+
+export type FamilyInvestmentLevelsV3 = Record<DiceFamilyV3, number>;
+
+export function familyInvestmentLevelsV3(
+  nodes: readonly DiceTreeNodeV3[],
+  ownedRanks: Record<string, number>,
+  simulatedRanks: Record<string, number>,
+): FamilyInvestmentLevelsV3 {
+  const levels: FamilyInvestmentLevelsV3 = {
+    nature: 0,
+    chaos: 0,
+    order: 0,
+    engineering: 0,
+    magic: 0,
+  };
+  for (const node of nodes) {
+    if (node.family === "core" || node.kind === "connector") continue;
+    levels[node.family] += Math.min(node.maxRank, rankFor(node.id, ownedRanks, simulatedRanks));
+  }
+  return levels;
+}
+
+function DiceTreeCoreV3({
+  levels,
+  locale,
+}: {
+  levels: FamilyInvestmentLevelsV3;
+  locale: "ko" | "en";
+}) {
+  const summary = FAMILY_ORDER
+    .map((family) => `${FAMILY_LABEL[family][locale]} ${levels[family]}`)
+    .join(", ");
+
+  return <g
+    className="v46-tree-core"
+    data-testid="v46-tree-core"
+    role="group"
+    aria-label={`${locale === "ko" ? "다이스 트리" : "Dice Tree"}: ${summary}`}
+  >
+    <image
+      className="v46-tree-core-base"
+      href={TREE_BASE_IMAGE_URL}
+      x="-150"
+      y="-103"
+      width="300"
+      height="206"
+      preserveAspectRatio="xMidYMid meet"
+      aria-hidden="true"
+    />
+    <g className="v46-tree-core-mark" aria-hidden="true">
+      <path className="v46-tree-core-cube is-blue" d="M-31-42l20-11 20 11v23L-11-8l-20-11z" />
+      <path className="v46-tree-core-cube is-violet" d="M2-36l18-10 18 10v21L20-5 2-15z" />
+      <path className="v46-tree-core-cube-line" d="M-31-42l20 11 20-11M-11-31v23M2-36l18 10 18-10M20-26v21" />
+    </g>
+    <text className="v46-tree-core-title" x="0" y="39" textAnchor="middle">
+      {locale === "ko" ? "다이스 트리" : "DICE TREE"}
+    </text>
+    {FAMILY_ORDER.map((family) => {
+      const position = FAMILY_COUNTER_POSITION[family];
+      const level = levels[family];
+      return <g
+        key={`${family}-${level}`}
+        className={`v46-tree-family-count family-${family}`}
+        data-testid={`v46-family-count-${family}`}
+        data-level={level}
+        transform={`translate(${position.x} ${position.y})`}
+        aria-hidden="true"
+      >
+        <text className="v46-tree-family-label" x="0" y="-7" textAnchor="middle">{FAMILY_LABEL[family][locale]}</text>
+        <text className="v46-tree-family-level" x="0" y="30" textAnchor="middle">{level}</text>
+      </g>;
+    })}
+  </g>;
 }
 
 export function prerequisitesSatisfiedV3(
@@ -97,6 +180,10 @@ export function TreeCanvasV3({
     y: (bounds.minY + bounds.maxY) / 2,
   }), [bounds.maxX, bounds.maxY, bounds.minX, bounds.minY]);
   const normalizedQuery = normalizeTreeSearchText(query.trim());
+  const familyLevels = useMemo(
+    () => familyInvestmentLevelsV3(nodes, ownedRanks, simulatedRanks),
+    [nodes, ownedRanks, simulatedRanks],
+  );
 
   const matchingNodes = useMemo(() => {
     const matches: DiceTreeNodeV3[] = [];
@@ -195,6 +282,7 @@ export function TreeCanvasV3({
             y2={-node.position.y}
           />;
         }))}
+        <DiceTreeCoreV3 levels={familyLevels} locale={locale} />
         {nodes.map((node) => {
           const ownedRank = ownedRanks[node.id] ?? 0;
           const simulatedRank = Math.max(ownedRank, simulatedRanks[node.id] ?? ownedRank);

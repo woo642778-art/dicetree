@@ -83,6 +83,29 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await context.close();
 });
 
+test("V4.6 center hub mirrors family investment levels and uses the full Terror dice art", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+
+  const hub = page.getByTestId("v46-tree-core");
+  const nature = page.getByTestId("v46-family-count-nature");
+  await expect(hub).toBeVisible();
+  await expect(hub).toContainText("다이스 트리");
+  await expect(nature).toHaveAttribute("data-level", "0");
+  await expect(page.locator('image[data-dice-id="fear"]')).toHaveAttribute("href", "/dicetree/dice-icons/fear.webp");
+
+  await page.getByRole("spinbutton", { name: "남은 골드" }).fill("9999999");
+  await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("9999");
+  await investTreeNode(page, "1001");
+  await expect(nature).toHaveAttribute("data-level", "1");
+  await page.screenshot({ path: `test-results/qa-v46-tree-core-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+
+  await page.getByTestId("v3-node-1001").click();
+  await page.getByRole("button", { name: "가상 랭크 내리기" }).click();
+  await expect(nature).toHaveAttribute("data-level", "0");
+  expect(errors).toEqual([]);
+});
+
 test("V4 route planner applies prerequisites as one preview and supports cancellation", async ({ page, isMobile }) => {
   test.skip(isMobile, "desktop verifies the full route and header-level clear action; route logic is covered by unit tests on all viewports");
   const errors = captureBrowserErrors(page);
