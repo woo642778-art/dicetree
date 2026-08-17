@@ -45,22 +45,26 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await expect(page.locator('image[data-dice-id]').first()).toBeAttached();
   await page.screenshot({ path: `test-results/qa-v3-tree-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
-  await page.getByRole("spinbutton", { name: "보유 골드" }).fill("9999999");
-  await page.getByRole("spinbutton", { name: "보유 다이스 코어" }).fill("9999");
-  const reachable = page.locator('[data-tree-node="true"][data-can-increment="true"]').first();
-  await expect(reachable).toBeVisible();
-  const nodeTestId = await reachable.getAttribute("data-testid");
-  expect(nodeTestId).toBeTruthy();
-  const selectedNode = page.getByTestId(nodeTestId!);
+  const remainingGold = page.getByRole("spinbutton", { name: "남은 골드" });
+  const remainingCore = page.getByRole("spinbutton", { name: "남은 다이스 코어" });
+  await remainingGold.fill("9999999");
+  await remainingCore.fill("9999");
+  const selectedNode = page.getByTestId("v3-node-1205");
+  await expect(selectedNode).toBeVisible();
+  await expect(selectedNode).toHaveAttribute("data-can-increment", "false");
+  const nodeTestId = "v3-node-1205";
   const beforeSimulatedRank = Number(await selectedNode.getAttribute("data-simulated-rank") ?? "0");
   await selectedNode.click();
   await expect(page.getByTestId("v3-node-detail-sheet")).toBeVisible();
   await page.screenshot({ path: `test-results/qa-v3-node-detail-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
-  const increment = page.getByRole("button", { name: "가상 랭크 올리기" });
+  const increment = page.locator(".v3-rank-controls").getByRole("button", { name: "선행 노드 포함 가상 구매" });
   await expect(increment).toBeEnabled();
   await increment.click();
   await expect(selectedNode).toHaveAttribute("data-simulated-rank", String(beforeSimulatedRank + 1));
+  await expect.poll(async () => Number(await remainingGold.inputValue())).toBeLessThan(9999999);
   const simulatedRank = await selectedNode.getAttribute("data-simulated-rank");
+  const sharedGold = await remainingGold.inputValue();
+  const sharedCore = await remainingCore.inputValue();
   expect(simulatedRank).not.toBeNull();
 
   await page.getByRole("button", { name: "공유" }).click();
@@ -71,8 +75,8 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   const shared = await context.newPage();
   const sharedErrors = captureBrowserErrors(shared);
   await shared.goto(sharedUrl);
-  await expect(shared.getByRole("spinbutton", { name: "보유 골드" })).toHaveValue("9999999");
-  await expect(shared.getByRole("spinbutton", { name: "보유 다이스 코어" })).toHaveValue("9999");
+  await expect(shared.getByRole("spinbutton", { name: "남은 골드" })).toHaveValue(sharedGold);
+  await expect(shared.getByRole("spinbutton", { name: "남은 다이스 코어" })).toHaveValue(sharedCore);
   await expect(shared.getByTestId(nodeTestId!)).toHaveAttribute("data-simulated-rank", simulatedRank!);
   expect(errors).toEqual([]);
   expect(sharedErrors).toEqual([]);
@@ -83,8 +87,8 @@ test("V4 route planner applies prerequisites as one preview and supports cancell
   test.skip(isMobile, "desktop verifies the full route and header-level clear action; route logic is covered by unit tests on all viewports");
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("spinbutton", { name: "보유 골드" }).fill("9999999");
-  await page.getByRole("spinbutton", { name: "보유 다이스 코어" }).fill("9999");
+  await page.getByRole("spinbutton", { name: "남은 골드" }).fill("9999999");
+  await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("9999");
   await page.getByTestId("v3-node-1205").click();
 
   const route = page.getByTestId("v4-route-plan");
@@ -92,7 +96,7 @@ test("V4 route planner applies prerequisites as one preview and supports cancell
   await expect(route.locator("li")).toHaveCount(3);
   await expect(route).not.toContainText("<tag>");
   await expect(route).not.toContainText("{0}");
-  await route.getByRole("button", { name: "경로 가상 적용" }).click();
+  await page.locator(".v3-rank-controls").getByRole("button", { name: "선행 노드 포함 가상 구매" }).click();
   await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-simulated-rank", "1");
   await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-simulated-rank", "1");
   await expect(page.getByTestId("v3-node-1205")).toHaveAttribute("data-simulated-rank", "1");
@@ -102,6 +106,40 @@ test("V4 route planner applies prerequisites as one preview and supports cancell
   await page.getByRole("button", { name: "전체 계획 취소" }).click();
   await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-simulated-rank", "0");
   await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-simulated-rank", "0");
+  expect(errors).toEqual([]);
+});
+
+test("V4.4 Tree search focuses normalized effect terms and drag distance follows the pointer", async ({ page, isMobile }) => {
+  test.skip(isMobile, "desktop validates precise mouse dragging; mobile touch navigation remains covered separately");
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+
+  const search = page.getByRole("textbox", { name: "트리 검색" });
+  const transform = page.getByTestId("v3-tree-transform");
+  const initialTransform = await transform.getAttribute("transform");
+  await search.fill("공격 속도");
+  await expect(page.getByTestId("v44-tree-search-status")).toContainText("개 검색 결과");
+  await expect.poll(() => transform.getAttribute("transform")).not.toBe(initialTransform);
+
+  await search.fill("원자");
+  await expect(page.getByTestId("v3-node-2004")).not.toHaveClass(/is-dimmed/);
+  await page.screenshot({ path: "test-results/qa-v44-tree-search-desktop.png", fullPage: false });
+  await search.fill("");
+  await page.getByTestId("v3-fit-tree").click();
+
+  const root = page.getByTestId("v3-node-1001");
+  const before = await root.boundingBox();
+  expect(before).not.toBeNull();
+  await page.mouse.move(before!.x + before!.width / 2, before!.y + before!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(before!.x + before!.width / 2 + 280, before!.y + before!.height / 2 + 80, { steps: 8 });
+  await page.mouse.up();
+  const after = await root.boundingBox();
+  expect(after).not.toBeNull();
+  expect(after!.x - before!.x).toBeGreaterThan(220);
+  expect(after!.y - before!.y).toBeGreaterThan(50);
+  await expect(page.getByTestId("v3-node-detail-sheet")).toHaveCount(0);
+  await page.screenshot({ path: "test-results/qa-v44-tree-pan-desktop.png", fullPage: false });
   expect(errors).toEqual([]);
 });
 
@@ -142,7 +180,7 @@ test("V3 client-table projection reacts to permanent level and battle upgrade wi
   await expect(page.getByTestId("stat-attackInterval")).toContainText("0.425");
   await expect(page.getByTestId("stat-projectedBasicAttackDps")).toContainText("705.88");
   await expect(page.getByTestId("v3-stat-panel")).toContainText(/표 기반 예상|Table projection/);
-  await expect(page.getByTestId("stat-practical-dps")).toHaveAttribute("data-dps-kind", "projected");
+  await expect(page.getByTestId("stat-practical-dps")).toHaveAttribute("data-dps-kind", "projected-basic");
   await expect(page.getByTestId("stat-practical-dps")).toContainText("705.88");
   await expect(page.getByTestId("v3-damage-graph")).toContainText("특수효과 제외 기본 공격 피해");
   await page.screenshot({ path: `test-results/qa-v3-wind-growth-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
@@ -167,8 +205,8 @@ test("V3 real Wind Dice Tree path changes the selected dice tree stat without fa
   test.skip(isMobile, "canonical multi-node route interaction is covered on desktop; mobile pan/detail flow is separate");
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("spinbutton", { name: "보유 골드" }).fill("9999999");
-  await page.getByRole("spinbutton", { name: "보유 다이스 코어" }).fill("9999");
+  await page.getByRole("spinbutton", { name: "남은 골드" }).fill("9999999");
+  await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("9999");
 
   await page.getByRole("button", { name: "시뮬레이터" }).click();
   await selectDiceByInternalId(page, "wind");
@@ -182,7 +220,7 @@ test("V3 real Wind Dice Tree path changes the selected dice tree stat without fa
   const bullet = page.getByTestId("stat-bulletDamagePercent");
   await expect(bullet).toBeVisible();
   await expect.poll(async () => Number((await bullet.locator("strong").textContent())?.replaceAll(",", "") ?? "0")).toBeGreaterThan(0);
-  await expect(page.getByTestId("stat-practical-dps")).toHaveAttribute("data-dps-kind", "baseline");
+  await expect(page.getByTestId("stat-practical-dps")).toHaveAttribute("data-dps-kind", /tree-excluded/);
   await expect(page.getByTestId("stat-practical-dps")).not.toHaveText("—");
   expect(errors).toEqual([]);
 });
@@ -239,10 +277,10 @@ test("V4.3 Purchase Value uses won in Korean and dollars in English", async ({ p
   expect(errors).toEqual([]);
 });
 
-test("V4.2 Simulator and Purchase Value allow document scrolling", async ({ page }) => {
+test("V4.5 Simulator, Compare and Purchase Value allow document scrolling", async ({ page }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  for (const label of ["시뮬레이터", "구매 효율"]) {
+  for (const label of ["시뮬레이터", "비교", "구매 효율"]) {
     await page.getByRole("button", { name: label }).click();
     await page.evaluate(() => window.scrollTo(0, 0));
     const dimensions = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, viewport: innerHeight }));
@@ -262,7 +300,43 @@ test("V3 Compare uses the shared engine and stays confidence-aware", async ({ pa
   await expect(page.getByTestId("compare-left")).toBeVisible();
   await expect(page.getByTestId("compare-right")).toBeVisible();
   await expect(page.getByTestId("compare-delta")).toBeVisible();
+  await expect(page.getByTestId("compare-left-dps")).not.toHaveText("—");
+  await expect(page.getByTestId("compare-right-dps")).not.toHaveText("—");
+  await page.getByLabel("B 주사위").selectOption("wind");
+  await page.getByLabel("B 영구 레벨").fill("2");
+  await page.getByLabel("B 전투 파워업").fill("2");
+  await expect(page.getByLabel("A 주사위")).toHaveValue("predator");
+  await expect(page.getByLabel("B 주사위")).toHaveValue("wind");
+  await expect(page.getByTestId("compare-delta")).toContainText(/추정 비교|Estimated/);
+  await page.getByRole("button", { name: "A/B 바꾸기" }).click();
+  await expect(page.getByLabel("A 주사위")).toHaveValue("wind");
   await page.screenshot({ path: `test-results/qa-v3-compare-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+  expect(errors).toEqual([]);
+});
+
+test("V4.5 guided route provides a complete justified affordable plan and applies it", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("spinbutton", { name: "남은 골드" }).fill("9999999");
+  await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("999");
+  await page.getByRole("button", { name: "맞춤 전체 루트" }).click();
+  await expect(page.getByTestId("v45-guided-route")).toBeVisible();
+  await page.getByLabel("중심 주사위").selectOption("element");
+  await page.getByLabel("역할").selectOption("dealer");
+  await page.getByLabel("핵심 목표").selectOption("selected-dice");
+  await page.getByLabel("우선순위").selectOption("specialized");
+  await page.getByRole("button", { name: "이 조건으로 전체 루트 만들기" }).click();
+  const summary = page.getByTestId("v45-route-summary");
+  await expect(summary).toContainText("원자");
+  await expect(summary).toContainText("선행 조건");
+  await expect(summary).toContainText("비용 합계");
+  await expect(summary).toContainText("예산 이내");
+  await expect(summary).toContainText("도달");
+  await expect(page.getByTestId("v45-route-steps").locator("li").first()).toBeVisible();
+  const beforeGold = Number(await page.getByRole("spinbutton", { name: "남은 골드" }).inputValue());
+  await page.getByRole("button", { name: "전체 경로 가상 적용" }).click();
+  await expect.poll(async () => Number(await page.getByRole("spinbutton", { name: "남은 골드" }).inputValue())).toBeLessThan(beforeGold);
+  await page.screenshot({ path: `test-results/qa-v45-guided-route-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
   expect(errors).toEqual([]);
 });
 

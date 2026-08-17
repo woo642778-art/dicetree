@@ -2,33 +2,87 @@ import { useCallback, useRef, useState } from "react";
 
 export interface ViewTransform { x: number; y: number; scale: number }
 
+interface SvgViewportMetrics {
+  screenScaleX: number;
+  screenScaleY: number;
+}
+
+export function screenDeltaToSvgUnits(
+  delta: { x: number; y: number },
+  metrics: SvgViewportMetrics,
+) {
+  return {
+    x: delta.x / Math.max(Number.EPSILON, metrics.screenScaleX),
+    y: delta.y / Math.max(Number.EPSILON, metrics.screenScaleY),
+  };
+}
+
+function viewportMetrics(svg: SVGSVGElement): SvgViewportMetrics {
+  const matrix = svg.getScreenCTM?.();
+  if (matrix) {
+    return {
+      screenScaleX: Math.hypot(matrix.a, matrix.b),
+      screenScaleY: Math.hypot(matrix.c, matrix.d),
+    };
+  }
+  const rect = svg.getBoundingClientRect();
+  const viewBox = svg.viewBox.baseVal;
+  const scale = Math.min(
+    rect.width / Math.max(1, viewBox.width),
+    rect.height / Math.max(1, viewBox.height),
+  );
+  return { screenScaleX: scale, screenScaleY: scale };
+}
+
+function clientPointToSvg(svg: SVGSVGElement, clientX: number, clientY: number) {
+  const rect = svg.getBoundingClientRect();
+  const metrics = viewportMetrics(svg);
+  const viewBox = svg.viewBox.baseVal;
+  const renderedWidth = viewBox.width * metrics.screenScaleX;
+  const renderedHeight = viewBox.height * metrics.screenScaleY;
+  return {
+    x: viewBox.x + (clientX - rect.left - (rect.width - renderedWidth) / 2) / metrics.screenScaleX,
+    y: viewBox.y + (clientY - rect.top - (rect.height - renderedHeight) / 2) / metrics.screenScaleY,
+  };
+}
+
 export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 }) {
   const [view, setView] = useState(initial);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const lastPan = useRef<{ x: number; y: number } | null>(null);
-  const lastPinch = useRef<number | null>(null);
+  const lastPinch = useRef<{ distance: number; midpoint: { x: number; y: number } } | null>(null);
+  const pointerTravel = useRef(0);
+  const suppressPointerClick = useRef(false);
 
   const clampScale = (scale: number) => Math.min(2.5, Math.max(0.35, scale));
 
   const onWheel = useCallback((event: React.WheelEvent<SVGSVGElement>) => {
     event.preventDefault();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const px = event.clientX - rect.left - rect.width / 2;
-    const py = event.clientY - rect.top - rect.height / 2;
+    const point = clientPointToSvg(event.currentTarget, event.clientX, event.clientY);
     setView((current) => {
       const nextScale = clampScale(current.scale * Math.exp(-event.deltaY * 0.0014));
       const ratio = nextScale / current.scale;
-      return { x: px - (px - current.x) * ratio, y: py - (py - current.y) * ratio, scale: nextScale };
+      return {
+        x: point.x - (point.x - current.x) * ratio,
+        y: point.y - (point.y - current.y) * ratio,
+        scale: nextScale,
+      };
     });
   }, []);
 
   const onPointerDown = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
-    event.currentTarget.setPointerCapture(event.pointerId);
+    if (pointers.current.size === 0) {
+      pointerTravel.current = 0;
+      suppressPointerClick.current = false;
+    }
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.current.size === 1) lastPan.current = { x: event.clientX, y: event.clientY };
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
-      lastPinch.current = Math.hypot(a.x - b.x, a.y - b.y);
+      lastPinch.current = {
+        distance: Math.hypot(a.x - b.x, a.y - b.y),
+        midpoint: clientPointToSvg(event.currentTarget, (a.x + b.x) / 2, (a.y + b.y) / 2),
+      };
     }
   }, []);
 
@@ -38,16 +92,37 @@ export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 })
     if (pointers.current.size === 1 && lastPan.current) {
       const dx = event.clientX - lastPan.current.x;
       const dy = event.clientY - lastPan.current.y;
+      pointerTravel.current += Math.hypot(dx, dy);
+      if (pointerTravel.current > 5) {
+        suppressPointerClick.current = true;
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
+      }
       lastPan.current = { x: event.clientX, y: event.clientY };
-      setView((current) => ({ ...current, x: current.x + dx, y: current.y + dy }));
+      const delta = screenDeltaToSvgUnits({ x: dx, y: dy }, viewportMetrics(event.currentTarget));
+      setView((current) => ({ ...current, x: current.x + delta.x, y: current.y + delta.y }));
     } else if (pointers.current.size === 2) {
+      if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
       const [a, b] = [...pointers.current.values()];
       const distance = Math.hypot(a.x - b.x, a.y - b.y);
-      if (lastPinch.current && lastPinch.current > 0) {
-        const ratio = distance / lastPinch.current;
-        setView((current) => ({ ...current, scale: clampScale(current.scale * ratio) }));
+      const midpoint = clientPointToSvg(event.currentTarget, (a.x + b.x) / 2, (a.y + b.y) / 2);
+      if (lastPinch.current && lastPinch.current.distance > 0) {
+        const ratio = distance / lastPinch.current.distance;
+        setView((current) => {
+          const nextScale = clampScale(current.scale * ratio);
+          const appliedRatio = nextScale / current.scale;
+          return {
+            x: midpoint.x - (lastPinch.current!.midpoint.x - current.x) * appliedRatio,
+            y: midpoint.y - (lastPinch.current!.midpoint.y - current.y) * appliedRatio,
+            scale: nextScale,
+          };
+        });
       }
-      lastPinch.current = distance;
+      suppressPointerClick.current = true;
+      lastPinch.current = { distance, midpoint };
     }
   }, []);
 
@@ -63,6 +138,18 @@ export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 })
     }
   }, []);
 
+  const consumePointerClick = useCallback(() => {
+    const suppressed = suppressPointerClick.current;
+    suppressPointerClick.current = false;
+    return suppressed;
+  }, []);
+
   const resetView = useCallback(() => setView(initial), [initial.x, initial.y, initial.scale]);
-  return { view, setView, resetView, bind: { onWheel, onPointerDown, onPointerMove, onPointerUp: endPointer, onPointerCancel: endPointer } };
+  return {
+    view,
+    setView,
+    resetView,
+    consumePointerClick,
+    bind: { onWheel, onPointerDown, onPointerMove, onPointerUp: endPointer, onPointerCancel: endPointer },
+  };
 }

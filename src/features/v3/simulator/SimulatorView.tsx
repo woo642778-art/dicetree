@@ -5,9 +5,10 @@ import type { PlannerStateV3, SimulationScenarioState } from "../../../planner-v
 import { resolveEnemyPresetV3 } from "../../../simulation/enemies/presets";
 import { mechanicConditionDefinitionsV3 } from "../../../simulation/mechanics/registry";
 import { runScenarioV3 } from "../../../simulation/scenario/runScenario";
+import { summarizeScenarioV3 } from "../../../simulation/scenario/summarizeScenario";
 import { CalculationDetails } from "../tree/CalculationDetails";
 import { DiceIcon } from "../shared/DiceIcon";
-import { ConditionControls } from "./ConditionControls";
+import { ConditionControls, conditionLabelV3 } from "./ConditionControls";
 import { DamageGraph } from "./DamageGraph";
 import { DiceSelector } from "./DiceSelector";
 import { EnemyControls } from "./EnemyControls";
@@ -47,6 +48,7 @@ export function SimulatorView({ data, state, locale, onScenarioChange }: Simulat
     durationSeconds: scenario.durationSeconds,
   };
   const result = runScenarioV3(input, data);
+  const summary = summarizeScenarioV3(result);
   const selectedDice = data.dice.find((dice) => dice.id === scenario.diceId);
   const selectedName = selectedDice ? localized(data, selectedDice.nameKey, locale, selectedDice.id) : scenario.diceId;
   const investedNodes = data.tree.filter((node) => (ranks[node.id] ?? 0) > 0).length;
@@ -57,6 +59,26 @@ export function SimulatorView({ data, state, locale, onScenarioChange }: Simulat
     );
     onScenarioChange({ diceId, conditionValues: defaults });
   };
+
+  const resetScenario = () => {
+    const defaults = Object.fromEntries(
+      mechanicConditionDefinitionsV3(scenario.diceId, data, ranks).map((condition) => [condition.key, condition.defaultValue]),
+    );
+    onScenarioChange({
+      diceProgressionLevel: 1,
+      battleUpgradeLevel: 1,
+      conditionValues: defaults,
+      enemyPresetId: "custom",
+      enemyHpOverride: undefined,
+      durationSeconds: 30,
+    });
+  };
+
+  const metricDescription = summary.metricKind === "practical"
+    ? (locale === "ko" ? "검증된 기본 공격과 고유 효과를 모두 포함합니다." : "Includes verified basic attacks and special mechanics.")
+    : summary.metricKind.startsWith("tree-excluded")
+      ? (locale === "ko" ? "현재 검증 범위에서는 트리와 고유 효과를 제외한 기본 공격 예상치입니다." : "An estimated basic-attack result excluding tree and special mechanics under current evidence.")
+      : (locale === "ko" ? "고유 효과를 제외하고 검증 가능한 기본 공격 범위만 계산합니다." : "Uses the verifiable basic-attack scope and excludes special mechanics.");
 
   return <main className="v3-simulator-view" data-testid="v3-simulator-view">
     <aside className="v3-simulator-sidebar">
@@ -73,7 +95,7 @@ export function SimulatorView({ data, state, locale, onScenarioChange }: Simulat
       </header>
 
       <section className="v3-growth-controls">
-        <h3>{locale === "ko" ? "성장" : "Progression"}</h3>
+        <div className="v45-control-heading"><h3>{locale === "ko" ? "성장" : "Progression"}</h3><button type="button" onClick={resetScenario}>{locale === "ko" ? "입력 초기화" : "Reset inputs"}</button></div>
         <label>
           <span>{locale === "ko" ? "영구 주사위 레벨" : "Permanent dice level"}</span>
           <input
@@ -117,11 +139,20 @@ export function SimulatorView({ data, state, locale, onScenarioChange }: Simulat
     </section>
 
     <section className="v3-simulator-results">
+      <section className="v45-scenario-summary" data-testid="v45-scenario-summary">
+        <header><strong>{locale === "ko" ? "현재 계산 범위" : "Current calculation scope"}</strong><span className={`is-${summary.confidence}`}>{summary.confidence === "verified" ? summary.metricKind === "practical" ? (locale === "ko" ? "전체 공식 검증" : "Fully verified") : (locale === "ko" ? "기본 공격 검증" : "Basic attack verified") : summary.confidence === "estimated" ? (locale === "ko" ? "범위 제한" : "Limited scope") : (locale === "ko" ? "근거 부족" : "Unavailable")}</span></header>
+        <p>{metricDescription}</p>
+        <dl><div><dt>{locale === "ko" ? "주사위" : "Dice"}</dt><dd>{selectedName}</dd></div><div><dt>{locale === "ko" ? "영구 레벨 / 파워업" : "Level / upgrade"}</dt><dd>{scenario.diceProgressionLevel} / {scenario.battleUpgradeLevel}</dd></div><div><dt>{locale === "ko" ? "트리" : "Tree"}</dt><dd>{locale === "ko" ? `${investedNodes}개 노드` : `${investedNodes} nodes`}</dd></div><div><dt>{locale === "ko" ? "적 HP / 시간" : "Enemy HP / duration"}</dt><dd>{enemy.hp?.toLocaleString() ?? (locale === "ko" ? "미입력" : "Not set")} / {scenario.durationSeconds}s</dd></div></dl>
+      </section>
       <StatPanel result={result} locale={locale} />
       <DamageGraph outcome={result.outcome} basicAttackOutcome={result.basicAttackOutcome} basicAttackOutcomeKind={result.basicAttackOutcomeKind} locale={locale} />
       {Object.keys(result.mechanic.values).length > 0 && <section className="v3-mechanic-values" data-testid="v3-mechanic-values">
         <h3>{locale === "ko" ? "고유 효과 입력/해석" : "Mechanic inputs / interpretation"}</h3>
-        <dl>{Object.entries(result.mechanic.values).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value === null ? "—" : String(value)}</dd></div>)}</dl>
+        <dl>{Object.entries(result.mechanic.values).map(([key, value]) => {
+          const definition = conditions.find((candidate) => candidate.key === key);
+          const labelKey = definition?.labelKey ?? key;
+          return <div key={key}><dt>{conditionLabelV3(labelKey, locale, (candidate) => localized(data, candidate, locale, candidate))}</dt><dd>{value === null ? "—" : String(value)}</dd></div>;
+        })}</dl>
         {result.mechanic.confidence === "partial" && <p>{locale === "ko" ? "고유 공식의 미검증 구간은 실전 DPS에서 제외됩니다." : "Unverified mechanic portions are excluded from practical DPS."}</p>}
       </section>}
       <CalculationDetails trace={result.simulation.trace} locale={locale} />

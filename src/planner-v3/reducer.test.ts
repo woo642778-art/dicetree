@@ -12,6 +12,10 @@ const limits: PlannerNodeLimitsV3 = {
     ["5007", 1],
     ["5207", 50],
   ]),
+  prerequisites: new Map([
+    ["5007", []],
+    ["5207", [{ nodeId: "5007", minRank: 1 }]],
+  ]),
 };
 
 const initial = (): PlannerStateV3 => ({
@@ -77,6 +81,29 @@ describe("plannerReducerV3", () => {
     expect(history.present.simulatedRanks).toEqual({ "5207": 8 });
     expect(history.past).toHaveLength(1);
     history = plannerReducerV3(history, { type: "undo" }, limits);
+    expect(history.present.simulatedRanks).toEqual({});
+  });
+
+  it("rejects direct and batch purchases that skip prerequisite ranks", () => {
+    const withoutRoot = { ...initial(), ownedRanks: { "5207": 5 } };
+    let history = createPlannerHistoryV3(withoutRoot);
+    history = plannerReducerV3(history, { type: "setSimulatedRank", nodeId: "5207", rank: 6 }, limits);
+    expect(history.present.simulatedRanks).toEqual({});
+
+    history = plannerReducerV3(history, { type: "applyRoute", ranks: { "5207": 8 } }, limits);
+    expect(history.present.simulatedRanks).toEqual({});
+
+    history = plannerReducerV3(history, { type: "applyRoute", ranks: { "5007": 1, "5207": 8 } }, limits);
+    expect(history.present.simulatedRanks).toEqual({ "5007": 1, "5207": 8 });
+  });
+
+  it("removes dependent virtual purchases when a prerequisite plan is cancelled", () => {
+    const seeded = { ...initial(), ownedRanks: { "5207": 5 }, simulatedRanks: { "5007": 1, "5207": 8 } };
+    const history = plannerReducerV3(
+      createPlannerHistoryV3(seeded),
+      { type: "setSimulatedRank", nodeId: "5007", rank: 0 },
+      limits,
+    );
     expect(history.present.simulatedRanks).toEqual({});
   });
 

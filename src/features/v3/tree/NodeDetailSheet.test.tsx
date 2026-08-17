@@ -99,8 +99,20 @@ describe("NodeDetailSheet", () => {
     expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("모든 주사위 대미지Lv.1 → 2");
     expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("포식 강화Lv.0 → 1");
     expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("3,200 골드 · 3 다이스 코어");
-    expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("현재 재화가 부족");
-    fireEvent.click(screen.getByRole("button", { name: "경로 가상 적용" }));
+    expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("현재 남은 재화가 부족");
+    expect(screen.getAllByRole("button", { name: "선행 노드 포함 가상 구매" })).toHaveLength(2);
+    for (const button of screen.getAllByRole("button", { name: "선행 노드 포함 가상 구매" })) expect(button).toBeDisabled();
+    expect(applyRoute).not.toHaveBeenCalled();
+  });
+
+  it("buys a target and every prerequisite as one affordable transaction", () => {
+    const applyRoute = vi.fn();
+    const route = planNextRankRouteV3(data.tree, { root: 1 }, "child");
+    render(<NodeDetailSheet
+      node={child} data={data} state={state()} locale="ko" route={route} routeAffordable
+      onApplyRoute={applyRoute} onSetSimulatedRank={() => {}}
+    />);
+    fireEvent.click(screen.getAllByRole("button", { name: "선행 노드 포함 가상 구매" })[0]);
     expect(applyRoute).toHaveBeenCalledWith({ root: 2, child: 1 });
   });
 });

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { DiceFamilyV3, DiceTreeNodeV3 } from "../../../game-data/types";
 import { localizeGameKey } from "../../../game-data/load";
 import { nextRankCost } from "../../../planner-v3/costs";
@@ -67,6 +67,14 @@ function boundsOf(nodes: readonly DiceTreeNodeV3[]) {
   return { minX, maxX, minY, maxY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
 }
 
+export function normalizeTreeSearchText(value: string) {
+  return value
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[\s·_.:/+%()-]+/g, "");
+}
+
 export function TreeCanvasV3({
   nodes,
   ownedRanks,
@@ -79,38 +87,60 @@ export function TreeCanvasV3({
   locale,
   onSelect,
 }: TreeCanvasV3Props) {
-  const { view, setView, resetView, bind } = usePanZoom(INITIAL_VIEW);
+  const { view, setView, resetView, consumePointerClick, bind } = usePanZoom(INITIAL_VIEW);
   const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const bounds = useMemo(() => boundsOf(nodes), [nodes]);
   const margin = Math.max(260, Math.max(bounds.width, bounds.height) * 0.05);
   const viewBox = `${bounds.minX - margin} ${bounds.minY - margin} ${bounds.width + margin * 2} ${bounds.height + margin * 2}`;
-  const center = { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 };
-  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const center = useMemo(() => ({
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2,
+  }), [bounds.maxX, bounds.maxY, bounds.minX, bounds.minY]);
+  const normalizedQuery = normalizeTreeSearchText(query.trim());
 
-  const visibleIds = useMemo(() => {
-    const visible = new Set<string>();
+  const matchingNodes = useMemo(() => {
+    const matches: DiceTreeNodeV3[] = [];
     for (const node of nodes) {
       const familyMatches = familyFilter === "all" || node.family === "core" || node.family === familyFilter;
       const name = localizeGameKey(node.nameKey ?? undefined, locale, node.id);
       const description = localizeGameKey(node.descriptionKey ?? undefined, locale, "");
+      const family = node.family === "core" ? "core" : `${node.family} ${FAMILY_LABEL[node.family][locale]}`;
+      const searchableText = normalizeTreeSearchText([
+        name,
+        description,
+        node.id,
+        node.targetId,
+        node.passiveOrRuneRef,
+        node.kind,
+        family,
+      ].filter(Boolean).join(" "));
       const queryMatches = !normalizedQuery
-        || `${name} ${description} ${node.id}`.toLocaleLowerCase().includes(normalizedQuery);
-      if (familyMatches && queryMatches) visible.add(node.id);
+        || searchableText.includes(normalizedQuery);
+      if (familyMatches && queryMatches) matches.push(node);
     }
-    return visible;
+    return matches;
   }, [familyFilter, locale, nodes, normalizedQuery]);
 
-  const jumpToNodes = (targets: readonly DiceTreeNodeV3[]) => {
+  const visibleIds = useMemo(() => new Set(matchingNodes.map((node) => node.id)), [matchingNodes]);
+
+  const jumpToNodes = useCallback((targets: readonly DiceTreeNodeV3[], minimumScale = 1.15) => {
     if (!targets.length) return;
     const targetX = targets.reduce((sum, node) => sum + node.position.x, 0) / targets.length;
     const targetY = targets.reduce((sum, node) => sum - node.position.y, 0) / targets.length;
-    const scale = Math.max(1.15, view.scale);
-    setView({
-      x: (center.x - targetX) * scale,
-      y: (center.y - targetY) * scale,
-      scale,
+    setView((current) => {
+      const scale = Math.max(minimumScale, current.scale);
+      return {
+        x: center.x - targetX * scale,
+        y: center.y - targetY * scale,
+        scale,
+      };
     });
-  };
+  }, [center.x, center.y, setView]);
+
+  useEffect(() => {
+    if (!normalizedQuery || matchingNodes.length === 0) return;
+    jumpToNodes(matchingNodes, 2.5);
+  }, [jumpToNodes, matchingNodes, normalizedQuery]);
 
   const selectedDiceNodes = selectedDiceId
     ? nodes.filter((node) => node.targetId === selectedDiceId || node.id === selectedDiceId)
@@ -120,6 +150,10 @@ export function TreeCanvasV3({
     ...current,
     scale: Math.min(2.5, Math.max(0.35, current.scale + delta)),
   }));
+
+  const selectFromPointer = (nodeId: string) => {
+    if (!consumePointerClick()) onSelect(nodeId);
+  };
 
   return <div className="v3-tree-wrap">
     <svg
@@ -139,7 +173,7 @@ export function TreeCanvasV3({
           <stop offset="1" stopColor="#e7b34e" />
         </linearGradient>
       </defs>
-      <g data-testid="v3-tree-transform" transform={`translate(${view.x / view.scale} ${view.y / view.scale}) scale(${view.scale})`}>
+      <g data-testid="v3-tree-transform" transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
         {nodes.flatMap((node) => node.prerequisites.map((prerequisite) => {
           const parent = byId.get(prerequisite.nodeId);
           if (!parent) return null;
@@ -176,10 +210,19 @@ export function TreeCanvasV3({
             canIncrement={canIncrementNodeV3(node, ownedRanks, simulatedRanks)}
             nextCost={nextRankCost(node, simulatedRank)}
             onSelect={onSelect}
+            onPointerSelect={selectFromPointer}
           />;
         })}
       </g>
     </svg>
+
+    {normalizedQuery && <div className={`v44-tree-search-status ${matchingNodes.length ? "has-results" : "is-empty"}`} role="status" data-testid="v44-tree-search-status">
+      <strong>{matchingNodes.length}</strong>
+      <span>{locale === "ko" ? "개 검색 결과" : "search results"}</span>
+      <small>{matchingNodes.length
+        ? (locale === "ko" ? "결과 위치로 이동했습니다." : "View moved to the results.")
+        : (locale === "ko" ? "이름이나 효과를 다시 확인해 주세요." : "Try another node or effect term.")}</small>
+    </div>}
 
     <div className="v3-tree-family-jumps" aria-label={locale === "ko" ? "계열로 이동" : "Jump to family"}>
       {FAMILY_ORDER.map((family) => <button key={family} type="button" onClick={() => jumpToNodes(nodes.filter((node) => node.family === family))}>

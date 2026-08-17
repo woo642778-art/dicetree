@@ -1,4 +1,5 @@
 import type { ScenarioResultV3 } from "../../../simulation/scenario/runScenario";
+import { summarizeScenarioV3 } from "../../../simulation/scenario/summarizeScenario";
 
 export interface StatPanelProps {
   result: ScenarioResultV3;
@@ -32,32 +33,23 @@ export function StatPanel({ result, locale }: StatPanelProps) {
   const exactAttacksPerSecond = exactStats.attackInterval !== undefined && exactStats.attackInterval > 0 ? 1 / exactStats.attackInterval : undefined;
   const statKeys = Object.keys(STAT_LABELS).filter((key) => exactStats[key] !== undefined || projectedStats[key] !== undefined);
   const hasProjection = statKeys.some((key) => differs(exactStats[key], projectedStats[key]));
+  const summary = summarizeScenarioV3(result);
   const projectedBasicDps = result.simulation.projectedBasicAttackDps;
   const hasProjectedBasicDps = projectedBasicDps !== null
     && projectedBasicDps !== undefined
     && (result.simulation.basicAttackDps === null || differs(result.simulation.basicAttackDps ?? undefined, projectedBasicDps));
-  const directBasicDps = hasProjectedBasicDps ? projectedBasicDps : result.simulation.basicAttackDps;
-  const scenarioBaselineDps = result.basicAttackOutcome?.dps.average;
-  const headlineDps = result.simulation.practicalDps ?? directBasicDps ?? scenarioBaselineDps;
-  const headlineKind = result.simulation.practicalDps !== null
-    ? "practical"
-    : hasProjectedBasicDps
-      ? "projected"
-      : result.simulation.basicAttackDps !== null
-        ? "basic"
-        : scenarioBaselineDps !== undefined
-          ? "baseline"
-          : "missing";
+  const headlineDps = summary.dps;
+  const headlineKind = summary.metricKind;
 
   return <section className={`v3-stat-panel is-${result.simulation.confidence}`} data-testid="v3-stat-panel">
     <header>
       <div><small>{headlineKind === "practical"
         ? (locale === "ko" ? "실전 DPS" : "Practical DPS")
-        : headlineKind === "projected"
+        : headlineKind === "projected-basic"
           ? (locale === "ko" ? "특수효과 제외 예상 DPS" : "Projected DPS excluding special effects")
-          : headlineKind === "basic"
+          : headlineKind === "verified-basic"
             ? (locale === "ko" ? "특수효과 제외 기본 DPS" : "Basic DPS excluding special effects")
-            : headlineKind === "baseline"
+            : headlineKind.startsWith("tree-excluded")
               ? (locale === "ko" ? "트리·특수효과 제외 기본 DPS" : "Basic DPS excluding tree and special effects")
               : (locale === "ko" ? "DPS 계산 근거 부족" : "Insufficient DPS evidence")}</small><strong data-testid="stat-practical-dps" data-dps-kind={headlineKind}>{number(headlineDps, 2)}</strong></div>
       <span>{result.simulation.confidence === "verified" ? (locale === "ko" ? "검증 계산" : "Verified") : (locale === "ko" ? "부분 계산" : "Partial")}</span>

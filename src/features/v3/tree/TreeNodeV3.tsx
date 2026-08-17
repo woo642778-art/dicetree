@@ -22,6 +22,7 @@ export interface TreeNodeV3Props {
   canIncrement: boolean;
   nextCost: TreeCost | null;
   onSelect: (nodeId: string) => void;
+  onPointerSelect?: (nodeId: string) => void;
 }
 
 function compactCost(value: number) {
@@ -56,6 +57,7 @@ export function TreeNodeV3({
   canIncrement,
   nextCost,
   onSelect,
+  onPointerSelect,
 }: TreeNodeV3Props) {
   const rank = Math.max(ownedRank, simulatedRank);
   const simulatedOnly = simulatedRank > ownedRank;
@@ -93,8 +95,7 @@ export function TreeNodeV3({
     tabIndex={dimmed ? -1 : 0}
     aria-label={`${label}, ${rank}/${node.maxRank}`}
     aria-selected={selected}
-    onPointerDown={(event) => event.stopPropagation()}
-    onClick={(event) => { event.stopPropagation(); onSelect(node.id); }}
+    onClick={(event) => { event.stopPropagation(); (onPointerSelect ?? onSelect)(node.id); }}
     onKeyDown={activate}
   >
     {nextCost && (nextCost.gold > 0 || nextCost.stone > 0) && <g

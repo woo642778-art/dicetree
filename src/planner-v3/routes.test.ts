@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { gameDataV3 } from "../game-data/load";
 import type { DiceTreeNodeV3 } from "../game-data/types";
+import { treeCostForRange } from "./costs";
 import { planNextRankRouteV3, planNodeRankRouteV3 } from "./routes";
 
 const root: DiceTreeNodeV3 = {
@@ -34,5 +36,37 @@ describe("Dice Tree routes", () => {
       { ...root, prerequisites: [{ nodeId: "child", minRank: 1 }] },
       child,
     ], {}, "child", 1)).toThrow(/cycle/);
+  });
+
+  it("produces prerequisite-complete, exact-cost routes for every canonical node", () => {
+    const byId = new Map(gameDataV3.tree.map((node) => [node.id, node]));
+    for (const node of gameDataV3.tree) {
+      const route = planNextRankRouteV3(gameDataV3.tree, {}, node.id);
+      expect(route, node.id).not.toBeNull();
+      for (const [nodeId, rank] of Object.entries(route!.targetRanks)) {
+        const routeNode = byId.get(nodeId)!;
+        for (const prerequisite of routeNode.prerequisites) {
+          expect(route!.targetRanks[prerequisite.nodeId] ?? 0, `${nodeId} -> ${prerequisite.nodeId}`).toBeGreaterThanOrEqual(prerequisite.minRank);
+        }
+        expect(rank).toBeLessThanOrEqual(routeNode.maxRank);
+      }
+      const exact = route!.steps.reduce((total, step) => {
+        const cost = treeCostForRange(byId.get(step.nodeId)!, step.fromRank, step.toRank);
+        return { gold: total.gold + cost.gold, stone: total.stone + cost.stone };
+      }, { gold: 0, stone: 0 });
+      expect(route!.totalCost, node.id).toEqual(exact);
+      expect(route!.steps.at(-1)?.nodeId, node.id).toBe(node.id);
+    }
+  });
+
+  it("routes the Atomic Dice node through every required predecessor", () => {
+    const atomic = gameDataV3.tree.find((node) => node.targetId === "element" && node.kind === "dice");
+    expect(atomic?.id).toBe("2004");
+    const route = planNextRankRouteV3(gameDataV3.tree, {}, atomic!.id);
+    expect(route?.steps.at(-1)).toMatchObject({ nodeId: "2004", target: true });
+    expect(route?.steps.length).toBeGreaterThan(1);
+    for (const prerequisite of atomic!.prerequisites) {
+      expect(route?.targetRanks[prerequisite.nodeId]).toBeGreaterThanOrEqual(prerequisite.minRank);
+    }
   });
 });

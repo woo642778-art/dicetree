@@ -45,4 +45,5 @@ export type PlannerActionV3 =
 export interface PlannerNodeLimitsV3 {
   validNodeIds: ReadonlySet<string>;
   maxRanks: ReadonlyMap<string, number>;
+  prerequisites?: ReadonlyMap<string, readonly { nodeId: string; minRank: number }[]>;
 }

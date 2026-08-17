@@ -11,11 +11,12 @@ import { resolveEnemyPresetV3 } from "../../../simulation/enemies/presets";
 import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { evaluateNodeV3 } from "../../../simulation/marginal/evaluateNode";
 import { decodeV3FromHash, encodeV3 } from "../../../share/codecV3";
-import { CompareView } from "../compare/CompareView";
+import { CompareWorkspace } from "../compare/CompareWorkspace";
 import { DeckLabView } from "../decks/DeckLabView";
 import { PurchaseEfficiencyView } from "../shop/PurchaseEfficiencyView";
 import { SimulatorView } from "../simulator/SimulatorView";
 import { NodeDetailSheet } from "../tree/NodeDetailSheet";
+import { GuidedRoutePlanner } from "../tree/GuidedRoutePlanner";
 import { RecommendationStrip } from "../tree/RecommendationStrip";
 import { TreeCanvasV3 } from "../tree/TreeCanvasV3";
 
@@ -24,6 +25,7 @@ type Tab = "tree" | "simulator" | "decks" | "compare" | "shop";
 const limits = {
   validNodeIds: new Set(gameDataV3.tree.map((node) => node.id)),
   maxRanks: new Map(gameDataV3.tree.map((node) => [node.id, node.maxRank])),
+  prerequisites: new Map(gameDataV3.tree.map((node) => [node.id, node.prerequisites])),
 };
 const validDiceIds = new Set(gameDataV3.dice.map((dice) => dice.id));
 const defaultDiceId = gameDataV3.dice.some((dice) => dice.id === "predator") ? "predator" : gameDataV3.dice[0]?.id ?? "";
@@ -76,11 +78,10 @@ export function V3Shell() {
   const { locale, setLocale } = useI18n();
   const [tab, setTab] = useState<Tab>("tree");
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
+  const [guidedRouteOpen, setGuidedRouteOpen] = useState(false);
   const [familyFilter, setFamilyFilter] = useState<DiceFamilyV3 | "all">("all");
   const [query, setQuery] = useState("");
   const [shareNotice, setShareNotice] = useState<string>();
-  const [compareDiceId, setCompareDiceId] = useState(defaultDiceId);
-  const [compareTreeMode, setCompareTreeMode] = useState<"current" | "none">("none");
   const [deckGoal, setDeckGoal] = useState<"dealer" | "support" | "balanced">("balanced");
   const [spendProfile, setSpendProfile] = useState<"free" | "light" | "invested">("free");
   const [history, dispatchBase] = useReducer(
@@ -129,12 +130,6 @@ export function V3Shell() {
     () => new Set(recommendations.verified.map((entry) => entry.nodeId)),
     [recommendations],
   );
-  const compareInput = useMemo<SimulationInputV3>(() => ({
-    ...currentInput,
-    diceId: compareDiceId,
-    treeRanks: compareTreeMode === "current" ? currentInput.treeRanks : {},
-    conditionValues: {},
-  }), [compareDiceId, compareTreeMode, currentInput]);
 
   const share = async () => {
     const encoded = encodeV3(state);
@@ -167,15 +162,15 @@ export function V3Shell() {
     </header>
 
     <section className="v3-resource-rail" aria-label={locale === "ko" ? "다이스 트리 재화" : "Dice Tree resources"}>
-      <div className="v3-resource-item gold"><span className="v3-resource-icon">●</span><label>{locale === "ko" ? "골드" : "Gold"}<input aria-label={locale === "ko" ? "보유 골드" : "Owned Gold"} type="number" min="0" value={state.inventory.gold} onChange={(event) => dispatch({ type: "setInventory", inventory: { gold: Math.max(0, Number(event.target.value) || 0) } })} /></label><small>−{spent.gold.toLocaleString()}</small></div>
-      <div className="v3-resource-item stone"><span className="v3-resource-icon">◆</span><label>{locale === "ko" ? "다이스 코어" : "Dice Core"}<input aria-label={locale === "ko" ? "보유 다이스 코어" : "Owned Dice Core"} type="number" min="0" value={state.inventory.stone} onChange={(event) => dispatch({ type: "setInventory", inventory: { stone: Math.max(0, Number(event.target.value) || 0) } })} /></label><small>−{spent.stone.toLocaleString()}</small></div>
+      <div className="v3-resource-item gold"><span className="v3-resource-icon">●</span><label>{locale === "ko" ? "남은 골드" : "Remaining Gold"}<input aria-label={locale === "ko" ? "남은 골드" : "Remaining Gold"} type="number" min="0" value={Math.max(0, resources.remaining.gold)} onChange={(event) => dispatch({ type: "setInventory", inventory: { gold: Math.max(0, Number(event.target.value) || 0) + spent.gold } })} /></label><small>{locale === "ko" ? "사용" : "Spent"} {spent.gold.toLocaleString()}</small></div>
+      <div className="v3-resource-item stone"><span className="v3-resource-icon">◆</span><label>{locale === "ko" ? "남은 다이스 코어" : "Remaining Dice Core"}<input aria-label={locale === "ko" ? "남은 다이스 코어" : "Remaining Dice Core"} type="number" min="0" value={Math.max(0, resources.remaining.stone)} onChange={(event) => dispatch({ type: "setInventory", inventory: { stone: Math.max(0, Number(event.target.value) || 0) + spent.stone } })} /></label><small>{locale === "ko" ? "사용" : "Spent"} {spent.stone.toLocaleString()}</small></div>
       <div className={`v3-resource-status ${resources.affordable ? "is-ok" : "is-short"}`}><strong>{resources.affordable ? (locale === "ko" ? "투자 가능" : "Affordable") : (locale === "ko" ? "재화 부족" : "Shortfall")}</strong><span>{locale === "ko" ? "가상 투자 비용" : "Simulated cost"}: {spent.gold.toLocaleString()} G · {spent.stone.toLocaleString()} C</span></div>
       <div className="v3-history-actions"><button type="button" onClick={() => dispatch({ type: "clearSimulatedRanks" })} disabled={!Object.keys(state.simulatedRanks).length}>{locale === "ko" ? "전체 계획 취소" : "Clear plan"}</button><button type="button" onClick={() => dispatch({ type: "undo" })} disabled={!history.past.length}>{locale === "ko" ? "실행 취소" : "Undo"}</button><button type="button" onClick={() => dispatch({ type: "redo" })} disabled={!history.future.length}>{locale === "ko" ? "다시 실행" : "Redo"}</button></div>
     </section>
 
     {shareNotice && <div className="v3-notice" role="status"><span>{shareNotice}</span><button type="button" onClick={() => setShareNotice(undefined)}>×</button></div>}
 
-    {tab === "tree" && <main className={`v3-tree-view ${selectedNode ? "has-detail" : ""}`} data-testid="v3-tree-view">
+    {tab === "tree" && <main className={`v3-tree-view ${selectedNode || guidedRouteOpen ? "has-detail" : ""}`} data-testid="v3-tree-view">
       <section className="v3-tree-main">
         <div className="v3-tree-toolbar">
           <div className="v3-family-filter">
@@ -183,6 +178,7 @@ export function V3Shell() {
             {(["nature", "chaos", "order", "engineering", "magic"] as DiceFamilyV3[]).map((family) => <button key={family} type="button" className={familyFilter === family ? `is-active family-${family}` : `family-${family}`} onClick={() => setFamilyFilter(family)}>{FAMILY_NAMES[family][locale]}</button>)}
           </div>
           <input aria-label={locale === "ko" ? "트리 검색" : "Tree search"} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={locale === "ko" ? "노드·효과 검색" : "Search node or effect"} />
+          <button className="v45-guided-route-open" type="button" onClick={() => { setSelectedNodeId(undefined); setGuidedRouteOpen(true); }}>{locale === "ko" ? "맞춤 전체 루트" : "Guided full route"}</button>
         </div>
         <RecommendationStrip
           data={gameDataV3}
@@ -217,6 +213,16 @@ export function V3Shell() {
         onSetSimulatedRank={(nodeId, rank) => dispatch({ type: "setSimulatedRank", nodeId, rank })}
         onClose={() => setSelectedNodeId(undefined)}
       />}
+      {guidedRouteOpen && <GuidedRoutePlanner
+        data={gameDataV3}
+        locale={locale}
+        selectedDiceId={state.scenario.diceId}
+        currentRanks={currentRanks}
+        budget={{ gold: Math.max(0, resources.remaining.gold), stone: Math.max(0, resources.remaining.stone) }}
+        onApply={(ranks) => dispatch({ type: "applyRoute", ranks })}
+        onSelectNode={(nodeId) => { setGuidedRouteOpen(false); setSelectedNodeId(nodeId); }}
+        onClose={() => setGuidedRouteOpen(false)}
+      />}
     </main>}
 
     {tab === "simulator" && <SimulatorView data={gameDataV3} state={state} locale={locale} onScenarioChange={(patch) => dispatch({ type: "setScenario", scenario: patch })} />}
@@ -234,13 +240,7 @@ export function V3Shell() {
       }}
     />}
 
-    {tab === "compare" && <section className="v3-compare-shell">
-      <div className="v3-compare-controls">
-        <label>{locale === "ko" ? "B 주사위" : "Dice B"}<select value={compareDiceId} onChange={(event) => setCompareDiceId(event.target.value)}>{gameDataV3.dice.map((dice) => <option key={dice.id} value={dice.id}>{dice.nameKey ? gameDataV3.localization[locale][dice.nameKey] ?? dice.id : dice.id}</option>)}</select></label>
-        <label>{locale === "ko" ? "B 트리" : "Tree B"}<select value={compareTreeMode} onChange={(event) => setCompareTreeMode(event.target.value as "current" | "none")}><option value="none">{locale === "ko" ? "트리 없음" : "No tree"}</option><option value="current">{locale === "ko" ? "현재 가상 트리" : "Current simulated tree"}</option></select></label>
-      </div>
-      <CompareView data={gameDataV3} locale={locale} left={currentInput} right={compareInput} />
-    </section>}
+    {tab === "compare" && <CompareWorkspace data={gameDataV3} locale={locale} baseInput={currentInput} />}
 
     {tab === "shop" && <PurchaseEfficiencyView locale={locale} />}
   </div>;

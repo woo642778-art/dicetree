@@ -7,7 +7,7 @@ export interface EnemyControlsProps {
   presetId: string;
   hpOverride?: number;
   durationSeconds: number;
-  onChange: (patch: { enemyPresetId?: string; enemyHpOverride?: number; durationSeconds?: number }) => void;
+  onChange: (patch: { enemyPresetId?: string; enemyHpOverride?: number | undefined; durationSeconds?: number }) => void;
 }
 
 function presetName(data: CanonicalGameData, preset: ReturnType<typeof buildEnemyPresetsV3>[number], locale: "ko" | "en") {
@@ -40,6 +40,10 @@ export function EnemyControls({ data, locale, presetId, hpOverride, durationSeco
         value={hpOverride ?? ""}
         placeholder={selected.requiresHpInput ? (locale === "ko" ? "직접 입력" : "Enter HP") : ""}
         onChange={(event) => {
+          if (event.target.value === "") {
+            onChange({ enemyHpOverride: undefined });
+            return;
+          }
           const value = Number(event.target.value);
           if (Number.isFinite(value) && value > 0) onChange({ enemyHpOverride: value });
         }}
