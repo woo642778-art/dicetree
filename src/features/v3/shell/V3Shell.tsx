@@ -323,6 +323,7 @@ export function V3Shell() {
         routeAffordable={selectedRouteAffordable}
         onApplyRoute={(ranks) => dispatch({ type: "applyRoute", ranks })}
         onCancelPlan={() => dispatch({ type: "setSimulatedRank", nodeId: selectedNode.id, rank: state.ownedRanks[selectedNode.id] ?? 0 })}
+        onSetOwnedRank={(nodeId, rank) => dispatch({ type: "setOwnedRank", nodeId, rank })}
         onSetSimulatedRank={(nodeId, rank) => dispatch({ type: "setSimulatedRank", nodeId, rank })}
         onClose={() => setSelectedNodeId(undefined)}
       />}

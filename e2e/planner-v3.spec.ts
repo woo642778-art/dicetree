@@ -135,6 +135,50 @@ test("V4.6 center hub mirrors family investment levels and uses the full Terror 
   expect(errors).toEqual([]);
 });
 
+test("V4.8.1 buys reachable nodes directly, unlocks the next node and deducts the live balance", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  const gold = page.getByRole("spinbutton", { name: "남은 골드" });
+  const core = page.getByRole("spinbutton", { name: "남은 다이스 코어" });
+  await gold.fill("3000");
+  await core.fill("10");
+
+  await page.getByTestId("v3-node-1001").click();
+  await expect(page.getByTestId("v4-route-plan")).toContainText("선행 조건 충족");
+  await expect(page.getByRole("button", { name: "선행 노드 포함 가상 구매" })).toHaveCount(0);
+  await page.getByRole("button", { name: "이 노드 가상 구매" }).click();
+  await expect(core).toHaveValue("5");
+  await page.getByRole("button", { name: "닫기" }).click();
+
+  await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-can-increment", "true");
+  await page.getByTestId("v3-node-1005").click();
+  await page.getByRole("button", { name: "이 노드 가상 구매" }).click();
+  await expect(core).toHaveValue("0");
+  await page.getByRole("button", { name: "닫기" }).click();
+
+  await expect(page.getByTestId("v3-node-1205")).toHaveAttribute("data-can-increment", "true");
+  await page.getByTestId("v3-node-1205").click();
+  await page.getByRole("button", { name: "이 노드 가상 구매" }).click();
+  await expect(gold).toHaveValue("1000");
+  await page.screenshot({ path: `test-results/qa-v481-direct-purchase-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+  expect(errors).toEqual([]);
+});
+
+test("V4.8.1 records an existing starter node as owned and unlocks its child without spending resources", async ({ page }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  const core = page.getByRole("spinbutton", { name: "남은 다이스 코어" });
+  await core.fill("10");
+
+  await page.getByTestId("v3-node-1001").click();
+  await page.getByRole("button", { name: "보유 랭크 올리기" }).click();
+  await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-owned-rank", "1");
+  await expect(core).toHaveValue("10");
+  await page.getByRole("button", { name: "닫기" }).click();
+  await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-can-increment", "true");
+  expect(errors).toEqual([]);
+});
+
 test("V4 route planner applies prerequisites as one preview and supports cancellation", async ({ page, isMobile }) => {
   test.skip(isMobile, "desktop verifies the full route and header-level clear action; route logic is covered by unit tests on all viewports");
   const errors = captureBrowserErrors(page);
