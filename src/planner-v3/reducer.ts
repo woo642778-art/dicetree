@@ -193,6 +193,8 @@ export function plannerReducerV3(
     next = candidate;
   } else if (action.type === "clearSimulatedRanks") {
     next = { ...next, simulatedRanks: {} };
+  } else if (action.type === "resetTreeProgress") {
+    next = { ...next, ownedRanks: {}, simulatedRanks: {} };
   } else if (action.type === "incrementSimulatedRank") {
     if (!limits.validNodeIds.has(action.nodeId)) return history;
     const maximum = limits.maxRanks.get(action.nodeId);

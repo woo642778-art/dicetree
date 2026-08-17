@@ -1,4 +1,5 @@
 import type { CanonicalGameData } from "../game-data/types";
+import { playableDiceV3 } from "../game-data/playableDice";
 import { analyzeDeckDiceV4 } from "./recommendDeck";
 import { CO_OP_RANKING_SNAPSHOT, summarizeDiceUsage, type CoOpDeckRole } from "./coOpRankingSnapshot";
 
@@ -76,13 +77,14 @@ export const NEXT_META_FORECASTS: readonly MetaForecast[] = [
 ] as const;
 
 export function analyzeRosterMeta(data: CanonicalGameData): RosterMetaAnalysis {
-  const analyzed = data.dice.map((dice) => analyzeDeckDiceV4(dice, data));
+  const playable = playableDiceV3(data);
+  const analyzed = playable.map((dice) => analyzeDeckDiceV4(dice, data));
   const rankedDiceIds = new Set(summarizeDiceUsage().map((entry) => entry.diceId));
   return {
     analyzedDice: analyzed.length,
     rankedDice: rankedDiceIds.size,
     unrankedDice: analyzed.length - rankedDiceIds.size,
-    mechanicDice: data.dice.filter((dice) => Boolean(dice.mechanicRuleId)).length,
+    mechanicDice: playable.filter((dice) => Boolean(dice.mechanicRuleId)).length,
     dealerDice: analyzed.filter((entry) => entry.roles.includes("dealer")).length,
     controlDice: analyzed.filter((entry) => entry.roles.includes("control")).length,
     economyDice: analyzed.filter((entry) => entry.roles.includes("economy")).length,

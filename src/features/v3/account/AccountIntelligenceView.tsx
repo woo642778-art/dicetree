@@ -10,6 +10,8 @@ import type { PlannerStateV3 } from "../../../planner-v3/types";
 import { projectResources, simulatedInvestmentCost } from "../../../planner-v3/costs";
 import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { DiceIcon } from "../shared/DiceIcon";
+import type { FullAccountImportV49, ObservedAccountV49 } from "../../../account/accountImportV49";
+import { AccountImportPanelV49 } from "./AccountImportPanelV49";
 
 type AccountSection = "overview" | "optimizer" | "knowledge" | "meta";
 
@@ -30,7 +32,7 @@ function diceName(data: CanonicalGameData, diceId: string, locale: "ko" | "en") 
   return dice?.nameKey ? data.localization[locale][dice.nameKey] ?? diceId : diceId;
 }
 
-export function AccountIntelligenceView({ data, locale, state, input, deckIds, twin, onTwinChange, onApplyRanks, onDeckChange, onOpenTree, onOpenSimulator }: {
+export function AccountIntelligenceView({ data, locale, state, input, deckIds, twin, onTwinChange, onApplyRanks, onDeckChange, onObservedAccountImport, onFullAccountImport, onOpenTree, onOpenSimulator }: {
   data: CanonicalGameData;
   locale: "ko" | "en";
   state: PlannerStateV3;
@@ -40,6 +42,8 @@ export function AccountIntelligenceView({ data, locale, state, input, deckIds, t
   onTwinChange: (next: UserDigitalTwinV48) => void;
   onApplyRanks: (ranks: Record<string, number>) => void;
   onDeckChange: (diceIds: string[]) => void;
+  onObservedAccountImport: (account: ObservedAccountV49) => void;
+  onFullAccountImport: (account: FullAccountImportV49) => void;
   onOpenTree: () => void;
   onOpenSimulator: () => void;
 }) {
@@ -73,7 +77,7 @@ export function AccountIntelligenceView({ data, locale, state, input, deckIds, t
 
   return <main className="v48-account" data-testid="v48-account-intelligence">
     <header className="v48-account-hero">
-      <div><small>ACCOUNT DIGITAL TWIN · V4.8</small><h1>{locale === "ko" ? "내 계정 인텔리전스" : "Account Intelligence"}</h1><p>{locale === "ko" ? "트리, 덱, 재화, 목표를 하나의 상태로 묶어 다음 행동을 계산합니다." : "One state connects your tree, deck, resources, and goals to calculate the next action."}</p></div>
+      <div><small>ACCOUNT DIGITAL TWIN · V4.9</small><h1>{locale === "ko" ? "내 계정 인텔리전스" : "Account Intelligence"}</h1><p>{locale === "ko" ? "트리, 덱, 재화, 목표를 하나의 상태로 묶어 다음 행동을 계산합니다." : "One state connects your tree, deck, resources, and goals to calculate the next action."}</p>{twin.identity && <div className="v49-identity-chip"><b>{twin.identity.nickname}</b>{twin.identity.publicRank && <span>#{twin.identity.publicRank}</span>}{twin.identity.pid && <small>PID {twin.identity.pid}</small>}<em>{twin.identity.source === "verified-import" ? (locale === "ko" ? "검증된 가져오기" : "Verified import") : (locale === "ko" ? "관측 랭킹" : "Observed ranking")}</em></div>}</div>
       <div className="v48-health-orbit" data-score={health.score} style={{ "--score": health.score } as React.CSSProperties}><strong>{health.score}</strong><span>{locale === "ko" ? "빌드 건강도" : "Build health"}</span><Confidence value={health.confidence} locale={locale} /></div>
     </header>
 
@@ -82,6 +86,7 @@ export function AccountIntelligenceView({ data, locale, state, input, deckIds, t
     </nav>
 
     {section === "overview" && <div className="v48-overview-grid">
+      <AccountImportPanelV49 data={data} locale={locale} state={state} onObservedImport={onObservedAccountImport} onFullImport={onFullAccountImport} />
       <section className="v48-command-card is-primary">
         <header><small>{locale === "ko" ? "지금 할 일" : "NEXT DECISION"}</small><Confidence value={topAction?.confidence ?? "unavailable"} locale={locale} /></header>
         <h2>{topAction?.title[locale] ?? (locale === "ko" ? "계정 데이터를 더 입력하세요" : "Add more account data")}</h2>

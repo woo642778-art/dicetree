@@ -133,4 +133,21 @@ describe("plannerReducerV3", () => {
     expect(history.present.scenario.conditionValues).toEqual({});
     expect(history.present.scenario.enemyHpOverride).toBeUndefined();
   });
+
+  it("resets the complete tree while preserving resources and combat inputs", () => {
+    const seeded = {
+      ...initial(),
+      simulatedRanks: { "5207": 8 },
+      scenario: { ...initial().scenario, conditionValues: { predatorStacks: 6 } },
+    };
+    let history = plannerReducerV3(createPlannerHistoryV3(seeded), { type: "resetTreeProgress" }, limits);
+    expect(history.present.ownedRanks).toEqual({});
+    expect(history.present.simulatedRanks).toEqual({});
+    expect(history.present.inventory).toEqual(seeded.inventory);
+    expect(history.present.scenario).toEqual(seeded.scenario);
+
+    history = plannerReducerV3(history, { type: "undo" }, limits);
+    expect(history.present.ownedRanks).toEqual(seeded.ownedRanks);
+    expect(history.present.simulatedRanks).toEqual(seeded.simulatedRanks);
+  });
 });

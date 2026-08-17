@@ -33,6 +33,7 @@ export type PlannerActionV3 =
   | { type: "setSimulatedRank"; nodeId: string; rank: number }
   | { type: "applyRoute"; ranks: Record<string, number> }
   | { type: "clearSimulatedRanks" }
+  | { type: "resetTreeProgress" }
   | { type: "incrementSimulatedRank"; nodeId: string }
   | { type: "decrementSimulatedRank"; nodeId: string }
   | { type: "setInventory"; inventory: Partial<PlannerStateV3["inventory"]> }
