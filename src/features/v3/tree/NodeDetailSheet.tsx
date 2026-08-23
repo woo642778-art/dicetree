@@ -158,7 +158,9 @@ export function NodeDetailSheet({
     ))
   ));
   const routeHasPrerequisites = route?.steps.some((step) => !step.target) ?? false;
-  const canApplyRoute = Boolean(route?.steps.length && routeAffordable && onApplyRoute);
+  // Virtual planning remains available when the entered inventory is short.
+  // Prerequisite legality is still enforced by the route builder and reducer.
+  const canApplyRoute = Boolean(route?.steps.length && onApplyRoute);
   const canUseIncrementControl = route ? canApplyRoute : canIncrement;
   const incrementLabel = routeHasPrerequisites
     ? (locale === "ko" ? "선행 노드 포함 가상 구매" : "Buy with prerequisite nodes")
@@ -244,8 +246,8 @@ export function NodeDetailSheet({
         {!routeHasPrerequisites && <p className="is-affordable">{locale === "ko" ? "선행 조건 충족. 이 노드를 바로 구매할 수 있습니다." : "Prerequisites met. This node can be purchased directly."}</p>}
         <p className={routeAffordable ? "is-affordable" : "is-short"}>{routeAffordable
           ? (locale === "ko" ? "현재 남은 재화로 적용 가능합니다." : "Affordable with remaining resources.")
-          : (locale === "ko" ? "현재 남은 재화가 부족해 이 경로를 구매할 수 없습니다." : "The remaining resources are insufficient for this route.")}</p>
-        {onApplyRoute && <button className="v4-route-apply" type="button" disabled={!routeAffordable} onClick={() => onApplyRoute(route.targetRanks)}>{routeHasPrerequisites
+          : (locale === "ko" ? "재화가 부족해도 가상 계획은 적용할 수 있습니다. 정확한 부족분은 상단 재화 영역에 표시됩니다." : "You can still apply this virtual plan. The exact shortfall appears in the resource rail.")}</p>
+        {onApplyRoute && <button className="v4-route-apply" type="button" disabled={!canApplyRoute} onClick={() => onApplyRoute(route.targetRanks)}>{routeHasPrerequisites
           ? (locale === "ko" ? "선행 노드 포함 가상 구매" : "Buy route with prerequisites")
           : (locale === "ko" ? "이 노드 가상 구매" : "Buy this node virtually")}</button>}
       </> : <p>{locale === "ko" ? "추가로 구매할 랭크가 없습니다." : "No additional ranks are required."}</p>}

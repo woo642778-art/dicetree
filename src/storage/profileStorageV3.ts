@@ -38,6 +38,17 @@ export function listProfilesV3(): StoredProfileV3[] {
   }
 }
 
+export function normalizeProfileNameV3(value: string) {
+  return value.normalize("NFKC").trim().toLocaleLowerCase();
+}
+
+export function findProfileByNameV3(name: string): StoredProfileV3 | undefined {
+  const query = normalizeProfileNameV3(name);
+  if (!query) return undefined;
+  const profile = listProfilesV3().find((candidate) => normalizeProfileNameV3(candidate.name) === query);
+  return profile ? structuredClone(profile) : undefined;
+}
+
 function write(profiles: StoredProfileV3[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
 }

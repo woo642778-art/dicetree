@@ -16,6 +16,7 @@ export interface GuidedRouteSettingsV3 {
   budget: TreeCost;
   currentRanks: Record<string, number>;
   variant?: number;
+  budgetMode?: "strict" | "virtual";
 }
 
 export interface GuidedRouteStepV3 {
@@ -181,6 +182,7 @@ export function planGuidedRouteV3(data: CanonicalGameData, settings: GuidedRoute
   let totalCost: TreeCost = { ...ZERO_TREE_COST };
   let purchases = 0;
   const variant = Math.max(0, settings.variant ?? 0) % 3;
+  const enforceBudget = settings.budgetMode !== "virtual";
 
   // Start specialized plans on the shortest legal path toward the selected
   // dice. When the full target is not yet affordable, the affordable prefix
@@ -194,7 +196,7 @@ export function planGuidedRouteV3(data: CanonicalGameData, settings: GuidedRoute
     if (anchor) {
       for (const routeStep of anchor.route.steps) {
         const delta = routeStep.toRank - routeStep.fromRank;
-        if (purchases + delta > maxPurchases || !affordable(routeStep.cost, remaining)) break;
+        if (purchases + delta > maxPurchases || (enforceBudget && !affordable(routeStep.cost, remaining))) break;
         steps.push({
           order: steps.length + 1,
           nodeId: routeStep.nodeId,
@@ -218,7 +220,7 @@ export function planGuidedRouteV3(data: CanonicalGameData, settings: GuidedRoute
     const candidates = data.tree.flatMap((node) => {
       if (node.kind === "connector" || (ranks[node.id] ?? 0) >= node.maxRank) return [];
       const route = planNextRankRouteV3(data.tree, ranks, node.id);
-      if (!route || !affordable(route.totalCost, remaining)) return [];
+      if (!route || (enforceBudget && !affordable(route.totalCost, remaining))) return [];
       const routePurchases = rankPurchases(route);
       if (routePurchases <= 0 || purchases + routePurchases > maxPurchases) return [];
       const text = nodeSemantics(node);
@@ -269,7 +271,7 @@ export function planGuidedRouteV3(data: CanonicalGameData, settings: GuidedRoute
     `focus-${settings.focus}`,
     `style-${settings.style}`,
     "prerequisite-complete",
-    "budget-checked",
+    enforceBudget ? "budget-checked" : "virtual-shortfall-visible",
   ];
   const tradeoffs = settings.style === "efficient"
     ? ["slower-peak-power", "maximizes-early-value"]
@@ -293,7 +295,7 @@ export function planGuidedRouteV3(data: CanonicalGameData, settings: GuidedRoute
     ? (!diceTargets.length ? "no-target-node" as const : undefined)
     : purchases >= maxPurchases
       ? "length" as const
-      : remainingTargetRoute?.route && !affordable(remainingTargetRoute.route.totalCost, remaining)
+      : enforceBudget && remainingTargetRoute?.route && !affordable(remainingTargetRoute.route.totalCost, remaining)
         ? "budget" as const
         : undefined;
 

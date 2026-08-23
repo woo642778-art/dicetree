@@ -175,6 +175,44 @@ test("V4.8.1 protects starter ownership and unlocks its child without spending r
   expect(errors).toEqual([]);
 });
 
+test("V5 virtual routes work at zero balance and nickname accounts reload outside the ranking snapshot", async ({ page, isMobile }) => {
+  test.skip(isMobile, "desktop covers persistent account storage and the virtual shortfall workflow; mobile uses the same state model");
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+
+  const core = page.getByRole("spinbutton", { name: "남은 다이스 코어" });
+  await expect(core).toHaveValue("0");
+  await page.getByTestId("v3-node-1005").click();
+  const virtualBuy = page.getByRole("button", { name: "이 노드 가상 구매" });
+  await expect(virtualBuy).toBeEnabled();
+  await virtualBuy.click();
+  await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-simulated-rank", "1");
+  await expect(page.getByLabel("다이스 트리 재화")).toContainText("추가 필요 0 G · 5 C");
+
+  await page.getByRole("button", { name: "내 계정" }).click();
+  await page.getByLabel("내 계정 닉네임").fill("랭킹밖테스트유저");
+  await page.getByRole("button", { name: "불러오기·만들기" }).click();
+  await expect(page.locator(".v49-import-message")).toContainText("현재 입력으로 만들었습니다");
+
+  await page.getByRole("button", { name: "다이스 트리" }).click();
+  await page.getByRole("spinbutton", { name: "남은 골드" }).fill("12345");
+  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem("dicetree.profiles.v3") ?? "[]")[0]?.state?.inventory?.gold)).toBe(12345);
+  await page.evaluate(() => localStorage.removeItem("dicetree:v49:account"));
+  await page.reload();
+  await page.getByRole("button", { name: "내 계정" }).click();
+  await page.getByLabel("내 계정 닉네임").fill("랭킹밖테스트유저");
+  await page.getByRole("button", { name: "불러오기·만들기" }).click();
+  await expect(page.locator(".v49-import-message")).toContainText("저장된 트리·덱·재화를 불러왔습니다");
+  await page.getByRole("button", { name: "다이스 트리" }).click();
+  await expect(page.getByRole("spinbutton", { name: "남은 골드" })).toHaveValue("12345");
+
+  await page.getByRole("button", { name: "구매 효율" }).click();
+  await expect(page.getByTestId("v50-popup-VIP_HOTDEAL")).toContainText("₩29,000");
+  await page.getByLabel("VIP_HOTDEAL core").fill("100");
+  await expect(page.getByTestId("v47-budget-optimizer")).toContainText("VIP 핫딜");
+  expect(errors).toEqual([]);
+});
+
 test("V4 route planner applies prerequisites as one preview and supports cancellation", async ({ page, isMobile }) => {
   test.skip(isMobile, "desktop verifies the full route and header-level clear action; route logic is covered by unit tests on all viewports");
   const errors = captureBrowserErrors(page);
@@ -257,8 +295,8 @@ test("V5 account import, current-state draft and local persistence work end to e
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
   await page.getByRole("button", { name: "내 계정" }).click();
-  await page.getByLabel("닉네임 또는 PID").fill("#8");
-  await page.getByRole("button", { name: "찾기", exact: true }).click();
+  await page.getByLabel("공개 랭킹 닉네임 또는 순위").fill("#8");
+  await page.getByRole("button", { name: "랭킹 참고 찾기" }).click();
   await expect(page.getByText(/#8 · #8 관측 계정/)).toBeVisible();
   await page.getByRole("button", { name: "관측 덱만 적용" }).click();
   await expect(page.getByRole("status")).toContainText("관측 랭킹 덱만 적용");

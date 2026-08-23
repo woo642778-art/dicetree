@@ -13,7 +13,7 @@ The recommendation ranking uses `SpecialPackageTable.Efficiency` only for produc
 
 `ShopProductTable.PriceUSD` is retained as client-table evidence. A Korean won price is shown only when the same product identifier and price are currently visible on the official Korean App Store product page. No currency conversion is performed.
 
-App Store check date: 2026-08-16
+App Store check date: 2026-08-22
 
 ## Product projection
 
@@ -30,3 +30,17 @@ App Store check date: 2026-08-16
 | `TRG_LOOKS_GOOD` | $5.99 | 220 | 10,000 | 8 | | ₩9,900 |
 
 `Efficiency` is a client data field. The site does not present it as a percentage, discount, return, or independently audited value.
+
+## Current storefront-only listings
+
+The Korean App Store listing also exposes the following current products. For entries whose reward contents are not present in the verified client projection above, the site shows the current price but excludes the product from optimization until the user enters the reward quantities visible in-game.
+
+| Product ID | Product | Official KR price | Reward handling |
+| --- | --- | ---: | --- |
+| `VIP_HOTDEAL` | VIP Hot Deal | ₩29,000 | User input required |
+| `SEASON_PASS` | Season Pass | ₩17,000 | User input required |
+| `TRG_NINJA_TOUCH_2` | Ninja Touch popup II | ₩33,000 | User input required |
+| `TICKET_REFILL_10` | Ticket refill 10 | ₩3,300 | 10 tickets |
+| `TRG_SHADOW_GOLD` | Shadow Gold popup | ₩33,000 | User input required |
+
+This boundary prevents a visible price from being mistaken for verified package contents or a calculated efficiency score.

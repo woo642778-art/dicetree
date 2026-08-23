@@ -1,14 +1,12 @@
-# Progress: 모바일 다이스 트리 및 핵심 기능 정상화
+# Progress: DiceTree virtual purchase, popup shop, account lookup fixes
 
-- Status: completed
-- Milestone: 6/6 (100%)
-- Updated: 2026-08-22T19:21:14
-- Current work: PR #16 병합, main run #32612432878 검증·Pages 배포 성공, 라이브 사이트에서 기본 해금·v1.0.3·티어 메이커 확인 완료
+- Status: active
+- Milestone: 4/5 (80%)
+- Updated: 2026-08-22T20:04:29
+- Current work: Added current popup/pass/ticket storefront catalog, user-entered reward optimization, and nickname-based local account creation, normalized lookup, autosave, and reload.
 
 ## Log
-- 2026-08-22T18:50:11 | 1/6 | 모바일 줌 백화면, 시작 노드 0랭크, 효과 색인, 맞춤 루트 선행 보완의 원인을 재현하고 코드 경로를 확정함
-- 2026-08-22T19:03:58 | 2/6 | 모바일 최대 4.5배 줌 백화면 방지, 검색 동의어 색인, 기본 주사위 5개 해금 및 선행 경로 자동 보완을 구현하고 모바일 E2E로 검증함
-- 2026-08-22T19:03:58 | 3/6 | 계정 순위 #1-#105 검색, 현재 상태 JSON 초안, 전체 스냅샷 적용, 브라우저 영속화를 구현하고 E2E로 검증함
-- 2026-08-22T19:03:58 | 4/6 | 공식 App Store 1.0.3 및 1.0.2 변경 기록을 업데이트 센터에 반영함
-- 2026-08-22T19:03:58 | 5/6 | 참고 사이트의 핵심 로컬 도구인 41개 주사위 티어 메이커를 검색, 필터, 편집, 자동 저장, 공유 기능과 함께 추가함
-- 2026-08-22T19:21:14 | 6/6 | PR #16 병합, main run #32612432878 검증·Pages 배포 성공, 라이브 사이트에서 기본 해금·v1.0.3·티어 메이커 확인 완료
+- 2026-08-22T19:44:20 | 1/5 | Live reproduction completed: zero inventory disables all virtual route actions; with inventory, prerequisite purchase and balance deduction work.
+- 2026-08-22T19:44:20 | 2/5 | Evidence review completed: App Store lists five additional live IAP IDs; no public all-player nickname/PID search API is documented or discoverable.
+- 2026-08-22T20:04:28 | 3/5 | Implemented virtual route application independent of inventory, exact shortfall display, and virtual/strict guided route modes with prerequisite enforcement.
+- 2026-08-22T20:04:29 | 4/5 | Added current popup/pass/ticket storefront catalog, user-entered reward optimization, and nickname-based local account creation, normalized lookup, autosave, and reload.

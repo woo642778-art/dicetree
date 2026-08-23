@@ -35,6 +35,15 @@ describe("planGuidedRouteV3", () => {
     expect(plan.validity.withinBudget).toBe(true);
   });
 
+  it("builds the complete legal route in virtual mode and reports the exact shortfall", () => {
+    const plan = planGuidedRouteV3(data, settings({ budgetMode: "virtual", budget: { gold: 0, stone: 0 } }));
+    expect(plan.steps.map((step) => step.nodeId)).toEqual(expect.arrayContaining(["root", "attack", "atomic-special"]));
+    expect(plan.targetRanks).toMatchObject({ root: 1, attack: 2, "atomic-special": 1 });
+    expect(plan.totalCost).toEqual({ gold: 100, stone: 1 });
+    expect(plan.remaining).toEqual({ gold: -100, stone: -1 });
+    expect(plan.validity).toEqual({ prerequisitesSatisfied: true, exactCosts: true, withinBudget: false });
+  });
+
   it("keeps all canonical alternatives legal and within budget", () => {
     for (const variant of [0, 1, 2]) {
       const plan = planGuidedRouteV3(gameDataV3, {

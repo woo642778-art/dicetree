@@ -7,6 +7,7 @@ export interface PurchaseRewards {
   redesignItem?: number;
   other?: number;
   diceSkin?: number;
+  tickets?: number;
 }
 
 export interface PurchaseProduct {
@@ -16,7 +17,8 @@ export interface PurchaseProduct {
   officialKrw?: number;
   clientEfficiency?: number;
   rewards: PurchaseRewards;
-  category: "intro" | "special" | "trigger" | "direct";
+  category: "intro" | "special" | "trigger" | "direct" | "popup" | "pass" | "ticket";
+  rewardEvidence?: "verified" | "price-only";
   sourceTables: string[];
 }
 
@@ -128,5 +130,55 @@ export const PURCHASE_PRODUCTS_V41: readonly PurchaseProduct[] = [
     rewards: { gold: 10_000, core: 8 },
     category: "trigger",
     sourceTables: ["ShopProductTable", "PopupPackageTable", "RewardTable"],
+  },
+  {
+    id: "VIP_HOTDEAL",
+    nameKo: "VIP 핫딜",
+    priceUsd: 17.99,
+    officialKrw: 29_000,
+    rewards: {},
+    category: "popup",
+    rewardEvidence: "price-only",
+    sourceTables: ["Korean App Store current IAP listing"],
+  },
+  {
+    id: "SEASON_PASS",
+    nameKo: "시즌 패스",
+    priceUsd: 9.99,
+    officialKrw: 17_000,
+    rewards: {},
+    category: "pass",
+    rewardEvidence: "price-only",
+    sourceTables: ["Korean App Store current IAP listing"],
+  },
+  {
+    id: "TRG_NINJA_TOUCH_2",
+    nameKo: "닌자 터치 팝업 II",
+    priceUsd: 19.99,
+    officialKrw: 33_000,
+    rewards: {},
+    category: "popup",
+    rewardEvidence: "price-only",
+    sourceTables: ["Korean App Store current IAP listing"],
+  },
+  {
+    id: "TICKET_REFILL_10",
+    nameKo: "티켓 10개 충전",
+    priceUsd: 1.99,
+    officialKrw: 3_300,
+    rewards: { tickets: 10 },
+    category: "ticket",
+    rewardEvidence: "verified",
+    sourceTables: ["Korean App Store current IAP listing"],
+  },
+  {
+    id: "TRG_SHADOW_GOLD",
+    nameKo: "그림자 골드 팝업",
+    priceUsd: 19.99,
+    officialKrw: 33_000,
+    rewards: {},
+    category: "popup",
+    rewardEvidence: "price-only",
+    sourceTables: ["Korean App Store current IAP listing"],
   },
 ] as const;

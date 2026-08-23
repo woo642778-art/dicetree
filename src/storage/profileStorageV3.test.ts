@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { deleteProfileV3, listProfilesV3, saveProfileV3 } from "./profileStorageV3";
+import { deleteProfileV3, findProfileByNameV3, listProfilesV3, saveProfileV3 } from "./profileStorageV3";
 
 const state = {
   schemaVersion: 3 as const, dataVersion: "test", ownedRanks: {}, simulatedRanks: {}, inventory: { gold: 1, stone: 2 },
@@ -20,5 +20,11 @@ describe("profileStorageV3", () => {
   it("isolates corrupt entries", () => {
     localStorage.setItem("dicetree.profiles.v3", JSON.stringify([{ id: "bad" }]));
     expect(listProfilesV3()).toEqual([]);
+  });
+
+  it("finds a saved account nickname with normalized text", () => {
+    saveProfileV3({ name: "  Ａsmo  ", state, activeDeckIds: ["plain"], deckGoal: "dealer", spendProfile: "light" });
+    expect(findProfileByNameV3("asmo")?.name).toBe("Ａsmo");
+    expect(findProfileByNameV3("unknown")).toBeUndefined();
   });
 });

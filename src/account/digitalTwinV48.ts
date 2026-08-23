@@ -104,7 +104,7 @@ export function isDigitalTwinV48(value: unknown): value is UserDigitalTwinV48 {
     && typeof twin.resources?.dailyGold === "number"
     && typeof twin.resources?.dailyCore === "number"
     && (twin.identity === undefined || (typeof twin.identity.nickname === "string"
-      && ["verified-import", "observed-ranking"].includes(twin.identity.source)
+      && ["verified-import", "observed-ranking", "local-profile"].includes(twin.identity.source)
       && typeof twin.identity.importedAt === "string"
       && (twin.identity.pid === undefined || typeof twin.identity.pid === "string")));
 }

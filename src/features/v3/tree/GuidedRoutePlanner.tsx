@@ -81,6 +81,7 @@ const REASON_LABELS: Record<string, { ko: string; en: string }> = {
   "style-specialized": { ko: "선택 주사위 특화를 우선", en: "Prioritizes selected-dice specialization" },
   "prerequisite-complete": { ko: "모든 선행 노드를 구매 순서에 포함", en: "Includes every prerequisite in purchase order" },
   "budget-checked": { ko: "남은 재화 안에서 경로를 완주 가능", en: "Completable within remaining resources" },
+  "virtual-shortfall-visible": { ko: "목표까지 완주하고 부족 재화를 별도 계산", en: "Completes the target route and calculates the shortfall" },
   "slower-peak-power": { ko: "최고점 도달은 다소 느릴 수 있음", en: "May reach peak power more slowly" },
   "maximizes-early-value": { ko: "초반 재화 효율을 높임", en: "Improves early resource value" },
   "higher-resource-spikes": { ko: "일부 단계의 재화 부담이 큼", en: "Some steps have higher resource spikes" },
@@ -113,17 +114,19 @@ interface RouteDraft {
   focus: GuidedRouteFocusV3;
   style: GuidedRouteStyleV3;
   length: GuidedRouteLengthV3;
+  budgetMode: "strict" | "virtual";
 }
 
 export function GuidedRoutePlanner({ data, locale, selectedDiceId, currentRanks, budget, onApply, onSelectNode, onClose }: GuidedRoutePlannerProps) {
-  const [draft, setDraft] = useState<RouteDraft>({ diceId: selectedDiceId, role: "balanced", focus: "selected-dice", style: "efficient", length: "standard" });
+  const [draft, setDraft] = useState<RouteDraft>({ diceId: selectedDiceId, role: "balanced", focus: "selected-dice", style: "efficient", length: "standard", budgetMode: "virtual" });
   const [applied, setApplied] = useState<RouteDraft>(draft);
   const [variant, setVariant] = useState(0);
   const settings: GuidedRouteSettingsV3 = { ...applied, currentRanks, budget, variant };
-  const plan = useMemo(() => planGuidedRouteV3(data, settings), [data, settings.diceId, settings.role, settings.focus, settings.style, settings.length, settings.currentRanks, settings.budget, settings.variant]);
+  const plan = useMemo(() => planGuidedRouteV3(data, settings), [data, settings.diceId, settings.role, settings.focus, settings.style, settings.length, settings.budgetMode, settings.currentRanks, settings.budget, settings.variant]);
   const roadmap = useMemo(() => buildGrowthRoadmapV3(data, plan), [data, plan]);
   const selectedName = diceName(data, applied.diceId, locale);
-  const isValid = Object.values(plan.validity).every(Boolean);
+  const isValid = plan.validity.prerequisitesSatisfied && plan.validity.exactCosts;
+  const shortfall = { gold: Math.max(0, -plan.remaining.gold), stone: Math.max(0, -plan.remaining.stone) };
 
   return <aside className="v45-guided-route" data-testid="v45-guided-route" aria-label={locale === "ko" ? "맞춤 트리 루트" : "Guided tree route"}>
     <header>
@@ -138,6 +141,7 @@ export function GuidedRoutePlanner({ data, locale, selectedDiceId, currentRanks,
       <label>{locale === "ko" ? "핵심 목표" : "Primary focus"}<select value={draft.focus} onChange={(event) => setDraft({ ...draft, focus: event.target.value as GuidedRouteFocusV3 })}><option value="selected-dice">{locale === "ko" ? "선택 주사위 강화" : "Selected dice"}</option><option value="damage">{locale === "ko" ? "대미지" : "Damage"}</option><option value="attack-speed">{locale === "ko" ? "공격속도" : "Attack speed"}</option><option value="critical">{locale === "ko" ? "치명타" : "Critical"}</option><option value="economy">{locale === "ko" ? "SP·성장 경제" : "SP and economy"}</option><option value="survival">{locale === "ko" ? "생존·제어" : "Survival and control"}</option><option value="special">{locale === "ko" ? "고유 효과" : "Special mechanics"}</option></select></label>
       <label>{locale === "ko" ? "우선순위" : "Priority"}<select value={draft.style} onChange={(event) => setDraft({ ...draft, style: event.target.value as GuidedRouteStyleV3 })}><option value="efficient">{locale === "ko" ? "재화 효율" : "Resource efficiency"}</option><option value="power">{locale === "ko" ? "최대 영향력" : "Maximum impact"}</option><option value="specialized">{locale === "ko" ? "주사위 특화" : "Dice specialization"}</option></select></label>
       <label>{locale === "ko" ? "경로 길이" : "Route length"}<select value={draft.length} onChange={(event) => setDraft({ ...draft, length: event.target.value as GuidedRouteLengthV3 })}><option value="short">{locale === "ko" ? "짧게, 최대 8랭크" : "Short, up to 8 ranks"}</option><option value="standard">{locale === "ko" ? "표준, 최대 16랭크" : "Standard, up to 16 ranks"}</option><option value="long">{locale === "ko" ? "장기, 최대 30랭크" : "Long, up to 30 ranks"}</option></select></label>
+      <label>{locale === "ko" ? "계획 모드" : "Planning mode"}<select value={draft.budgetMode} onChange={(event) => setDraft({ ...draft, budgetMode: event.target.value as RouteDraft["budgetMode"] })}><option value="virtual">{locale === "ko" ? "목표까지 가상 완주" : "Virtual route to target"}</option><option value="strict">{locale === "ko" ? "현재 재화 안에서" : "Within current resources"}</option></select></label>
       <button className="v45-route-generate" type="button" onClick={() => { setApplied(draft); setVariant(0); }}>{locale === "ko" ? "이 조건으로 전체 루트 만들기" : "Build full route with these settings"}</button>
     </section>
 
@@ -146,8 +150,8 @@ export function GuidedRoutePlanner({ data, locale, selectedDiceId, currentRanks,
       <p>{plan.goal.reached
         ? (locale === "ko" ? "선택 주사위 전용 노드까지 도달하며, 이후 남은 예산은 설정한 역할과 효율 기준으로 배분합니다." : "Reaches a selected-dice node, then allocates remaining resources by role and efficiency settings.")
         : (locale === "ko" ? `현재 예산·길이 안에서는 전용 노드까지 완주할 수 없어, 해당 노드로 이어지는 선행 경로 ${plan.goal.progressSteps}단계를 먼저 확보합니다.` : `The dedicated node cannot be completed within this budget and length, so the plan first secures ${plan.goal.progressSteps} prerequisite steps toward it.`)}</p>
-      <dl><div><dt>{locale === "ko" ? "총비용" : "Total cost"}</dt><dd>{formatCost(plan.totalCost, locale)}</dd></div><div><dt>{locale === "ko" ? "완료 후 잔액" : "Remaining"}</dt><dd>{plan.remaining.gold.toLocaleString()} G · {plan.remaining.stone.toLocaleString()} C</dd></div><div><dt>{locale === "ko" ? "구매 단계" : "Purchase steps"}</dt><dd>{plan.steps.length}</dd></div><div><dt>{locale === "ko" ? "목표 도달" : "Target reached"}</dt><dd>{plan.goal.reached ? (locale === "ko" ? "도달" : "Reached") : plan.goal.stopReason === "budget" ? (locale === "ko" ? "예산 부족" : "Budget limited") : plan.goal.stopReason === "length" ? (locale === "ko" ? "경로 길이 제한" : "Length limited") : (locale === "ko" ? "전용 노드 없음" : "No dedicated node")}</dd></div><div><dt>{locale === "ko" ? "근거 수준" : "Evidence level"}</dt><dd>{plan.confidence === "verified-effects" ? (locale === "ko" ? "효과 데이터 검증" : "Verified effect data") : (locale === "ko" ? "경로 구조 검증" : "Verified route structure")}</dd></div></dl>
-      <div className="v45-route-validity"><span className={plan.validity.prerequisitesSatisfied ? "is-ok" : "is-bad"}>{locale === "ko" ? "선행 조건" : "Prerequisites"}</span><span className={plan.validity.exactCosts ? "is-ok" : "is-bad"}>{locale === "ko" ? "비용 합계" : "Exact costs"}</span><span className={plan.validity.withinBudget ? "is-ok" : "is-bad"}>{locale === "ko" ? "예산 이내" : "Within budget"}</span></div>
+      <dl><div><dt>{locale === "ko" ? "총비용" : "Total cost"}</dt><dd>{formatCost(plan.totalCost, locale)}</dd></div><div><dt>{shortfall.gold || shortfall.stone ? (locale === "ko" ? "추가 필요" : "Shortfall") : (locale === "ko" ? "완료 후 잔액" : "Remaining")}</dt><dd>{shortfall.gold || shortfall.stone ? `${shortfall.gold.toLocaleString()} G · ${shortfall.stone.toLocaleString()} C` : `${Math.max(0, plan.remaining.gold).toLocaleString()} G · ${Math.max(0, plan.remaining.stone).toLocaleString()} C`}</dd></div><div><dt>{locale === "ko" ? "구매 단계" : "Purchase steps"}</dt><dd>{plan.steps.length}</dd></div><div><dt>{locale === "ko" ? "목표 도달" : "Target reached"}</dt><dd>{plan.goal.reached ? (locale === "ko" ? "도달" : "Reached") : plan.goal.stopReason === "budget" ? (locale === "ko" ? "예산 부족" : "Budget limited") : plan.goal.stopReason === "length" ? (locale === "ko" ? "경로 길이 제한" : "Length limited") : (locale === "ko" ? "전용 노드 없음" : "No dedicated node")}</dd></div><div><dt>{locale === "ko" ? "근거 수준" : "Evidence level"}</dt><dd>{plan.confidence === "verified-effects" ? (locale === "ko" ? "효과 데이터 검증" : "Verified effect data") : (locale === "ko" ? "경로 구조 검증" : "Verified route structure")}</dd></div></dl>
+      <div className="v45-route-validity"><span className={plan.validity.prerequisitesSatisfied ? "is-ok" : "is-bad"}>{locale === "ko" ? "선행 조건" : "Prerequisites"}</span><span className={plan.validity.exactCosts ? "is-ok" : "is-bad"}>{locale === "ko" ? "비용 합계" : "Exact costs"}</span><span className={plan.validity.withinBudget ? "is-ok" : applied.budgetMode === "virtual" ? "is-plan" : "is-bad"}>{plan.validity.withinBudget ? (locale === "ko" ? "예산 이내" : "Within budget") : applied.budgetMode === "virtual" ? (locale === "ko" ? "부족분 계산됨" : "Shortfall calculated") : (locale === "ko" ? "예산 초과" : "Over budget")}</span></div>
       <p className="v45-route-limit">{locale === "ko" ? "효과의 적용 대상과 비용은 데이터로 검증합니다. 공식이 미검증인 효과는 정확한 DPS 증가량으로 과장하지 않고 방향 추천에만 사용합니다." : "Effect scope and costs are data-verified. Unverified formulas influence route direction but are never presented as exact DPS gains."}</p>
     </section>
 

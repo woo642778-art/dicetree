@@ -12,7 +12,7 @@ export interface BudgetCombinationResult {
   products: PurchaseProduct[];
   spent: number;
   remainingBudget: number;
-  rewards: { gold: number; core: number; redesignItem: number; other: number; diceSkin: number };
+  rewards: { gold: number; core: number; redesignItem: number; other: number; diceSkin: number; tickets: number };
   targetAdditionalCore: number;
   reachesTarget: boolean;
   coreShortfall: number;
@@ -29,7 +29,8 @@ function rewardTotals(products: readonly PurchaseProduct[]) {
     redesignItem: total.redesignItem + (product.rewards.redesignItem ?? 0),
     other: total.other + (product.rewards.other ?? 0),
     diceSkin: total.diceSkin + (product.rewards.diceSkin ?? 0),
-  }), { gold: 0, core: 0, redesignItem: 0, other: 0, diceSkin: 0 });
+    tickets: total.tickets + (product.rewards.tickets ?? 0),
+  }), { gold: 0, core: 0, redesignItem: 0, other: 0, diceSkin: 0, tickets: 0 });
 }
 
 function valueIndex(products: readonly PurchaseProduct[], goal: PurchaseGoal) {
@@ -38,7 +39,7 @@ function valueIndex(products: readonly PurchaseProduct[], goal: PurchaseGoal) {
   if (goal === "core") return rewards.core * 100 + rewards.gold / 5_000 + declared;
   if (goal === "gold") return rewards.gold / 500 + rewards.core * 8 + declared;
   if (goal === "redesign") return rewards.redesignItem * 1_500 + rewards.core * 20 + declared;
-  return declared + rewards.core * 18 + rewards.gold / 2_500 + rewards.redesignItem * 400 + rewards.other * 2 + rewards.diceSkin * 100;
+  return declared + rewards.core * 18 + rewards.gold / 2_500 + rewards.redesignItem * 400 + rewards.other * 2 + rewards.diceSkin * 100 + rewards.tickets * 10;
 }
 
 function allCombinations(products: readonly PurchaseProduct[]) {
