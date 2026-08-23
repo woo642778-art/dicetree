@@ -13,6 +13,36 @@ function clampRank(nodeId: string, rank: number, limits: PlannerNodeLimitsV3): n
   return Math.min(rank, maximum);
 }
 
+function minimumOwnedRank(nodeId: string, limits: PlannerNodeLimitsV3) {
+  return limits.minimumOwnedRanks?.get(nodeId) ?? 0;
+}
+
+function expandPrerequisites(
+  requested: Record<string, number>,
+  limits: PlannerNodeLimitsV3,
+): Record<string, number> | null {
+  const expanded = { ...requested };
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (nodeId: string): boolean => {
+    if (visiting.has(nodeId)) return false;
+    if (visited.has(nodeId)) return true;
+    if (!limits.validNodeIds.has(nodeId)) return false;
+    visiting.add(nodeId);
+    for (const prerequisite of limits.prerequisites?.get(nodeId) ?? []) {
+      const rank = clampRank(prerequisite.nodeId, prerequisite.minRank, limits);
+      if (rank === null || rank < prerequisite.minRank) return false;
+      expanded[prerequisite.nodeId] = Math.max(expanded[prerequisite.nodeId] ?? 0, rank);
+      if (!visit(prerequisite.nodeId)) return false;
+    }
+    visiting.delete(nodeId);
+    visited.add(nodeId);
+    return true;
+  };
+  for (const nodeId of Object.keys(expanded)) if (!visit(nodeId)) return null;
+  return expanded;
+}
+
 function prerequisitesSatisfied(
   state: Pick<PlannerStateV3, "ownedRanks" | "simulatedRanks">,
   nodeId: string,
@@ -51,9 +81,10 @@ function normalizeSparseRanks(
   limits: PlannerNodeLimitsV3,
 ): PlannerStateV3 {
   const ownedRanks: Record<string, number> = {};
+  for (const [nodeId, rank] of limits.minimumOwnedRanks ?? []) ownedRanks[nodeId] = rank;
   for (const [nodeId, rawRank] of Object.entries(state.ownedRanks)) {
     const rank = clampRank(nodeId, rawRank, limits);
-    if (rank !== null && rank > 0) ownedRanks[nodeId] = rank;
+    if (rank !== null && rank > 0) ownedRanks[nodeId] = Math.max(rank, minimumOwnedRank(nodeId, limits));
   }
 
   const simulatedRanks: Record<string, number> = {};
@@ -156,7 +187,8 @@ export function plannerReducerV3(
   let next = history.present;
 
   if (action.type === "setOwnedRank") {
-    const rank = clampRank(action.nodeId, action.rank, limits);
+    const rawRank = clampRank(action.nodeId, action.rank, limits);
+    const rank = rawRank === null ? null : Math.max(rawRank, minimumOwnedRank(action.nodeId, limits));
     if (rank === null) return history;
     const ownedRanks = { ...next.ownedRanks };
     if (rank > 0) ownedRanks[action.nodeId] = rank;
@@ -179,22 +211,24 @@ export function plannerReducerV3(
     else delete simulatedRanks[action.nodeId];
     next = pruneInvalidSimulatedRanks({ ...next, simulatedRanks }, limits);
   } else if (action.type === "applyRoute") {
+    const expanded = expandPrerequisites(action.ranks, limits);
+    if (!expanded) return history;
     const simulatedRanks = { ...next.simulatedRanks };
-    for (const [nodeId, rawRank] of Object.entries(action.ranks)) {
+    for (const [nodeId, rawRank] of Object.entries(expanded)) {
       const rank = clampRank(nodeId, rawRank, limits);
       if (rank === null) return history;
       const owned = next.ownedRanks[nodeId] ?? 0;
       if (rank > owned) simulatedRanks[nodeId] = Math.max(simulatedRanks[nodeId] ?? 0, rank);
     }
     const candidate = { ...next, simulatedRanks };
-    for (const nodeId of Object.keys(action.ranks)) {
+    for (const nodeId of Object.keys(expanded)) {
       if (!prerequisitesSatisfied(candidate, nodeId, limits)) return history;
     }
     next = candidate;
   } else if (action.type === "clearSimulatedRanks") {
     next = { ...next, simulatedRanks: {} };
   } else if (action.type === "resetTreeProgress") {
-    next = { ...next, ownedRanks: {}, simulatedRanks: {} };
+    next = { ...next, ownedRanks: Object.fromEntries(limits.minimumOwnedRanks ?? []), simulatedRanks: {} };
   } else if (action.type === "incrementSimulatedRank") {
     if (!limits.validNodeIds.has(action.nodeId)) return history;
     const maximum = limits.maxRanks.get(action.nodeId);

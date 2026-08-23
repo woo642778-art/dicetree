@@ -1,7 +1,9 @@
 import { playableDiceV3 } from "../game-data/playableDice";
 import type { CanonicalGameData } from "../game-data/types";
 import type { PlannerStateV3 } from "../planner-v3/types";
+import { starterOwnedRanksV3 } from "../planner-v3/starterRanks";
 import type { OwnedDiceV48 } from "./digitalTwinV48";
+import { CO_OP_RANKING_SNAPSHOT, CO_OP_RANKING_SNAPSHOT_DATE } from "../deck-lab/coOpRankingSnapshot";
 
 export type ImportedAccountSourceV49 = "verified-import" | "observed-ranking";
 
@@ -56,7 +58,35 @@ export function lookupObservedAccountV49(identifier: string): ObservedAccountV49
   if (!query) return undefined;
   const rank = query.match(/^#?(\d+)$/)?.[1];
   const found = OBSERVED.find((entry) => normalized(entry.nickname) === query || (rank && entry.rank === Number(rank)));
+  if (!found && rank) {
+    const observedDeck = CO_OP_RANKING_SNAPSHOT.find((entry) => entry.rank === Number(rank));
+    if (observedDeck) return {
+      nickname: `#${observedDeck.rank} 관측 계정`,
+      rank: observedDeck.rank,
+      ...(observedDeck.score ? { score: observedDeck.score } : {}),
+      diceIds: [...observedDeck.diceIds],
+      sourceDate: CO_OP_RANKING_SNAPSHOT_DATE,
+      completeness: "rank-and-deck-only",
+    };
+  }
   return found ? structuredClone(found) : undefined;
+}
+
+export function createAccountSnapshotTemplateV49(
+  state: PlannerStateV3,
+  deckIds: readonly string[],
+  nickname = "내 계정",
+) {
+  return JSON.stringify({
+    schemaVersion: 1,
+    nickname,
+    inventory: { ...state.inventory },
+    ownedRanks: { ...state.ownedRanks },
+    diceLevels: Object.fromEntries(deckIds.slice(0, 5).map((diceId) => [diceId, diceId === state.scenario.diceId ? state.scenario.diceProgressionLevel : 1])),
+    deckIds: [...deckIds.slice(0, 5)],
+    goal: "balanced",
+    spendProfile: "free",
+  }, null, 2);
 }
 
 function fail(ko: string, en: string): AccountImportParseResultV49 {
@@ -82,7 +112,7 @@ export function parseFullAccountSnapshotV49(raw: string, data: CanonicalGameData
   if (!record(value.inventory) || !nonNegativeInteger(value.inventory.gold) || !nonNegativeInteger(value.inventory.stone)) return fail("골드와 코어는 0 이상의 정수여야 합니다.", "Gold and Core must be non-negative integers.");
   if (!record(value.ownedRanks)) return fail("보유 트리 정보가 없습니다.", "Owned tree data is missing.");
   const nodeById = new Map(data.tree.map((node) => [node.id, node]));
-  const ownedRanks: Record<string, number> = {};
+  const ownedRanks: Record<string, number> = starterOwnedRanksV3(data.tree);
   for (const [nodeId, rawRank] of Object.entries(value.ownedRanks)) {
     const node = nodeById.get(nodeId);
     if (!node || !nonNegativeInteger(rawRank) || rawRank > node.maxRank) return fail(`알 수 없거나 범위를 벗어난 트리 노드입니다: ${nodeId}`, `Unknown or out-of-range tree node: ${nodeId}`);

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import type { DiceFamilyV3 } from "../../../game-data/types";
 import { gameDataV3 } from "../../../game-data/load";
 import { playableDiceV3 } from "../../../game-data/playableDice";
-import { createDigitalTwinV48, digitalTwinFromProfileV48, updateTwinPlannerV48 } from "../../../account/digitalTwinV48";
+import { createDigitalTwinV48, digitalTwinFromProfileV48, isDigitalTwinV48, updateTwinPlannerV48, type UserDigitalTwinV48 } from "../../../account/digitalTwinV48";
 import type { FullAccountImportV49, ObservedAccountV49 } from "../../../account/accountImportV49";
 import { recommendDeckV4 } from "../../../deck-lab/recommendDeck";
 import { useI18n } from "../../../i18n/I18nContext";
@@ -12,6 +12,7 @@ import { projectResources, simulatedInvestmentCost } from "../../../planner-v3/c
 import { planNextRankRouteV3 } from "../../../planner-v3/routes";
 import { createPlannerHistoryV3, effectiveRankV3, plannerReducerV3 } from "../../../planner-v3/reducer";
 import type { PlannerActionV3, PlannerStateV3 } from "../../../planner-v3/types";
+import { starterOwnedRanksV3 } from "../../../planner-v3/starterRanks";
 import { resolveEnemyPresetV3 } from "../../../simulation/enemies/presets";
 import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { evaluateNodeV3 } from "../../../simulation/marginal/evaluateNode";
@@ -29,21 +30,25 @@ import { SharedBuildView } from "../share/SharedBuildView";
 import { NodeDetailSheet } from "../tree/NodeDetailSheet";
 import { GuidedRoutePlanner } from "../tree/GuidedRoutePlanner";
 import { RecommendationStrip } from "../tree/RecommendationStrip";
-import { TreeCanvasV3 } from "../tree/TreeCanvasV3";
+import { normalizeTreeSearchText, treeNodeSearchTextV3, TreeCanvasV3 } from "../tree/TreeCanvasV3";
 import { AccountIntelligenceView } from "../account/AccountIntelligenceView";
+import { TierMakerView } from "../tier/TierMakerView";
 
-type Tab = "account" | "tree" | "simulator" | "decks" | "compare" | "shop" | "updates";
+type Tab = "account" | "tree" | "simulator" | "decks" | "tier" | "compare" | "shop" | "updates";
 
+const STARTER_OWNED_RANKS = starterOwnedRanksV3(gameDataV3.tree);
 const limits = {
   validNodeIds: new Set(gameDataV3.tree.map((node) => node.id)),
   maxRanks: new Map(gameDataV3.tree.map((node) => [node.id, node.maxRank])),
   prerequisites: new Map(gameDataV3.tree.map((node) => [node.id, node.prerequisites])),
+  minimumOwnedRanks: new Map(Object.entries(STARTER_OWNED_RANKS)),
 };
 const selectableDice = playableDiceV3(gameDataV3);
 const validDiceIds = new Set(selectableDice.map((dice) => dice.id));
 const defaultDiceId = selectableDice.some((dice) => dice.id === "predator") ? "predator" : selectableDice[0]?.id ?? "";
 const EMPTY_RECOMMENDATIONS: V3RecommendationSet = { verified: [], partial: [] };
 const DEFAULT_DECK_IDS = recommendDeckV4(gameDataV3, "balanced", "free").dice.map((entry) => entry.diceId);
+const ACCOUNT_STORAGE_KEY = "dicetree:v49:account";
 const FAMILY_NAMES: Record<DiceFamilyV3, { ko: string; en: string }> = {
   nature: { ko: "자연", en: "Nature" },
   chaos: { ko: "혼돈", en: "Chaos" },
@@ -56,7 +61,7 @@ function initialState(): PlannerStateV3 {
   return {
     schemaVersion: 3,
     dataVersion: `${gameDataV3.manifest.clientVersion}:${gameDataV3.manifest.sourceSha256.slice(0, 12)}`,
-    ownedRanks: {},
+    ownedRanks: { ...STARTER_OWNED_RANKS },
     simulatedRanks: {},
     inventory: { gold: 0, stone: 0 },
     scenario: {
@@ -68,6 +73,18 @@ function initialState(): PlannerStateV3 {
       durationSeconds: 30,
     },
   };
+}
+
+function loadAccountTwin(): UserDigitalTwinV48 {
+  const fallback = createDigitalTwinV48({ planner: initialState(), activeDeckIds: DEFAULT_DECK_IDS, deckGoal: "balanced", spendProfile: "free" });
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(ACCOUNT_STORAGE_KEY) ?? "null");
+    if (!isDigitalTwinV48(parsed)) return fallback;
+    return {
+      ...parsed,
+      planner: { ...parsed.planner, ownedRanks: { ...STARTER_OWNED_RANKS, ...parsed.planner.ownedRanks } },
+    };
+  } catch { return fallback; }
 }
 
 function rankMap(state: PlannerStateV3) {
@@ -90,6 +107,7 @@ function simulationInput(state: PlannerStateV3, overrides: Partial<SimulationInp
 
 export function V3Shell() {
   const { locale, setLocale } = useI18n();
+  const [accountSeed] = useState(loadAccountTwin);
   const [tab, setTab] = useState<Tab>("tree");
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
   const [guidedRouteOpen, setGuidedRouteOpen] = useState(false);
@@ -97,10 +115,10 @@ export function V3Shell() {
   const [query, setQuery] = useState("");
   const [heatmapMode, setHeatmapMode] = useState<TreeHeatmapModeV3>("none");
   const [shareNotice, setShareNotice] = useState<string>();
-  const [deckGoal, setDeckGoal] = useState<"dealer" | "support" | "balanced">("balanced");
-  const [spendProfile, setSpendProfile] = useState<"free" | "light" | "invested">("free");
-  const [activeDeckIds, setActiveDeckIds] = useState<string[]>(DEFAULT_DECK_IDS);
-  const [digitalTwin, setDigitalTwin] = useState(() => createDigitalTwinV48({ planner: initialState(), activeDeckIds: DEFAULT_DECK_IDS, deckGoal: "balanced", spendProfile: "free" }));
+  const [deckGoal, setDeckGoal] = useState<"dealer" | "support" | "balanced">(() => accountSeed.decks.find((deck) => deck.id === accountSeed.primaryDeckId)?.role ?? "balanced");
+  const [spendProfile, setSpendProfile] = useState<"free" | "light" | "invested">(accountSeed.preferences.spendProfile);
+  const [activeDeckIds, setActiveDeckIds] = useState<string[]>(() => accountSeed.decks.find((deck) => deck.id === accountSeed.primaryDeckId)?.diceIds ?? DEFAULT_DECK_IDS);
+  const [digitalTwin, setDigitalTwin] = useState(accountSeed);
   const [profileOpen, setProfileOpen] = useState(false);
   const [shareComposerOpen, setShareComposerOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -115,7 +133,7 @@ export function V3Shell() {
   const [history, dispatchBase] = useReducer(
     (current: ReturnType<typeof createPlannerHistoryV3>, action: PlannerActionV3) => plannerReducerV3(current, action, limits),
     undefined,
-    () => createPlannerHistoryV3(initialState()),
+    () => createPlannerHistoryV3(accountSeed.planner),
   );
   const state = history.present;
   const dispatch = (action: PlannerActionV3) => dispatchBase(action);
@@ -147,10 +165,15 @@ export function V3Shell() {
 
   const spent = useMemo(() => simulatedInvestmentCost(gameDataV3.tree, state), [state]);
   const resources = useMemo(() => projectResources(state.inventory, spent), [spent, state.inventory]);
+  const hasResettableTreeProgress = Object.keys(state.simulatedRanks).length > 0
+    || Object.entries(state.ownedRanks).some(([nodeId, rank]) => rank !== (STARTER_OWNED_RANKS[nodeId] ?? 0));
   const selectedNode = gameDataV3.tree.find((node) => node.id === selectedNodeId);
   const currentRanks = useMemo(() => rankMap(state), [state]);
   const currentInput = useMemo(() => simulationInput(state), [state]);
   const currentTwin = useMemo(() => updateTwinPlannerV48(digitalTwin, state, activeDeckIds), [activeDeckIds, digitalTwin, state]);
+  useEffect(() => {
+    try { window.localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(currentTwin)); } catch { /* Storage can be unavailable in private mode. */ }
+  }, [currentTwin]);
   const selectedRoute = useMemo(() => {
     if (!selectedNodeId) return undefined;
     try { return planNextRankRouteV3(gameDataV3.tree, currentRanks, selectedNodeId); } catch { return undefined; }
@@ -173,14 +196,14 @@ export function V3Shell() {
     [recommendations],
   );
   const commandResults = useMemo(() => {
-    const normalized = commandQuery.trim().toLocaleLowerCase();
-    const tabs: Array<{ id: string; kind: "tab"; tab: Tab; label: string }> = (["account", "tree", "simulator", "decks", "compare", "shop", "updates"] as Tab[]).map((target) => ({
+    const normalized = normalizeTreeSearchText(commandQuery.trim());
+    const tabs: Array<{ id: string; kind: "tab"; tab: Tab; label: string }> = (["account", "tree", "simulator", "decks", "tier", "compare", "shop", "updates"] as Tab[]).map((target) => ({
       id: `tab:${target}`, kind: "tab", tab: target,
-      label: target === "account" ? (locale === "ko" ? "내 계정 인텔리전스" : "Account Intelligence") : target === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : target === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : target === "decks" ? (locale === "ko" ? "덱 연구소" : "Deck Lab") : target === "compare" ? (locale === "ko" ? "비교" : "Compare") : target === "shop" ? (locale === "ko" ? "구매 효율" : "Purchase Value") : (locale === "ko" ? "업데이트" : "Updates"),
+      label: target === "account" ? (locale === "ko" ? "내 계정 인텔리전스" : "Account Intelligence") : target === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : target === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : target === "decks" ? (locale === "ko" ? "덱 연구소" : "Deck Lab") : target === "tier" ? (locale === "ko" ? "티어 메이커" : "Tier Maker") : target === "compare" ? (locale === "ko" ? "비교" : "Compare") : target === "shop" ? (locale === "ko" ? "구매 효율" : "Purchase Value") : (locale === "ko" ? "업데이트" : "Updates"),
     }));
     const dice = selectableDice.map((entry) => ({ id: `dice:${entry.id}`, kind: "dice" as const, diceId: entry.id, label: entry.nameKey ? gameDataV3.localization[locale][entry.nameKey] ?? entry.id : entry.id }));
-    const nodes = gameDataV3.tree.filter((node) => node.kind !== "connector").map((node) => ({ id: `node:${node.id}`, kind: "node" as const, nodeId: node.id, label: node.nameKey ? gameDataV3.localization[locale][node.nameKey] ?? node.id : node.id, effect: node.descriptionKey ? gameDataV3.localization[locale][node.descriptionKey] ?? "" : "" }));
-    return [...tabs, ...dice, ...nodes].filter((entry) => !normalized || `${entry.label} ${"effect" in entry ? entry.effect : ""} ${entry.id}`.toLocaleLowerCase().includes(normalized)).slice(0, 12);
+    const nodes = gameDataV3.tree.filter((node) => node.kind !== "connector").map((node) => ({ id: `node:${node.id}`, kind: "node" as const, nodeId: node.id, label: node.nameKey ? gameDataV3.localization[locale][node.nameKey] ?? node.id : node.id, effect: node.descriptionKey ? gameDataV3.localization[locale][node.descriptionKey] ?? "" : "", searchText: treeNodeSearchTextV3(gameDataV3, node, locale) }));
+    return [...tabs, ...dice, ...nodes].filter((entry) => !normalized || ("searchText" in entry ? entry.searchText.includes(normalized) : normalizeTreeSearchText(`${entry.label} ${entry.id}`).includes(normalized))).slice(0, 12);
   }, [commandQuery, locale]);
   const openCommandResult = (entry: (typeof commandResults)[number]) => {
     if (entry.kind === "tab") setTab(entry.tab);
@@ -259,7 +282,7 @@ export function V3Shell() {
     setSelectedNodeId(undefined);
     setGuidedRouteOpen(false);
     setTreeResetOpen(false);
-    setShareNotice(locale === "ko" ? "다이스 트리의 실제·가상 랭크를 모두 초기화했습니다. 실행 취소로 복원할 수 있습니다." : "Reset all owned and simulated tree ranks. Undo can restore them.");
+    setShareNotice(locale === "ko" ? "다이스 트리를 기본 해금 상태로 초기화했습니다. 실행 취소로 복원할 수 있습니다." : "Reset the Dice Tree to its starter unlocks. Undo can restore it.");
   };
 
   const openSharedBuild = (targetTab: Tab) => {
@@ -281,8 +304,8 @@ export function V3Shell() {
         <span><strong>RANDOM DICE 2</strong><small>{locale === "ko" ? "다이스 트리 연구소" : "Dice Tree Lab"}</small></span>
       </button>
       <nav className="v3-nav" aria-label={locale === "ko" ? "주요 화면" : "Primary views"}>
-        {(["account", "tree", "simulator", "decks", "compare", "shop", "updates"] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>
-          {item === "account" ? (locale === "ko" ? "내 계정" : "My Account") : item === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : item === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : item === "decks" ? (locale === "ko" ? "덱 연구소" : "Deck Lab") : item === "compare" ? (locale === "ko" ? "비교" : "Compare") : item === "shop" ? (locale === "ko" ? "구매 효율" : "Purchase Value") : (locale === "ko" ? "업데이트" : "Updates")}
+        {(["account", "tree", "simulator", "decks", "tier", "compare", "shop", "updates"] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>
+          {item === "account" ? (locale === "ko" ? "내 계정" : "My Account") : item === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : item === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : item === "decks" ? (locale === "ko" ? "덱 연구소" : "Deck Lab") : item === "tier" ? (locale === "ko" ? "티어 메이커" : "Tier Maker") : item === "compare" ? (locale === "ko" ? "비교" : "Compare") : item === "shop" ? (locale === "ko" ? "구매 효율" : "Purchase Value") : (locale === "ko" ? "업데이트" : "Updates")}
         </button>)}
       </nav>
       <div className="v3-header-actions">
@@ -299,11 +322,11 @@ export function V3Shell() {
       <div className="v3-resource-item gold"><span className="v3-resource-icon">●</span><label>{locale === "ko" ? "남은 골드" : "Remaining Gold"}<input aria-label={locale === "ko" ? "남은 골드" : "Remaining Gold"} type="number" min="0" value={Math.max(0, resources.remaining.gold)} onChange={(event) => dispatch({ type: "setInventory", inventory: { gold: Math.max(0, Number(event.target.value) || 0) + spent.gold } })} /></label><small>{locale === "ko" ? "사용" : "Spent"} {spent.gold.toLocaleString()}</small></div>
       <div className="v3-resource-item stone"><span className="v3-resource-icon">◆</span><label>{locale === "ko" ? "남은 다이스 코어" : "Remaining Dice Core"}<input aria-label={locale === "ko" ? "남은 다이스 코어" : "Remaining Dice Core"} type="number" min="0" value={Math.max(0, resources.remaining.stone)} onChange={(event) => dispatch({ type: "setInventory", inventory: { stone: Math.max(0, Number(event.target.value) || 0) + spent.stone } })} /></label><small>{locale === "ko" ? "사용" : "Spent"} {spent.stone.toLocaleString()}</small></div>
       <div className={`v3-resource-status ${resources.affordable ? "is-ok" : "is-short"}`}><strong>{resources.affordable ? (locale === "ko" ? "투자 가능" : "Affordable") : (locale === "ko" ? "재화 부족" : "Shortfall")}</strong><span>{locale === "ko" ? "가상 투자 비용" : "Simulated cost"}: {spent.gold.toLocaleString()} G · {spent.stone.toLocaleString()} C</span></div>
-      <div className="v3-history-actions"><button type="button" onClick={() => dispatch({ type: "clearSimulatedRanks" })} disabled={!Object.keys(state.simulatedRanks).length}>{locale === "ko" ? "전체 계획 취소" : "Clear plan"}</button><button className="v49-tree-reset-open" type="button" onClick={() => setTreeResetOpen(true)} disabled={!Object.keys(state.ownedRanks).length && !Object.keys(state.simulatedRanks).length}>{locale === "ko" ? "트리 전체 초기화" : "Reset full tree"}</button><button type="button" onClick={() => dispatch({ type: "undo" })} disabled={!history.past.length}>{locale === "ko" ? "실행 취소" : "Undo"}</button><button type="button" onClick={() => dispatch({ type: "redo" })} disabled={!history.future.length}>{locale === "ko" ? "다시 실행" : "Redo"}</button></div>
+      <div className="v3-history-actions"><button type="button" onClick={() => dispatch({ type: "clearSimulatedRanks" })} disabled={!Object.keys(state.simulatedRanks).length}>{locale === "ko" ? "전체 계획 취소" : "Clear plan"}</button><button className="v49-tree-reset-open" type="button" onClick={() => setTreeResetOpen(true)} disabled={!hasResettableTreeProgress}>{locale === "ko" ? "트리 전체 초기화" : "Reset full tree"}</button><button type="button" onClick={() => dispatch({ type: "undo" })} disabled={!history.past.length}>{locale === "ko" ? "실행 취소" : "Undo"}</button><button type="button" onClick={() => dispatch({ type: "redo" })} disabled={!history.future.length}>{locale === "ko" ? "다시 실행" : "Redo"}</button></div>
     </section>
 
     {shareNotice && <div className="v3-notice" role="status"><span>{shareNotice}</span><button type="button" onClick={() => setShareNotice(undefined)}>×</button></div>}
-    {treeResetOpen && <div className="v49-reset-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setTreeResetOpen(false); }}><section className="v49-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="v49-reset-title"><small>{locale === "ko" ? "되돌릴 수 있는 초기화" : "UNDOABLE RESET"}</small><h2 id="v49-reset-title">{locale === "ko" ? "다이스 트리를 전부 초기화할까요?" : "Reset the entire Dice Tree?"}</h2><p>{locale === "ko" ? "실제로 찍은 랭크와 가상 계획을 모두 0으로 만듭니다. 입력한 골드·코어와 시뮬레이터 설정은 유지되며, 실행 취소로 복원할 수 있습니다." : "Owned ranks and simulated plans return to zero. Gold, Core, and simulator settings are preserved, and Undo can restore the tree."}</p><div><button type="button" onClick={() => setTreeResetOpen(false)}>{locale === "ko" ? "취소" : "Cancel"}</button><button type="button" className="is-danger" onClick={resetTree}>{locale === "ko" ? "트리 전체 초기화" : "Reset full tree"}</button></div></section></div>}
+    {treeResetOpen && <div className="v49-reset-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setTreeResetOpen(false); }}><section className="v49-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="v49-reset-title"><small>{locale === "ko" ? "되돌릴 수 있는 초기화" : "UNDOABLE RESET"}</small><h2 id="v49-reset-title">{locale === "ko" ? "다이스 트리를 전부 초기화할까요?" : "Reset the entire Dice Tree?"}</h2><p>{locale === "ko" ? "실제로 찍은 랭크와 가상 계획을 초기화하고, 게임에서 처음 열려 있는 기본 주사위 5개는 유지합니다. 입력한 골드·코어와 시뮬레이터 설정은 유지되며 실행 취소로 복원할 수 있습니다." : "Owned ranks and simulated plans return to the starter unlocks. Gold, Core, and simulator settings are preserved, and Undo can restore the tree."}</p><div><button type="button" onClick={() => setTreeResetOpen(false)}>{locale === "ko" ? "취소" : "Cancel"}</button><button type="button" className="is-danger" onClick={resetTree}>{locale === "ko" ? "트리 전체 초기화" : "Reset full tree"}</button></div></section></div>}
     {commandOpen && <div className="v48-command-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCommandOpen(false); }}><section className="v48-command-palette" role="dialog" aria-modal="true" aria-label={locale === "ko" ? "통합 검색" : "Universal search"}><header><input autoFocus aria-label={locale === "ko" ? "통합 검색어" : "Universal search query"} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commandResults[0]) openCommandResult(commandResults[0]); }} placeholder={locale === "ko" ? "화면, 주사위, 노드, 효과 검색" : "Search views, dice, nodes, effects"} /><kbd>ESC</kbd></header><div>{commandResults.map((entry) => <button key={entry.id} type="button" onClick={() => openCommandResult(entry)}><span>{entry.kind === "tab" ? (locale === "ko" ? "화면" : "View") : entry.kind === "dice" ? (locale === "ko" ? "주사위" : "Dice") : (locale === "ko" ? "노드" : "Node")}</span><b>{entry.label}</b>{"effect" in entry && entry.effect ? <small>{entry.effect}</small> : null}</button>)}</div><footer>{locale === "ko" ? "Enter로 이동 · Esc로 닫기" : "Enter to open · Esc to close"}</footer></section></div>}
     {profileOpen && <ProfileManagerV3 locale={locale} state={state} activeDeckIds={activeDeckIds} deckGoal={deckGoal} spendProfile={spendProfile} digitalTwin={currentTwin} onLoad={loadProfile} onClose={() => setProfileOpen(false)} />}
     {shareComposerOpen && <ShareResultComposer locale={locale} title={shareTitle} note={shareNote} onTitleChange={setShareTitle} onNoteChange={setShareNote} onCreate={createResultShare} onClose={() => setShareComposerOpen(false)} />}
@@ -342,6 +365,7 @@ export function V3Shell() {
           onSelectNode={setSelectedNodeId}
         />
         <TreeCanvasV3
+          data={gameDataV3}
           nodes={gameDataV3.tree}
           ownedRanks={state.ownedRanks}
           simulatedRanks={state.simulatedRanks}
@@ -399,6 +423,8 @@ export function V3Shell() {
         setTab("simulator");
       }}
     />}
+
+    {tab === "tier" && <TierMakerView data={gameDataV3} locale={locale} />}
 
     {tab === "compare" && <CompareWorkspace data={gameDataV3} locale={locale} baseInput={currentInput} />}
 

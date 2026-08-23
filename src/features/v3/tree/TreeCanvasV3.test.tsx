@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DiceTreeNodeV3 } from "../../../game-data/types";
+import { gameDataV3 } from "../../../game-data/load";
 import { TreeCanvasV3, canIncrementNodeV3, familyInvestmentLevelsV3, normalizeTreeSearchText, prerequisitesSatisfiedV3 } from "./TreeCanvasV3";
 
 afterEach(cleanup);
@@ -26,6 +27,7 @@ const nodes: DiceTreeNodeV3[] = [
 function renderTree(overrides: Partial<ComponentProps<typeof TreeCanvasV3>> = {}) {
   const onSelect = vi.fn();
   render(<TreeCanvasV3
+    data={gameDataV3}
     nodes={nodes}
     ownedRanks={{ root: 1 }}
     simulatedRanks={{ child: 1 }}
@@ -52,6 +54,7 @@ describe("TreeCanvasV3", () => {
 
   it("separates owned, simulated, reachable, locked and maxed state", () => {
     const { rerender } = render(<TreeCanvasV3
+      data={gameDataV3}
       nodes={nodes} ownedRanks={{ root: 1 }} simulatedRanks={{ child: 1 }} locale="ko" onSelect={() => {}} />);
     expect(screen.getByTestId("v3-node-root")).toHaveAttribute("data-node-state", "owned");
     expect(screen.getByTestId("v3-node-child")).toHaveAttribute("data-node-state", "simulated");
@@ -59,6 +62,7 @@ describe("TreeCanvasV3", () => {
     expect(screen.getByTestId("v3-node-locked")).toHaveAttribute("data-can-increment", "false");
 
     rerender(<TreeCanvasV3
+      data={gameDataV3}
       nodes={nodes} ownedRanks={{ root: 2 }} simulatedRanks={{}} locale="ko" onSelect={() => {}} />);
     expect(screen.getByTestId("v3-node-root")).toHaveAttribute("data-node-state", "maxed");
     expect(screen.getByTestId("v3-node-root")).toHaveAttribute("data-can-increment", "false");
@@ -84,12 +88,14 @@ describe("TreeCanvasV3", () => {
 
   it("renders the in-game center hub and updates its family counters", () => {
     const { rerender } = render(<TreeCanvasV3
+      data={gameDataV3}
       nodes={nodes} ownedRanks={{ root: 1 }} simulatedRanks={{ child: 1 }} locale="ko" onSelect={() => {}} />);
     expect(screen.getByTestId("v46-tree-core")).toHaveTextContent("다이스 트리");
     expect(screen.getByTestId("v46-tree-core").querySelector("image")).toHaveAttribute("href", "/tree-assets/dice-tree-base.webp");
     expect(screen.getByTestId("v46-family-count-chaos")).toHaveAttribute("data-level", "1");
 
     rerender(<TreeCanvasV3
+      data={gameDataV3}
       nodes={nodes} ownedRanks={{ root: 1 }} simulatedRanks={{ child: 2, locked: 1 }} locale="ko" onSelect={() => {}} />);
     expect(screen.getByTestId("v46-family-count-chaos")).toHaveAttribute("data-level", "3");
     expect(screen.getByTestId("v46-tree-core")).toHaveAccessibleName(/혼돈 3/);
@@ -101,7 +107,7 @@ describe("TreeCanvasV3", () => {
     expect(screen.getByTestId("v44-tree-search-status")).toHaveTextContent("1개 검색 결과");
     expect(screen.getByTestId("v3-node-child")).not.toHaveClass("is-dimmed");
     expect(screen.getByTestId("v3-node-root")).toHaveClass("is-dimmed");
-    expect(screen.getByTestId("v3-tree-transform").getAttribute("transform")).toContain("scale(2.5)");
+    expect(screen.getByTestId("v3-tree-transform").getAttribute("transform")).toContain("scale(2.8)");
   });
 
   it("selects nodes and provides fit, zoom, family and selected-dice navigation", () => {

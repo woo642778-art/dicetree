@@ -1,14 +1,13 @@
-# Progress: V4.9 라이벌 빌더·캐릭터 랭킹·계정 가져오기·트리 전체 초기화
+# Progress: 모바일 다이스 트리 및 핵심 기능 정상화
 
-- Status: completed
-- Milestone: 6/6 (100%)
-- Updated: 2026-08-16T20:38:49
-- Current work: V4.9 shipped in PR #14. Main run 31991645012 passed extractor validation, 210 unit/component tests, production build, 35 Playwright tests with 5 expected skips, visual artifacts, and Pages deployment. Live QA confirmed rival builder, 52-dice ranking, account import boundary, and zero console errors/warnings at commit e973491.
+- Status: active
+- Milestone: 5/6 (83%)
+- Updated: 2026-08-22T19:03:58
+- Current work: 참고 사이트의 핵심 로컬 도구인 41개 주사위 티어 메이커를 검색, 필터, 편집, 자동 저장, 공유 기능과 함께 추가함
 
 ## Log
-- 2026-08-16T20:07:48 | 1/6 | 최신 main 분기, 198개 테스트 기준선 통과. 첨부 화면을 라이벌 반복 최적화와 역할별 주사위 랭킹으로 해석. 클라이언트 정적 증거에서 닉네임 검색·프로필 RPC는 확인했으나 인증 없는 공개 API는 확인되지 않아 공개 랭킹 조회와 검증 JSON 전체 계정 가져오기로 안전한 계약 확정.
-- 2026-08-16T20:22:22 | 2/6 | Red tests added for reset, rival optimizer, dice ranking, and account import. Pure engines and V4.9 UI panels are implemented; targeted unit/component tests pass and production TypeScript build succeeds.
-- 2026-08-16T20:23:51 | 3/6 | Connected deterministic rival iteration, full role ranking, truthful observed-account lookup, validated full-account import, identity personalization, and undoable full-tree reset in the live application shell. Full Vitest suite: 71 files and 210 tests passed.
-- 2026-08-16T20:29:44 | 4/6 | Validation passed: 210 Vitest tests, 3 dataset tests, 15 extractor tests, production build, and 35 Playwright E2E tests with 5 expected skips. In-app browser verified rival four-step trace, explainable ranking, observed Asmo lookup, full JSON import, resource preservation during reset, and zero console errors/warnings.
-- 2026-08-16T20:32:08 | 5/6 | Adversarial review complete: account JSON is size/schema/prerequisite/roster validated; no authenticated RPC or secret was added; observed lookup is explicitly partial; rival score is disclosed as non-win-rate; reset is undoable and preserves inventory/scenario. Cached repeated deck analysis removed the final parallel-test timeout. Final 71 files / 210 tests and production build pass.
-- 2026-08-16T20:38:49 | 6/6 | V4.9 shipped in PR #14. Main run 31991645012 passed extractor validation, 210 unit/component tests, production build, 35 Playwright tests with 5 expected skips, visual artifacts, and Pages deployment. Live QA confirmed rival builder, 52-dice ranking, account import boundary, and zero console errors/warnings at commit e973491.
+- 2026-08-22T18:50:11 | 1/6 | 모바일 줌 백화면, 시작 노드 0랭크, 효과 색인, 맞춤 루트 선행 보완의 원인을 재현하고 코드 경로를 확정함
+- 2026-08-22T19:03:58 | 2/6 | 모바일 최대 4.5배 줌 백화면 방지, 검색 동의어 색인, 기본 주사위 5개 해금 및 선행 경로 자동 보완을 구현하고 모바일 E2E로 검증함
+- 2026-08-22T19:03:58 | 3/6 | 계정 순위 #1-#105 검색, 현재 상태 JSON 초안, 전체 스냅샷 적용, 브라우저 영속화를 구현하고 E2E로 검증함
+- 2026-08-22T19:03:58 | 4/6 | 공식 App Store 1.0.3 및 1.0.2 변경 기록을 업데이트 센터에 반영함
+- 2026-08-22T19:03:58 | 5/6 | 참고 사이트의 핵심 로컬 도구인 41개 주사위 티어 메이커를 검색, 필터, 편집, 자동 저장, 공유 기능과 함께 추가함

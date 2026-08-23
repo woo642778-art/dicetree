@@ -84,15 +84,16 @@ describe("plannerReducerV3", () => {
     expect(history.present.simulatedRanks).toEqual({});
   });
 
-  it("rejects direct and batch purchases that skip prerequisite ranks", () => {
+  it("rejects direct purchases but completes missing prerequisites for route batches", () => {
     const withoutRoot = { ...initial(), ownedRanks: { "5207": 5 } };
     let history = createPlannerHistoryV3(withoutRoot);
     history = plannerReducerV3(history, { type: "setSimulatedRank", nodeId: "5207", rank: 6 }, limits);
     expect(history.present.simulatedRanks).toEqual({});
 
     history = plannerReducerV3(history, { type: "applyRoute", ranks: { "5207": 8 } }, limits);
-    expect(history.present.simulatedRanks).toEqual({});
+    expect(history.present.simulatedRanks).toEqual({ "5007": 1, "5207": 8 });
 
+    history = createPlannerHistoryV3(withoutRoot);
     history = plannerReducerV3(history, { type: "applyRoute", ranks: { "5007": 1, "5207": 8 } }, limits);
     expect(history.present.simulatedRanks).toEqual({ "5007": 1, "5207": 8 });
   });
@@ -149,5 +150,18 @@ describe("plannerReducerV3", () => {
     history = plannerReducerV3(history, { type: "undo" }, limits);
     expect(history.present.ownedRanks).toEqual(seeded.ownedRanks);
     expect(history.present.simulatedRanks).toEqual(seeded.simulatedRanks);
+  });
+
+  it("keeps starter roots owned when ranks are lowered or the tree is reset", () => {
+    const starterLimits: PlannerNodeLimitsV3 = {
+      ...limits,
+      minimumOwnedRanks: new Map([["5007", 1]]),
+    };
+    const seeded = { ...initial(), simulatedRanks: { "5207": 8 } };
+    let history = plannerReducerV3(createPlannerHistoryV3(seeded), { type: "setOwnedRank", nodeId: "5007", rank: 0 }, starterLimits);
+    expect(history.present.ownedRanks["5007"]).toBe(1);
+    history = plannerReducerV3(history, { type: "resetTreeProgress" }, starterLimits);
+    expect(history.present.ownedRanks).toEqual({ "5007": 1 });
+    expect(history.present.simulatedRanks).toEqual({});
   });
 });

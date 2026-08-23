@@ -120,22 +120,22 @@ test("V4.6 center hub mirrors family investment levels and uses the full Terror 
   const nature = page.getByTestId("v46-family-count-nature");
   await expect(hub).toBeVisible();
   await expect(hub).toContainText("다이스 트리");
-  await expect(nature).toHaveAttribute("data-level", "0");
+  await expect(nature).toHaveAttribute("data-level", "1");
   await expect(page.locator('image[data-dice-id="fear"]')).toHaveAttribute("href", "/dicetree/dice-icons/fear.webp");
 
   await page.getByRole("spinbutton", { name: "남은 골드" }).fill("9999999");
   await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("9999");
-  await investTreeNode(page, "1001");
-  await expect(nature).toHaveAttribute("data-level", "1");
+  await investTreeNode(page, "1005");
+  await expect(nature).toHaveAttribute("data-level", "2");
   await page.screenshot({ path: `test-results/qa-v46-tree-core-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
-  await page.getByTestId("v3-node-1001").click();
+  await page.getByTestId("v3-node-1005").click();
   await page.getByRole("button", { name: "가상 랭크 내리기" }).click();
-  await expect(nature).toHaveAttribute("data-level", "0");
+  await expect(nature).toHaveAttribute("data-level", "1");
   expect(errors).toEqual([]);
 });
 
-test("V4.8.1 buys reachable nodes directly, unlocks the next node and deducts the live balance", async ({ page, isMobile }) => {
+test("V4.8.1 starts with base dice unlocked, buys the next nodes and deducts the live balance", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
   const gold = page.getByRole("spinbutton", { name: "남은 골드" });
@@ -143,17 +143,13 @@ test("V4.8.1 buys reachable nodes directly, unlocks the next node and deducts th
   await gold.fill("3000");
   await core.fill("10");
 
-  await page.getByTestId("v3-node-1001").click();
-  await expect(page.getByTestId("v4-route-plan")).toContainText("선행 조건 충족");
-  await expect(page.getByRole("button", { name: "선행 노드 포함 가상 구매" })).toHaveCount(0);
-  await page.getByRole("button", { name: "이 노드 가상 구매" }).click();
-  await expect(core).toHaveValue("5");
-  await page.getByRole("button", { name: "닫기" }).click();
+  await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-owned-rank", "1");
+  await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-can-increment", "false");
 
   await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-can-increment", "true");
   await page.getByTestId("v3-node-1005").click();
   await page.getByRole("button", { name: "이 노드 가상 구매" }).click();
-  await expect(core).toHaveValue("0");
+  await expect(core).toHaveValue("5");
   await page.getByRole("button", { name: "닫기" }).click();
 
   await expect(page.getByTestId("v3-node-1205")).toHaveAttribute("data-can-increment", "true");
@@ -164,18 +160,18 @@ test("V4.8.1 buys reachable nodes directly, unlocks the next node and deducts th
   expect(errors).toEqual([]);
 });
 
-test("V4.8.1 records an existing starter node as owned and unlocks its child without spending resources", async ({ page }) => {
+test("V4.8.1 protects starter ownership and unlocks its child without spending resources", async ({ page }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
   const core = page.getByRole("spinbutton", { name: "남은 다이스 코어" });
   await core.fill("10");
 
-  await page.getByTestId("v3-node-1001").click();
-  await page.getByRole("button", { name: "보유 랭크 올리기" }).click();
   await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-owned-rank", "1");
-  await expect(core).toHaveValue("10");
-  await page.getByRole("button", { name: "닫기" }).click();
   await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-can-increment", "true");
+  await page.getByTestId("v3-node-1001").click();
+  await expect(page.getByRole("button", { name: "보유 랭크 내리기" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "보유 랭크 올리기" })).toBeDisabled();
+  await expect(core).toHaveValue("10");
   expect(errors).toEqual([]);
 });
 
@@ -189,18 +185,18 @@ test("V4 route planner applies prerequisites as one preview and supports cancell
 
   const route = page.getByTestId("v4-route-plan");
   await expect(route).toBeVisible();
-  await expect(route.locator("li")).toHaveCount(3);
+  await expect(route.locator("li")).toHaveCount(2);
   await expect(route).not.toContainText("<tag>");
   await expect(route).not.toContainText("{0}");
   await page.locator(".v3-rank-controls").getByRole("button", { name: "선행 노드 포함 가상 구매" }).click();
-  await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-simulated-rank", "1");
+  await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-owned-rank", "1");
   await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-simulated-rank", "1");
   await expect(page.getByTestId("v3-node-1205")).toHaveAttribute("data-simulated-rank", "1");
 
   await route.getByRole("button", { name: "이 노드 계획 취소" }).click();
   await expect(page.getByTestId("v3-node-1205")).toHaveAttribute("data-simulated-rank", "0");
   await page.getByRole("button", { name: "전체 계획 취소" }).click();
-  await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-simulated-rank", "0");
+  await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-owned-rank", "1");
   await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-simulated-rank", "0");
   expect(errors).toEqual([]);
 });
@@ -236,6 +232,57 @@ test("V4.4 Tree search focuses normalized effect terms and drag distance follows
   expect(after!.y - before!.y).toBeGreaterThan(50);
   await expect(page.getByTestId("v3-node-detail-sheet")).toHaveCount(0);
   await page.screenshot({ path: "test-results/qa-v44-tree-pan-desktop.png", fullPage: false });
+  expect(errors).toEqual([]);
+});
+
+test("V5 mobile tree search indexes effect synonyms and remains visible at maximum zoom", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Mobile Safari-style compositing guard is the target of this regression test");
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  const search = page.getByRole("textbox", { name: "트리 검색" });
+  await search.fill("공속");
+  await expect(page.getByTestId("v44-tree-search-status")).toContainText(/^[1-9]\d*개 검색 결과/);
+  await search.fill("");
+  const canvas = page.getByTestId("v3-tree-canvas");
+  const zoomIn = page.getByRole("button", { name: "Zoom in" });
+  for (let index = 0; index < 30 && !(await zoomIn.isDisabled()); index += 1) await zoomIn.click();
+  await expect(canvas).toHaveAttribute("data-scale", "4.50");
+  await expect(page.locator(".v3-tree-background")).toHaveCSS("fill", "rgb(44, 38, 63)");
+  await expect(page.locator(".v3-node-shell").first()).toHaveCSS("filter", "none");
+  await page.screenshot({ path: "test-results/qa-v5-mobile-max-zoom.png", fullPage: false });
+  expect(errors).toEqual([]);
+});
+
+test("V5 account import, current-state draft and local persistence work end to end", async ({ page }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "내 계정" }).click();
+  await page.getByLabel("닉네임 또는 PID").fill("#8");
+  await page.getByRole("button", { name: "찾기", exact: true }).click();
+  await expect(page.getByText(/#8 · #8 관측 계정/)).toBeVisible();
+  await page.getByRole("button", { name: "관측 덱만 적용" }).click();
+  await expect(page.getByRole("status")).toContainText("관측 랭킹 덱만 적용");
+  await page.getByRole("button", { name: "현재 입력으로 초안 만들기" }).click();
+  await expect(page.getByLabel("계정 스냅샷 JSON")).toHaveValue(/"schemaVersion": 1/);
+  await page.reload();
+  await page.getByRole("button", { name: "내 계정" }).click();
+  await expect(page.getByText("#8 관측 계정").first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("V5 tier maker filters, assigns and restores a local 41-dice draft", async ({ page }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "티어 메이커" }).click();
+  await expect(page.getByTestId("v50-tier-maker")).toBeVisible();
+  await page.getByLabel("티어 주사위 검색").fill("원자");
+  const atom = page.locator(".v50-tier-pool button").filter({ hasText: "원자" });
+  await expect(atom).toHaveCount(1);
+  await atom.click();
+  await expect(page.locator(".v50-tier-board article").first()).toContainText("원자");
+  await page.reload();
+  await page.getByRole("button", { name: "티어 메이커" }).click();
+  await expect(page.locator(".v50-tier-board article").first()).toContainText("원자");
   expect(errors).toEqual([]);
 });
 
@@ -308,7 +355,6 @@ test("V3 real Wind Dice Tree path changes the selected dice tree stat without fa
   await selectDiceByInternalId(page, "wind");
   await page.getByRole("button", { name: "다이스 트리" }).click();
 
-  await investTreeNode(page, "1001");
   await investTreeNode(page, "1005");
   await investTreeNode(page, "1205");
 

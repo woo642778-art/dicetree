@@ -1,6 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 
 export interface ViewTransform { x: number; y: number; scale: number }
+export const MIN_TREE_SCALE = 0.35;
+export const MAX_TREE_SCALE = 4.5;
+
+export function clampTreeScale(scale: number) {
+  return Math.min(MAX_TREE_SCALE, Math.max(MIN_TREE_SCALE, scale));
+}
 
 interface SvgViewportMetrics {
   screenScaleX: number;
@@ -55,13 +61,11 @@ export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 })
   const suppressPointerClick = useRef(false);
   const suppressionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clampScale = (scale: number) => Math.min(2.5, Math.max(0.35, scale));
-
   const onWheel = useCallback((event: React.WheelEvent<SVGSVGElement>) => {
     event.preventDefault();
     const point = clientPointToSvg(event.currentTarget, event.clientX, event.clientY);
     setView((current) => {
-      const nextScale = clampScale(current.scale * Math.exp(-event.deltaY * 0.0014));
+      const nextScale = clampTreeScale(current.scale * Math.exp(-event.deltaY * 0.0014));
       const ratio = nextScale / current.scale;
       return {
         x: point.x - (point.x - current.x) * ratio,
@@ -114,7 +118,7 @@ export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 })
       if (lastPinch.current && lastPinch.current.distance > 0) {
         const ratio = distance / lastPinch.current.distance;
         setView((current) => {
-          const nextScale = clampScale(current.scale * ratio);
+          const nextScale = clampTreeScale(current.scale * ratio);
           const appliedRatio = nextScale / current.scale;
           return {
             x: midpoint.x - (lastPinch.current!.midpoint.x - current.x) * appliedRatio,

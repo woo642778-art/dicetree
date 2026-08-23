@@ -58,6 +58,7 @@
     radial-gradient(circle at 50% 45%, #3a3252 0, transparent 42%),
     linear-gradient(180deg, #312a46 0, var(--v41-void) 65%, #272138 100%);
 }
+.v41-mode-tree .v3-tree-background { fill: #2c263f; pointer-events: none; }
 
 .v41-mode-tree .v3-tree-view { grid-template-columns: minmax(0, 1fr); }
 .v41-mode-tree .v3-tree-view.has-detail { grid-template-columns: minmax(0, 1fr) 360px; }
@@ -197,6 +198,15 @@
   .v41-ranking .v41-efficiency, .v41-ranking .v41-price { align-items: flex-start; }
   .v41-mode-tree .v3-tree-view,
   .v41-mode-tree .v3-tree-view.has-detail { display: block; }
+  /* Mobile Safari can blank a large SVG when hundreds of scaled filter layers
+     exceed its compositing budget. Keep the same contrast without filters. */
+  .v41-mode-tree .v3-node-shell,
+  .v41-mode-tree .v3-tree-edge.is-invested,
+  .v41-mode-tree .v3-selection-halo,
+  .v41-mode-tree .v46-tree-core-base,
+  .v41-mode-tree .v3-tree-node[class*="is-heat-"] .v3-node-shell { filter: none !important; }
+  .v41-mode-tree .v3-tree-canvas { background: #2c263f; }
+  .v41-mode-tree .v3-tree-wrap::before { mask-image: none; opacity: .45; }
 }
 
 @media (max-width: 620px) {
