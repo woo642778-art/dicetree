@@ -3,16 +3,18 @@ import type { CanonicalGameData } from "../../../game-data/types";
 import { OFFICIAL_PATCH_HISTORY_V47 } from "../../../updates/patchHistory";
 import { parseClientDiffV47, summarizePatchImpactV47, type ClientDiffV47 } from "../../../updates/patchImpact";
 import { DiceIcon } from "../shared/DiceIcon";
+import type { PlannerStateV3 } from "../../../planner-v3/types";
 
 function nameOf(data: CanonicalGameData, diceId: string, locale: "ko" | "en") {
   const dice = data.dice.find((entry) => entry.id === diceId);
   return dice?.nameKey ? data.localization[locale][dice.nameKey] ?? diceId : diceId;
 }
 
-export function UpdateCenterView({ data, locale, activeDeckIds }: { data: CanonicalGameData; locale: "ko" | "en"; activeDeckIds: string[] }) {
+export function UpdateCenterView({ data, locale, activeDeckIds, state }: { data: CanonicalGameData; locale: "ko" | "en"; activeDeckIds: string[]; state: PlannerStateV3 }) {
   const [diff, setDiff] = useState<ClientDiffV47>();
   const [error, setError] = useState<string>();
-  const impact = useMemo(() => diff ? summarizePatchImpactV47(diff, activeDeckIds) : undefined, [activeDeckIds, diff]);
+  const activeTreeRanks = useMemo(() => ({ ...state.ownedRanks, ...state.simulatedRanks }), [state.ownedRanks, state.simulatedRanks]);
+  const impact = useMemo(() => diff ? summarizePatchImpactV47(diff, activeDeckIds, activeTreeRanks) : undefined, [activeDeckIds, activeTreeRanks, diff]);
 
   const readFile = async (file: File | undefined) => {
     if (!file) return;
@@ -34,6 +36,7 @@ export function UpdateCenterView({ data, locale, activeDeckIds }: { data: Canoni
       {!impact ? <div className="v47-impact-empty"><strong>{locale === "ko" ? "최신 v1.0.3 공식 공지를 반영했습니다." : "The latest official v1.0.3 notice is reflected."}</strong><p>{locale === "ko" ? "사이트의 계산 데이터는 아직 검증된 v1.0.1 스냅샷입니다. v1.0.2·v1.0.3의 새 클라이언트 diff가 들어오기 전에는 협동·전술 효과의 수치 변화를 추정하지 않습니다." : "The site's calculation data remains the verified v1.0.1 snapshot. Numerical co-op or tactical-effect changes are not inferred until a v1.0.2 or v1.0.3 client diff is imported."}</p></div> : <div className="v47-impact-grid">
         <article><span>{locale === "ko" ? "변경 주사위" : "Changed dice"}</span><strong>{impact.changedDiceIds.length}</strong><small>{impact.changedDiceIds.join(" · ") || (locale === "ko" ? "없음" : "None")}</small></article>
         <article><span>{locale === "ko" ? "트리 변경" : "Tree changes"}</span><strong>{impact.changedTreeNodeIds.length}</strong><small>{(impact.counts.treeCosts ?? 0)} {locale === "ko" ? "비용" : "cost"} · {(impact.counts.treeTopology ?? 0)} {locale === "ko" ? "구조" : "topology"}</small></article>
+        <article><span>{locale === "ko" ? "내 투자 트리 영향" : "My invested tree"}</span><strong>{impact.affectedInvestedTreeNodeIds.length}</strong><small>{impact.affectedInvestedTreeNodeIds.join(" · ") || (locale === "ko" ? "영향 없음" : "No affected ranks")}</small></article>
         <article><span>{locale === "ko" ? "내 덱 영향" : "My deck affected"}</span><strong>{impact.affectedActiveDiceIds.length}</strong><div>{impact.affectedActiveDiceIds.map((id) => <span key={id}><DiceIcon diceId={id} label={nameOf(data, id, locale)} />{nameOf(data, id, locale)}</span>)}</div></article>
         <article><span>{locale === "ko" ? "기본 DPS 변화" : "Basic DPS deltas"}</span><strong>{impact.basicDpsDeltas.length}</strong><small>{impact.basicDpsDeltas.map((entry) => `${nameOf(data, entry.diceId, locale)} ${entry.percent >= 0 ? "+" : ""}${entry.percent.toFixed(1)}%`).join(" · ") || (locale === "ko" ? "계산 가능한 변경 없음" : "No calculable changes")}</small></article>
       </div>}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanonicalGameData, DiceFamilyV3, DiceTreeNodeV3 } from "../../../game-data/types";
 import { localizeGameKey } from "../../../game-data/load";
 import { formatGameText } from "../../../game-data/formatGameText";
@@ -155,6 +155,52 @@ function boundsOf(nodes: readonly DiceTreeNodeV3[]) {
   return { minX, maxX, minY, maxY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
 }
 
+export interface TreeRenderViewportV52 {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
+export function visibleTreeNodeIdsV52(
+  nodes: readonly DiceTreeNodeV3[],
+  view: { x: number; y: number; scale: number },
+  viewport: TreeRenderViewportV52,
+  keepIds: ReadonlySet<string> = new Set(),
+) {
+  const buffer = 180 / Math.max(1, view.scale);
+  const minX = (viewport.minX - view.x) / view.scale - buffer;
+  const maxX = (viewport.maxX - view.x) / view.scale + buffer;
+  const minY = (viewport.minY - view.y) / view.scale - buffer;
+  const maxY = (viewport.maxY - view.y) / view.scale + buffer;
+  return new Set(nodes
+    .filter((node) => {
+      if (keepIds.has(node.id)) return true;
+      const x = node.position.x;
+      const y = -node.position.y;
+      return x >= minX && x <= maxX && y >= minY && y <= maxY;
+    })
+    .map((node) => node.id));
+}
+
+function useMobileSafeTreeRenderingV52() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const coarse = window.matchMedia("(pointer: coarse)");
+    const narrow = window.matchMedia("(max-width: 980px)");
+    const update = () => setEnabled(coarse.matches || narrow.matches);
+    update();
+    coarse.addEventListener?.("change", update);
+    narrow.addEventListener?.("change", update);
+    return () => {
+      coarse.removeEventListener?.("change", update);
+      narrow.removeEventListener?.("change", update);
+    };
+  }, []);
+  return enabled;
+}
+
 export function normalizeTreeSearchText(value: string) {
   return value
     .normalize("NFKC")
@@ -226,6 +272,7 @@ export function TreeCanvasV3({
   onSelect,
 }: TreeCanvasV3Props) {
   const { view, setView, resetView, consumePointerClick, bind } = usePanZoom(INITIAL_VIEW);
+  const mobileSafeRendering = useMobileSafeTreeRenderingV52();
   const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const bounds = useMemo(() => boundsOf(nodes), [nodes]);
   const margin = Math.max(260, Math.max(bounds.width, bounds.height) * 0.05);
@@ -254,6 +301,18 @@ export function TreeCanvasV3({
   }, [data, familyFilter, locale, nodes, normalizedQuery]);
 
   const visibleIds = useMemo(() => new Set(matchingNodes.map((node) => node.id)), [matchingNodes]);
+  const renderIds = useMemo(() => {
+    if (!mobileSafeRendering || view.scale < 1.45) return new Set(nodes.map((node) => node.id));
+    const keepIds = new Set<string>([...recommendedIds, ...visibleIds]);
+    if (!normalizedQuery) keepIds.clear();
+    if (selectedNodeId) keepIds.add(selectedNodeId);
+    return visibleTreeNodeIdsV52(nodes, view, {
+      minX: bounds.minX - margin,
+      maxX: bounds.maxX + margin,
+      minY: bounds.minY - margin,
+      maxY: bounds.maxY + margin,
+    }, keepIds);
+  }, [bounds.maxX, bounds.maxY, bounds.minX, bounds.minY, margin, mobileSafeRendering, nodes, normalizedQuery, recommendedIds, selectedNodeId, view, visibleIds]);
 
   const jumpToNodes = useCallback((targets: readonly DiceTreeNodeV3[], minimumScale = 1.15) => {
     if (!targets.length) return;
@@ -292,6 +351,8 @@ export function TreeCanvasV3({
       className="v3-tree-canvas"
       data-testid="v3-tree-canvas"
       data-scale={view.scale.toFixed(2)}
+      data-render-profile={mobileSafeRendering ? "mobile-safe" : "full"}
+      data-rendered-nodes={renderIds.size}
       viewBox={viewBox}
       role="tree"
       aria-label={locale === "ko" ? "랜덤다이스2 인게임 다이스 트리" : "Random Dice 2 in-game Dice Tree"}
@@ -317,7 +378,7 @@ export function TreeCanvasV3({
       <g data-testid="v3-tree-transform" transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
         {nodes.flatMap((node) => node.prerequisites.map((prerequisite) => {
           const parent = byId.get(prerequisite.nodeId);
-          if (!parent) return null;
+          if (!parent || (!renderIds.has(parent.id) && !renderIds.has(node.id))) return null;
           const parentRank = rankFor(parent.id, ownedRanks, simulatedRanks);
           const nodeRank = rankFor(node.id, ownedRanks, simulatedRanks);
           const parentSimulated = (simulatedRanks[parent.id] ?? 0) > (ownedRanks[parent.id] ?? 0);
@@ -337,7 +398,7 @@ export function TreeCanvasV3({
           />;
         }))}
         <DiceTreeCoreV3 levels={familyLevels} locale={locale} />
-        {nodes.map((node) => {
+        {nodes.filter((node) => renderIds.has(node.id)).map((node) => {
           const ownedRank = ownedRanks[node.id] ?? 0;
           const simulatedRank = Math.max(ownedRank, simulatedRanks[node.id] ?? ownedRank);
           return <TreeNodeV3

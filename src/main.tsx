@@ -17,6 +17,7 @@ import "./app/v47-new-features.css";
 import "./app/v48-account-intelligence.css";
 import "./app/v49-rival-account.css";
 import "./app/v50-tier-maker.css";
+import "./app/v52-account-optimizer.css";
 import "./app/accessibility.css";
 
 createRoot(document.getElementById("root")!).render(
