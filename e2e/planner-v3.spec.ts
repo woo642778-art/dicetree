@@ -213,6 +213,33 @@ test("V5 virtual routes work at zero balance and nickname accounts reload outsid
   expect(errors).toEqual([]);
 });
 
+test("V5.1 purchase planner combines daily farming with the cheapest deadline package", async ({ page, isMobile }) => {
+  const errors = captureBrowserErrors(page);
+  await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "구매 효율" }).click();
+  const planner = page.getByTestId("v51-time-cash-planner");
+  await planner.scrollIntoViewIfNeeded();
+  await expect(planner).toBeVisible();
+
+  await page.getByLabel("현재 골드", { exact: true }).fill("0");
+  await page.getByLabel("목표 골드", { exact: true }).fill("1000");
+  await page.getByLabel("현재 다이스 코어", { exact: true }).fill("0");
+  await page.getByLabel("목표 다이스 코어", { exact: true }).fill("10");
+  await page.getByLabel("하루 획득 골드", { exact: true }).fill("100");
+  await page.getByLabel("하루 획득 코어", { exact: true }).fill("1");
+  await page.getByLabel("투자 가능 일수", { exact: true }).fill("10");
+  await page.getByLabel("최대 현금 예산", { exact: true }).fill("10000");
+  await page.getByLabel("최적화 기준", { exact: true }).selectOption("min-spend");
+  await expect(planner).toContainText("₩0 + 10일");
+  await expect(planner).toContainText("결제하지 않고 파밍으로 진행");
+
+  await page.getByLabel("투자 가능 일수", { exact: true }).fill("5");
+  await expect(planner).toContainText("₩3,300 + 2일");
+  await expect(planner).toContainText("첫 구매 패키지");
+  await page.screenshot({ path: `test-results/qa-v51-time-cash-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+  expect(errors).toEqual([]);
+});
+
 test("V4 route planner applies prerequisites as one preview and supports cancellation", async ({ page, isMobile }) => {
   test.skip(isMobile, "desktop verifies the full route and header-level clear action; route logic is covered by unit tests on all viewports");
   const errors = captureBrowserErrors(page);

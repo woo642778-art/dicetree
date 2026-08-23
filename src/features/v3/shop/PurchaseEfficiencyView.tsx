@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { OFFICIAL_APP_STORE_KR_URL, PURCHASE_PRODUCTS_V41, purchaseDisplayPrice, REFERENCE_KRW_PER_USD, type PurchaseGoal, type PurchaseProduct, type PurchaseProfile, type PurchaseRewards } from "../../../purchase-efficiency/products";
 import { findIntroOffer, recommendPurchasesV41 } from "../../../purchase-efficiency/recommend";
 import { optimizePurchaseBudgetV47 } from "../../../purchase-efficiency/optimizeBudget";
+import { planTimeCashGoalV51, type TimeCashPreference } from "../../../purchase-efficiency/planTimeCashGoal";
 
 function rewardText(product: PurchaseProduct, locale: "ko" | "en") {
   const rewards = product.rewards;
@@ -28,8 +29,14 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
   const [profile, setProfile] = useState<PurchaseProfile>("light");
   const [goal, setGoal] = useState<PurchaseGoal>("overall");
   const [budgets, setBudgets] = useState({ ko: 30_000, en: 30 });
+  const [currentGold, setCurrentGold] = useState(50_000);
+  const [targetGold, setTargetGold] = useState(150_000);
   const [currentCore, setCurrentCore] = useState(420);
   const [targetCore, setTargetCore] = useState(500);
+  const [dailyGold, setDailyGold] = useState(5_000);
+  const [dailyCore, setDailyCore] = useState(3);
+  const [maxDays, setMaxDays] = useState(14);
+  const [timeCashPreference, setTimeCashPreference] = useState<TimeCashPreference>("balanced");
   const [popupRewards, setPopupRewards] = useState<Record<string, PurchaseRewards>>({});
   const effectiveProducts = useMemo(() => PURCHASE_PRODUCTS_V41.map((product) => {
     const override = popupRewards[product.id];
@@ -42,6 +49,18 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
   const intro = findIntroOffer(effectiveProducts);
   const top = ranking[0];
   const optimized = useMemo(() => optimizePurchaseBudgetV47({ locale, budget: budgets[locale], goal, currentCore, targetCore }, optimizerProducts), [budgets, currentCore, goal, locale, optimizerProducts, targetCore]);
+  const timeCashPlan = useMemo(() => planTimeCashGoalV51({
+    locale,
+    budget: budgets[locale],
+    currentGold,
+    targetGold,
+    currentCore,
+    targetCore,
+    dailyGold,
+    dailyCore,
+    maxDays,
+    preference: timeCashPreference,
+  }, optimizerProducts), [budgets, currentCore, currentGold, dailyCore, dailyGold, locale, maxDays, optimizerProducts, targetCore, targetGold, timeCashPreference]);
   const money = (value: number) => locale === "ko" ? `₩${value.toLocaleString("ko-KR")}` : `$${value.toFixed(2)}`;
   const updatePopupReward = (productId: string, field: keyof PurchaseRewards, value: number) => setPopupRewards((current) => ({
     ...current,
@@ -95,6 +114,68 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
             </fieldset> : <div className="v41-rewards">{rewardText(product, locale).map((reward) => <span key={reward}>{reward}</span>)}</div>}
           </article>;
         })}
+      </div>
+    </section>
+
+    <section className="v51-time-cash-planner" data-testid="v51-time-cash-planner">
+      <header>
+        <div>
+          <small>{locale === "ko" ? "TIME + CASH GOAL OPTIMIZER" : "TIME + CASH GOAL OPTIMIZER"}</small>
+          <h2>{locale === "ko" ? "목표 재화 달성 플래너" : "Resource goal planner"}</h2>
+          <p>{locale === "ko" ? "현재 보유량, 하루 파밍량, 현금 예산을 동시에 계산해 목표 골드와 다이스 코어를 모두 채우는 경로를 찾습니다." : "Combines current inventory, daily farming and cash budget to reach both Gold and Dice Core goals."}</p>
+        </div>
+        <strong>{timeCashPlan.evaluatedCombinations.toLocaleString()}<span>{locale === "ko" ? "개 시간·상품 경로 검토" : " time-package paths"}</span></strong>
+      </header>
+
+      <div className="v51-goal-input-groups">
+        <fieldset>
+          <legend>{locale === "ko" ? "1. 현재와 목표" : "1. Current and target"}</legend>
+          <label>{locale === "ko" ? "현재 골드" : "Current Gold"}<input aria-label={locale === "ko" ? "현재 골드" : "Current Gold"} type="number" min="0" value={currentGold} onChange={(event) => setCurrentGold(Math.max(0, Number(event.target.value) || 0))} /></label>
+          <label>{locale === "ko" ? "목표 골드" : "Target Gold"}<input aria-label={locale === "ko" ? "목표 골드" : "Target Gold"} type="number" min="0" value={targetGold} onChange={(event) => setTargetGold(Math.max(0, Number(event.target.value) || 0))} /></label>
+          <label>{locale === "ko" ? "현재 다이스 코어" : "Current Dice Core"}<input aria-label={locale === "ko" ? "현재 다이스 코어" : "Current Dice Core"} type="number" min="0" value={currentCore} onChange={(event) => setCurrentCore(Math.max(0, Number(event.target.value) || 0))} /></label>
+          <label>{locale === "ko" ? "목표 다이스 코어" : "Target Dice Core"}<input aria-label={locale === "ko" ? "목표 다이스 코어" : "Target Dice Core"} type="number" min="0" value={targetCore} onChange={(event) => setTargetCore(Math.max(0, Number(event.target.value) || 0))} /></label>
+        </fieldset>
+        <fieldset>
+          <legend>{locale === "ko" ? "2. 시간 투자" : "2. Time investment"}</legend>
+          <label>{locale === "ko" ? "하루 획득 골드" : "Gold per day"}<input aria-label={locale === "ko" ? "하루 획득 골드" : "Gold per day"} type="number" min="0" value={dailyGold} onChange={(event) => setDailyGold(Math.max(0, Number(event.target.value) || 0))} /></label>
+          <label>{locale === "ko" ? "하루 획득 코어" : "Core per day"}<input aria-label={locale === "ko" ? "하루 획득 코어" : "Core per day"} type="number" min="0" value={dailyCore} onChange={(event) => setDailyCore(Math.max(0, Number(event.target.value) || 0))} /></label>
+          <label>{locale === "ko" ? "투자 가능 일수" : "Available days"}<input aria-label={locale === "ko" ? "투자 가능 일수" : "Available days"} type="number" min="0" value={maxDays} onChange={(event) => setMaxDays(Math.max(0, Number(event.target.value) || 0))} /></label>
+          <small>{locale === "ko" ? "평균적으로 실제 플레이해서 얻는 양을 입력하세요." : "Enter your realistic average income from play."}</small>
+        </fieldset>
+        <fieldset>
+          <legend>{locale === "ko" ? "3. 현질 방향" : "3. Spending direction"}</legend>
+          <label>{locale === "ko" ? "최대 현금 예산" : "Maximum cash budget"}<input aria-label={locale === "ko" ? "최대 현금 예산" : "Maximum cash budget"} type="number" min="0" value={budgets[locale]} onChange={(event) => setBudgets((current) => ({ ...current, [locale]: Math.max(0, Number(event.target.value) || 0) }))} /></label>
+          <label>{locale === "ko" ? "최적화 기준" : "Optimization priority"}<select aria-label={locale === "ko" ? "최적화 기준" : "Optimization priority"} value={timeCashPreference} onChange={(event) => setTimeCashPreference(event.target.value as TimeCashPreference)}>
+            <option value="min-spend">{locale === "ko" ? "최소 결제" : "Minimum spend"}</option>
+            <option value="balanced">{locale === "ko" ? "시간·현금 균형" : "Balance time and cash"}</option>
+            <option value="fastest">{locale === "ko" ? "최단 시간" : "Fastest completion"}</option>
+          </select></label>
+          <small>{timeCashPreference === "min-spend"
+            ? (locale === "ko" ? "기한을 지키는 조합 중 결제액이 가장 작은 경로를 선택합니다." : "Chooses the lowest-cost plan that still meets the deadline.")
+            : timeCashPreference === "fastest"
+              ? (locale === "ko" ? "예산 안에서 완료 일수가 가장 짧은 경로를 선택합니다." : "Chooses the shortest completion time within the budget.")
+              : (locale === "ko" ? "예산 사용률 50%와 기한 사용률 50%를 합산하고 재화 낭비를 감점합니다." : "Balances budget usage 50% and deadline usage 50%, with a waste penalty.")}</small>
+          <small>{locale === "ko" ? "팝업 상품은 위에서 실제 보상을 입력해야 후보에 포함됩니다." : "Price-only popup products need reward inputs above before they can be selected."}</small>
+        </fieldset>
+      </div>
+
+      <div className={`v51-goal-result ${timeCashPlan.reachesTarget ? "is-reached" : "is-short"}`}>
+        <div className="v51-goal-summary">
+          <small>{timeCashPlan.reachesTarget ? (locale === "ko" ? "기한 내 목표 달성 경로" : "Goal reached within the deadline") : (locale === "ko" ? "현재 조건으로 기한 내 달성 불가" : "Goal cannot be reached with these limits")}</small>
+          <strong>{timeCashPlan.reachesTarget
+            ? (locale === "ko" ? `${money(timeCashPlan.spent)} + ${timeCashPlan.farmingDays}일` : `${money(timeCashPlan.spent)} + ${timeCashPlan.farmingDays} days`)
+            : (locale === "ko" ? `${maxDays}일 후에도 부족` : `Still short after ${maxDays} days`)}</strong>
+          {timeCashPlan.reachesTarget
+            ? <p>{locale === "ko" ? `최종 골드 ${timeCashPlan.final.gold.toLocaleString()} · 코어 ${timeCashPlan.final.core.toLocaleString()} · 예산 잔액 ${money(timeCashPlan.remainingBudget)}` : `Final Gold ${timeCashPlan.final.gold.toLocaleString()} · Core ${timeCashPlan.final.core.toLocaleString()} · Budget left ${money(timeCashPlan.remainingBudget)}`}</p>
+            : <p>{locale === "ko" ? `골드 ${timeCashPlan.shortfall.gold.toLocaleString()} · 코어 ${timeCashPlan.shortfall.core.toLocaleString()} 추가 필요` : `Need ${timeCashPlan.shortfall.gold.toLocaleString()} more Gold and ${timeCashPlan.shortfall.core.toLocaleString()} more Core`}</p>}
+          {timeCashPlan.reachesTarget && timeCashPlan.farmingOnlyDays === null && <b>{locale === "ko" ? "파밍만으로는 달성할 수 없지만 구매 결합으로 달성 가능합니다." : "Farming alone cannot reach the goal, but the combined plan can."}</b>}
+          {timeCashPlan.reachesTarget && timeCashPlan.timeSavedDays !== null && timeCashPlan.timeSavedDays > 0 && <b>{locale === "ko" ? `순수 파밍 대비 ${timeCashPlan.timeSavedDays}일 단축` : `${timeCashPlan.timeSavedDays} days faster than farming only`}</b>}
+        </div>
+        <ol className="v51-action-plan">
+          <li><span>1</span><div><strong>{locale === "ko" ? "구매" : "Buy"}</strong><p>{timeCashPlan.products.length ? timeCashPlan.products.map((product) => product.nameKo).join(" + ") : (locale === "ko" ? "결제하지 않고 파밍으로 진행" : "No purchase, continue by farming")}</p><small>{locale === "ko" ? `획득 골드 ${timeCashPlan.purchased.gold.toLocaleString()} · 코어 ${timeCashPlan.purchased.core.toLocaleString()}` : `Get Gold ${timeCashPlan.purchased.gold.toLocaleString()} · Core ${timeCashPlan.purchased.core.toLocaleString()}`}</small></div></li>
+          <li><span>2</span><div><strong>{locale === "ko" ? "플레이" : "Play"}</strong><p>{locale === "ko" ? `${timeCashPlan.projectedDays}일 동안 하루 골드 ${dailyGold.toLocaleString()} · 코어 ${dailyCore.toLocaleString()}` : `${timeCashPlan.projectedDays} days at ${dailyGold.toLocaleString()} Gold and ${dailyCore.toLocaleString()} Core per day`}</p><small>{locale === "ko" ? `파밍 합계 골드 ${timeCashPlan.farmed.gold.toLocaleString()} · 코어 ${timeCashPlan.farmed.core.toLocaleString()}` : `Farm total Gold ${timeCashPlan.farmed.gold.toLocaleString()} · Core ${timeCashPlan.farmed.core.toLocaleString()}`}</small></div></li>
+          <li><span>3</span><div><strong>{locale === "ko" ? "목표 확인" : "Goal check"}</strong><p>{locale === "ko" ? `예상 보유 골드 ${timeCashPlan.final.gold.toLocaleString()} · 코어 ${timeCashPlan.final.core.toLocaleString()}` : `Projected Gold ${timeCashPlan.final.gold.toLocaleString()} · Core ${timeCashPlan.final.core.toLocaleString()}`}</p><small>{timeCashPlan.reachesTarget ? (locale === "ko" ? `잉여 골드 ${timeCashPlan.surplus.gold.toLocaleString()} · 코어 ${timeCashPlan.surplus.core.toLocaleString()}` : `Extra Gold ${timeCashPlan.surplus.gold.toLocaleString()} · Core ${timeCashPlan.surplus.core.toLocaleString()}`) : (locale === "ko" ? "예산·기한·하루 획득량 중 하나를 늘려 다시 계산하세요." : "Increase budget, deadline or daily income and recalculate.")}</small></div></li>
+        </ol>
       </div>
     </section>
 

@@ -1,14 +1,12 @@
-# Progress: DiceTree virtual purchase, popup shop, account lookup fixes
+# Progress: Purchase efficiency time-plus-cash goal planner
 
-- Status: completed
-- Milestone: 5/5 (100%)
-- Updated: 2026-08-22T20:32:31
-- Current work: Virtual purchase, popup product optimization, and nickname-based local account workflows deployed and verified on GitHub Pages.
+- Status: active
+- Milestone: 4/5 (80%)
+- Updated: 2026-08-22T20:51:55
+- Current work: Verified 224 unit/component tests, 3 data validations, production build, 43 full E2E passes with 7 intentional skips, and desktop/mobile visual QA. Ruled out single-resource false positives, zero-income dead ends, and decimal USD budget rounding.
 
 ## Log
-- 2026-08-22T19:44:20 | 1/5 | Live reproduction completed: zero inventory disables all virtual route actions; with inventory, prerequisite purchase and balance deduction work.
-- 2026-08-22T19:44:20 | 2/5 | Evidence review completed: App Store lists five additional live IAP IDs; no public all-player nickname/PID search API is documented or discoverable.
-- 2026-08-22T20:04:28 | 3/5 | Implemented virtual route application independent of inventory, exact shortfall display, and virtual/strict guided route modes with prerequisite enforcement.
-- 2026-08-22T20:04:29 | 4/5 | Added current popup/pass/ticket storefront catalog, user-entered reward optimization, and nickname-based local account creation, normalized lookup, autosave, and reload.
-- 2026-08-22T20:32:31 | 5/5 | PR #17 merged at c6b9d21; main CI run 32615339024 passed validation, E2E, visual QA, and Pages deployment; live workflows verified.
-- 2026-08-22T20:32:31 | 5/5 | Virtual purchase, popup product optimization, and nickname-based local account workflows deployed and verified on GitHub Pages.
+- 2026-08-22T20:42:05 | 1/5 | Mapped the existing one-copy package optimizer and purchase UI. Defined the combined contract: current/target Gold and Dice Core, daily farming rates, time limit, cash budget, and three optimization priorities.
+- 2026-08-22T20:46:43 | 2/5 | Implemented a pure time-plus-cash planner that evaluates every eligible one-copy package combination, requires both Gold and Dice Core targets, supports three priorities, and reports exact deadline shortfalls.
+- 2026-08-22T20:46:43 | 3/5 | Integrated the planner into Purchase Efficiency with current/target resources, daily farming, days, budget and priority controls plus a three-step purchase/play/goal action plan. Targeted tests and production build pass.
+- 2026-08-22T20:51:55 | 4/5 | Verified 224 unit/component tests, 3 data validations, production build, 43 full E2E passes with 7 intentional skips, and desktop/mobile visual QA. Ruled out single-resource false positives, zero-income dead ends, and decimal USD budget rounding.
