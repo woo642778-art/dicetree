@@ -10,6 +10,7 @@ import { runeNumberAtRank } from "../../../simulation/mechanics/runeValues";
 import { canIncrementNodeV3, prerequisitesSatisfiedV3 } from "./TreeCanvasV3";
 import { CalculationDetails } from "./CalculationDetails";
 import { DiceIcon } from "../shared/DiceIcon";
+import type { TreeHeatmapEntryV3 } from "../../../optimizer/treeHeatmapV3";
 
 export interface NodeDetailSheetProps {
   node: DiceTreeNodeV3;
@@ -18,6 +19,7 @@ export interface NodeDetailSheetProps {
   locale: "ko" | "en";
   selectedDiceId?: string;
   marginal?: MarginalNodeResultV3;
+  heatmap?: TreeHeatmapEntryV3;
   trace?: readonly CalculationTraceStepV3[];
   route?: PlannedRouteV3 | null;
   routeAffordable?: boolean;
@@ -130,6 +132,7 @@ export function NodeDetailSheet({
   locale,
   selectedDiceId,
   marginal,
+  heatmap,
   trace = [],
   route,
   routeAffordable,
@@ -260,6 +263,17 @@ export function NodeDetailSheet({
         : marginal?.confidence === "verified" && marginal.beforeDps !== undefined && marginal.afterDps !== undefined
           ? <p><strong>{marginal.beforeDps.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> → <strong>{marginal.afterDps.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> DPS <em>+{marginal.percentGain?.toFixed(2)}%</em></p>
           : <p>{locale === "ko" ? "현재 공식은 부분 검증 상태라 정확한 DPS 증가는 표시하지 않습니다." : "The current formula is partial, so an exact DPS gain is not shown."}</p>}
+    </section>
+
+    <section className="v52-node-roi" data-testid="v52-node-roi">
+      <h3>{locale === "ko" ? "노드 효율과 도달 효율" : "Node and path efficiency"}</h3>
+      {heatmap?.confidence === "verified" && heatmap.percentGain !== undefined ? <>
+        <div><span>{locale === "ko" ? "노드 자체 비용" : "Node-only cost"}</span><strong>{formatCost(heatmap.nodeCost.gold, heatmap.nodeCost.stone, locale)}</strong></div>
+        <div><span>{locale === "ko" ? "선행 포함 총비용" : "Path-inclusive cost"}</span><strong>{formatCost(heatmap.routeCost.gold, heatmap.routeCost.stone, locale)}</strong></div>
+        <div><span>{locale === "ko" ? "예상 DPS 증가" : "Expected DPS gain"}</span><strong>+{heatmap.percentGain.toFixed(2)}%</strong></div>
+        <div><span>{locale === "ko" ? "경로 파레토 등급" : "Path Pareto grade"}</span><strong className={`is-grade-${heatmap.grade.toLowerCase()}`}>{heatmap.grade}</strong></div>
+        <p>{locale === "ko" ? "이 트리는 모든 선행 조건이 AND 관계라 같은 목표 랭크까지의 합법적 최소 경로는 하나입니다. 최소 Gold·Core·총재화 경로가 같으며, 등급은 다른 목표 노드 경로와 비교한 파레토 결과입니다." : "All prerequisites are AND constraints, so a target rank has one legal minimum closure. Minimum Gold, Core, and total-resource routes coincide; the grade is its Pareto result against other targets."}</p>
+      </> : <p>{locale === "ko" ? "히트맵을 ‘선행 경로 포함’으로 선택하면 검증된 노드의 자체 비용과 실제 도달 총비용을 분리해 표시합니다." : "Choose the path-inclusive heatmap to separate node-only cost from the true prerequisite-inclusive cost."}</p>}
     </section>
 
     <CalculationDetails trace={trace} locale={locale} />

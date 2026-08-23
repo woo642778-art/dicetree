@@ -226,6 +226,14 @@
   .v41-mode-tree .v3-tree-node[class*="is-heat-"] .v3-node-shell { filter: none !important; }
   .v41-mode-tree .v3-tree-canvas { background: #2c263f; }
   .v41-mode-tree .v3-tree-wrap::before { mask-image: none; opacity: .45; }
+  .v41-mode-tree .v3-tree-canvas[data-render-profile="mobile-safe"] *,
+  .v41-mode-tree .v3-tree-canvas[data-render-profile="mobile-safe"] image { filter: none !important; }
+  .v41-mode-tree .v3-tree-canvas[data-render-profile="mobile-safe"] {
+    background-color: #2c263f !important;
+    contain: strict;
+    isolation: isolate;
+  }
+  .v41-mode-tree .v3-tree-wrap { background-color: #2c263f !important; contain: layout paint; }
 }
 
 @media (max-width: 620px) {

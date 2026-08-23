@@ -86,12 +86,24 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
 test("V4.8 account intelligence exposes optimizer, encyclopedia, meta clusters and install manifest", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
+  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await selectDiceByInternalId(page, "wind");
+  await page.getByRole("spinbutton", { name: "남은 골드" }).fill("300000");
+  await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("60");
   await page.getByRole("button", { name: "내 계정" }).click();
   await expect(page.getByTestId("v48-account-intelligence")).toBeVisible();
   await expect(page.getByText("빌드 건강도")).toBeVisible();
   await page.screenshot({ path: `test-results/qa-v48-account-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
   await page.getByRole("button", { name: "전역 최적화" }).click();
+  await expect(page.getByTestId("v52-optimization-suite")).toBeVisible();
+  await page.getByRole("spinbutton", { name: "V52 목표 DPS" }).fill("1000");
+  await page.getByRole("button", { name: "1·5·10·20단계 역산" }).click();
+  await expect(page.getByTestId("v52-growth-roadmap")).toBeVisible();
+  await expect(page.getByTestId("v52-evaluated-states")).not.toContainText("0개 상태 비교");
+  await expect(page.getByTestId("v52-plan-steps").locator("li").first()).toBeVisible();
+  await expect(page.getByText("이 예산으로 어디까지 강해지나")).toBeVisible();
+  await page.screenshot({ path: `test-results/qa-v52-optimizer-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
   await expect(page.getByText("목표 성능 역산")).toBeVisible();
   await page.getByRole("button", { name: "역산 시작" }).click();
   await expect(page.getByTestId("v48-reverse-result")).toBeVisible();
@@ -312,6 +324,8 @@ test("V5 mobile tree search indexes effect synonyms and remains visible at maxim
   const zoomIn = page.getByRole("button", { name: "Zoom in" });
   for (let index = 0; index < 30 && !(await zoomIn.isDisabled()); index += 1) await zoomIn.click();
   await expect(canvas).toHaveAttribute("data-scale", "4.50");
+  await expect(canvas).toHaveAttribute("data-render-profile", "mobile-safe");
+  await expect.poll(async () => Number(await canvas.getAttribute("data-rendered-nodes"))).toBeLessThan(239);
   await expect(page.locator(".v3-tree-background")).toHaveCSS("fill", "rgb(44, 38, 63)");
   await expect(page.locator(".v3-node-shell").first()).toHaveCSS("filter", "none");
   await page.screenshot({ path: "test-results/qa-v5-mobile-max-zoom.png", fullPage: false });

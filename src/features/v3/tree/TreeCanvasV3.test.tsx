@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DiceTreeNodeV3 } from "../../../game-data/types";
 import { gameDataV3 } from "../../../game-data/load";
-import { TreeCanvasV3, canIncrementNodeV3, familyInvestmentLevelsV3, normalizeTreeSearchText, prerequisitesSatisfiedV3 } from "./TreeCanvasV3";
+import { TreeCanvasV3, canIncrementNodeV3, familyInvestmentLevelsV3, normalizeTreeSearchText, prerequisitesSatisfiedV3, visibleTreeNodeIdsV52 } from "./TreeCanvasV3";
 
 afterEach(cleanup);
 
@@ -125,5 +125,14 @@ describe("TreeCanvasV3", () => {
     fireEvent.click(screen.getByRole("button", { name: "혼돈" }));
     expect(transform.getAttribute("transform")).not.toContain("scale(0.92)");
     expect(screen.getByTestId("jump-selected-dice")).toBeInTheDocument();
+  });
+
+  it("culls distant nodes at high mobile zoom while retaining explicitly required nodes", () => {
+    const ids = visibleTreeNodeIdsV52(nodes, { x: 0, y: 0, scale: 4.5 }, {
+      minX: -100, maxX: 100, minY: -100, maxY: 100,
+    }, new Set(["locked"]));
+    expect(ids).toContain("root");
+    expect(ids).toContain("locked");
+    expect(ids).not.toContain("child");
   });
 });

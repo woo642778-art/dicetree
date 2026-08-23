@@ -33,6 +33,7 @@ import { RecommendationStrip } from "../tree/RecommendationStrip";
 import { normalizeTreeSearchText, treeNodeSearchTextV3, TreeCanvasV3 } from "../tree/TreeCanvasV3";
 import { AccountIntelligenceView } from "../account/AccountIntelligenceView";
 import { TierMakerView } from "../tier/TierMakerView";
+import type { ScreenshotAccountDraftV52 } from "../../../account/screenshotImportV52";
 
 type Tab = "account" | "tree" | "simulator" | "decks" | "tier" | "compare" | "shop" | "updates";
 
@@ -307,6 +308,35 @@ export function V3Shell() {
     setShareNotice(locale === "ko" ? `${account.identity.nickname} 계정 스냅샷을 검증해 적용했습니다.` : `Validated and applied ${account.identity.nickname}'s account snapshot.`);
   };
 
+  const importScreenshotAccount = (draft: ScreenshotAccountDraftV52) => {
+    const candidateRanks = { ...state.ownedRanks, ...draft.nodeRanks };
+    const validRanks = { ...STARTER_OWNED_RANKS };
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const node of gameDataV3.tree) {
+        const rank = candidateRanks[node.id] ?? 0;
+        if (rank <= 0 || validRanks[node.id] === rank) continue;
+        if (node.prerequisites.every((prerequisite) => (validRanks[prerequisite.nodeId] ?? candidateRanks[prerequisite.nodeId] ?? 0) >= prerequisite.minRank)) {
+          validRanks[node.id] = Math.min(node.maxRank, rank);
+          changed = true;
+        }
+      }
+    }
+    const nextState: PlannerStateV3 = {
+      ...state,
+      inventory: { gold: draft.gold ?? state.inventory.gold, stone: draft.stone ?? state.inventory.stone },
+      ownedRanks: validRanks,
+      simulatedRanks: {},
+    };
+    dispatch({ type: "load", state: nextState });
+    setDigitalTwin((current) => ({
+      ...current,
+      roster: { ...current.roster, ...Object.fromEntries(Object.entries(draft.diceLevels).map(([diceId, level]) => [diceId, { owned: true, level }])) },
+    }));
+    setShareNotice(locale === "ko" ? `스크린샷에서 확인한 재화와 ${Object.keys(validRanks).length}개 노드 상태를 적용했습니다.` : `Applied reviewed resources and ${Object.keys(validRanks).length} node states from screenshots.`);
+  };
+
   const resetTree = () => {
     dispatch({ type: "resetTreeProgress" });
     setSelectedNodeId(undefined);
@@ -325,7 +355,7 @@ export function V3Shell() {
     setSharedResult(null);
   };
 
-  if (sharedResult) return <SharedBuildView data={gameDataV3} locale={locale} result={sharedResult} onCopyBuild={() => openSharedBuild("tree")} onOpenSimulator={() => openSharedBuild("simulator")} />;
+  if (sharedResult) return <SharedBuildView data={gameDataV3} locale={locale} result={sharedResult} myState={state} myDeckIds={activeDeckIds} myInput={currentInput} friendInput={simulationInput(sharedResult.state)} onCopyBuild={() => openSharedBuild("tree")} onOpenSimulator={() => openSharedBuild("simulator")} />;
 
   return <div className={`v3-app v41-mode-${tab}`} data-testid="v3-app">
     <header className="v3-header">
@@ -374,6 +404,7 @@ export function V3Shell() {
       onLocalAccount={openLocalAccount}
       onObservedAccountImport={importObservedAccount}
       onFullAccountImport={importFullAccount}
+      onScreenshotImport={importScreenshotAccount}
       onOpenTree={() => setTab("tree")}
       onOpenSimulator={() => setTab("simulator")}
     />}
@@ -418,6 +449,7 @@ export function V3Shell() {
         locale={locale}
         selectedDiceId={state.scenario.diceId}
         marginal={marginal}
+        heatmap={heatmap.get(selectedNode.id)}
         route={selectedRoute}
         routeAffordable={selectedRouteAffordable}
         onApplyRoute={(ranks) => dispatch({ type: "applyRoute", ranks })}
@@ -460,6 +492,6 @@ export function V3Shell() {
     {tab === "compare" && <CompareWorkspace data={gameDataV3} locale={locale} baseInput={currentInput} />}
 
     {tab === "shop" && <PurchaseEfficiencyView locale={locale} />}
-    {tab === "updates" && <UpdateCenterView data={gameDataV3} locale={locale} activeDeckIds={activeDeckIds} />}
+    {tab === "updates" && <UpdateCenterView data={gameDataV3} locale={locale} activeDeckIds={activeDeckIds} state={state} />}
   </div>;
 }

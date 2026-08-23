@@ -52,6 +52,7 @@ export interface UserDigitalTwinV48 {
   schemaVersion: 1;
   planner: PlannerStateV3;
   roster: Record<string, OwnedDiceV48>;
+  ownedRuneIds?: string[];
   decks: SavedDeckV48[];
   primaryDeckId: string;
   goal: AccountGoalV48;
@@ -72,6 +73,7 @@ export function createDigitalTwinV48(input: {
     schemaVersion: 1,
     planner: structuredClone(input.planner),
     roster: Object.fromEntries(diceIds.map((diceId) => [diceId, { owned: true, level: diceId === input.planner.scenario.diceId ? input.planner.scenario.diceProgressionLevel : 1 }])),
+    ownedRuneIds: [],
     decks: [{ id: "primary", name: "Primary", diceIds, role: input.deckGoal }],
     primaryDeckId: "primary",
     goal: { mode: "coop", targetDiceId: input.planner.scenario.diceId, targetGainPercent: 10 },
@@ -101,6 +103,7 @@ export function isDigitalTwinV48(value: unknown): value is UserDigitalTwinV48 {
     && stringArray(twin.preferences?.bannedDiceIds)
     && stringArray(twin.preferences?.lockedNodeIds)
     && stringArray(twin.preferences?.bannedNodeIds)
+    && (twin.ownedRuneIds === undefined || stringArray(twin.ownedRuneIds))
     && typeof twin.resources?.dailyGold === "number"
     && typeof twin.resources?.dailyCore === "number"
     && (twin.identity === undefined || (typeof twin.identity.nickname === "string"

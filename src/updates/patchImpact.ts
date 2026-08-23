@@ -21,6 +21,7 @@ export interface PatchImpactSummaryV47 {
   changedDiceIds: string[];
   changedTreeNodeIds: string[];
   affectedActiveDiceIds: string[];
+  affectedInvestedTreeNodeIds: string[];
   counts: Record<string, number>;
   basicDpsDeltas: Array<{ diceId: string; before: number; after: number; percent: number }>;
 }
@@ -46,7 +47,7 @@ export function parseClientDiffV47(value: string): ClientDiffV47 {
   return parsed as ClientDiffV47;
 }
 
-export function summarizePatchImpactV47(diff: ClientDiffV47, activeDiceIds: readonly string[]): PatchImpactSummaryV47 {
+export function summarizePatchImpactV47(diff: ClientDiffV47, activeDiceIds: readonly string[], activeTreeRanks: Readonly<Record<string, number>> = {}): PatchImpactSummaryV47 {
   const changedDiceIds = [...new Set((diff.diceStats ?? []).map((entry) => entry.diceId).filter((id): id is string => Boolean(id)))].sort();
   const changedTreeNodeIds = [...new Set([...(diff.treeCosts ?? []), ...(diff.treeTopology ?? [])].map((entry) => entry.nodeId).filter((id): id is string => Boolean(id)))].sort();
   const active = new Set(activeDiceIds);
@@ -61,6 +62,7 @@ export function summarizePatchImpactV47(diff: ClientDiffV47, activeDiceIds: read
     changedDiceIds,
     changedTreeNodeIds,
     affectedActiveDiceIds: changedDiceIds.filter((id) => active.has(id)),
+    affectedInvestedTreeNodeIds: changedTreeNodeIds.filter((id) => (activeTreeRanks[id] ?? 0) > 0),
     counts: Object.fromEntries(SECTIONS.map((key) => [key, diff[key]?.length ?? 0])),
     basicDpsDeltas,
   };

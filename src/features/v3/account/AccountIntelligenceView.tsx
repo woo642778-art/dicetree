@@ -12,6 +12,8 @@ import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { DiceIcon } from "../shared/DiceIcon";
 import type { FullAccountImportV49, ObservedAccountV49 } from "../../../account/accountImportV49";
 import { AccountImportPanelV49 } from "./AccountImportPanelV49";
+import type { ScreenshotAccountDraftV52 } from "../../../account/screenshotImportV52";
+import { OptimizationSuiteV52 } from "./OptimizationSuiteV52";
 
 type AccountSection = "overview" | "optimizer" | "knowledge" | "meta";
 
@@ -32,7 +34,7 @@ function diceName(data: CanonicalGameData, diceId: string, locale: "ko" | "en") 
   return dice?.nameKey ? data.localization[locale][dice.nameKey] ?? diceId : diceId;
 }
 
-export function AccountIntelligenceView({ data, locale, state, input, deckIds, twin, onTwinChange, onApplyRanks, onDeckChange, onLocalAccount, onObservedAccountImport, onFullAccountImport, onOpenTree, onOpenSimulator }: {
+export function AccountIntelligenceView({ data, locale, state, input, deckIds, twin, onTwinChange, onApplyRanks, onDeckChange, onLocalAccount, onObservedAccountImport, onFullAccountImport, onScreenshotImport, onOpenTree, onOpenSimulator }: {
   data: CanonicalGameData;
   locale: "ko" | "en";
   state: PlannerStateV3;
@@ -45,6 +47,7 @@ export function AccountIntelligenceView({ data, locale, state, input, deckIds, t
   onLocalAccount: (nickname: string) => "loaded" | "created";
   onObservedAccountImport: (account: ObservedAccountV49) => void;
   onFullAccountImport: (account: FullAccountImportV49) => void;
+  onScreenshotImport: (draft: ScreenshotAccountDraftV52) => void;
   onOpenTree: () => void;
   onOpenSimulator: () => void;
 }) {
@@ -87,7 +90,7 @@ export function AccountIntelligenceView({ data, locale, state, input, deckIds, t
     </nav>
 
     {section === "overview" && <div className="v48-overview-grid">
-      <AccountImportPanelV49 data={data} locale={locale} state={state} deckIds={deckIds} onLocalAccount={onLocalAccount} onObservedImport={onObservedAccountImport} onFullImport={onFullAccountImport} />
+      <AccountImportPanelV49 data={data} locale={locale} state={state} deckIds={deckIds} onLocalAccount={onLocalAccount} onObservedImport={onObservedAccountImport} onFullImport={onFullAccountImport} onScreenshotImport={onScreenshotImport} />
       <section className="v48-command-card is-primary">
         <header><small>{locale === "ko" ? "지금 할 일" : "NEXT DECISION"}</small><Confidence value={topAction?.confidence ?? "unavailable"} locale={locale} /></header>
         <h2>{topAction?.title[locale] ?? (locale === "ko" ? "계정 데이터를 더 입력하세요" : "Add more account data")}</h2>
@@ -117,6 +120,7 @@ export function AccountIntelligenceView({ data, locale, state, input, deckIds, t
     </div>}
 
     {section === "optimizer" && <div className="v48-optimizer-layout">
+      <OptimizationSuiteV52 data={data} locale={locale} state={state} input={input} deckIds={deckIds} twin={twin} onTwinChange={onTwinChange} onApplyRanks={onApplyRanks} />
       <section className="v48-target-console">
         <header><div><small>GOAL BACKSOLVER</small><h2>{locale === "ko" ? "목표 성능 역산" : "Target performance solver"}</h2></div><Confidence value={reversePlan?.stopReason === "unverified" ? "unavailable" : "verified"} locale={locale} /></header>
         <div className="v48-goal-inputs">

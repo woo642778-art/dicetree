@@ -1,14 +1,15 @@
-# Progress: Purchase efficiency time-plus-cash goal planner
+# Progress: DiceTree account optimizer suite and mobile tree rendering fix
 
-- Status: completed
-- Milestone: 5/5 (100%)
-- Updated: 2026-08-22T21:00:37
-- Current work: Time-plus-cash Gold and Dice Core goal planning is deployed and verified on desktop, mobile, CI, and the live Pages site.
+- Status: active
+- Milestone: 7/8 (88%)
+- Updated: 2026-08-22T21:39:33
+- Current work: Added shared-build comparison with DPS confidence, deck scores, and exact tree-rank catch-up cost. Existing patch center remains the verified diff source.
 
 ## Log
-- 2026-08-22T20:42:05 | 1/5 | Mapped the existing one-copy package optimizer and purchase UI. Defined the combined contract: current/target Gold and Dice Core, daily farming rates, time limit, cash budget, and three optimization priorities.
-- 2026-08-22T20:46:43 | 2/5 | Implemented a pure time-plus-cash planner that evaluates every eligible one-copy package combination, requires both Gold and Dice Core targets, supports three priorities, and reports exact deadline shortfalls.
-- 2026-08-22T20:46:43 | 3/5 | Integrated the planner into Purchase Efficiency with current/target resources, daily farming, days, budget and priority controls plus a three-step purchase/play/goal action plan. Targeted tests and production build pass.
-- 2026-08-22T20:51:55 | 4/5 | Verified 224 unit/component tests, 3 data validations, production build, 43 full E2E passes with 7 intentional skips, and desktop/mobile visual QA. Ruled out single-resource false positives, zero-income dead ends, and decimal USD budget rounding.
-- 2026-08-22T21:00:37 | 5/5 | PR #18 merged at ec35e6b; main CI run 32616552243 passed validation and Pages deployment. Live site verified zero-cost 10-day and KRW 3,300 plus 2-day plans with exact final resources and no browser errors.
-- 2026-08-22T21:00:37 | 5/5 | Time-plus-cash Gold and Dice Core goal planning is deployed and verified on desktop, mobile, CI, and the live Pages site.
+- 2026-08-22T21:39:33 | 1/8 | Mapped repository and established clean baseline at main. Added focused regression coverage for mobile maximum zoom and new optimizer helpers.
+- 2026-08-22T21:39:33 | 2/8 | Implemented mobile-safe SVG rendering: viewport culling above 1.45x zoom, edge culling, SVG filter shutdown on coarse-pointer/mobile devices, dark containment fallback. Targeted rendering tests pass.
+- 2026-08-22T21:39:33 | 3/8 | Implemented legal prerequisite-aware beam search for 1/5/10/20 investments with budget, target DPS, cumulative costs, confidence and roadmap checkpoints.
+- 2026-08-22T21:39:33 | 4/8 | Integrated account-wide Pareto actions already present with new Rune Lab, wave reverse solver, performance-target spending link, and bottleneck dashboard.
+- 2026-08-22T21:39:33 | 5/8 | Added node-only versus prerequisite-inclusive ROI detail and truthful Pareto explanation for AND-only prerequisite topology.
+- 2026-08-22T21:39:33 | 6/8 | Added local multi-image OCR import with review gate, 7/14/30-day actionable roadmap, and local build time-machine snapshots.
+- 2026-08-22T21:39:33 | 7/8 | Added shared-build comparison with DPS confidence, deck scores, and exact tree-rank catch-up cost. Existing patch center remains the verified diff source.
