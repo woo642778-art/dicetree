@@ -27,19 +27,21 @@ describe("V3 planner shell", () => {
     expect(container.querySelector(".v2-app")).toBeNull();
   });
 
-  it("switches Tree, Simulator, Compare and Purchase Value as first-class views", () => {
+  it("switches primary views directly and opens analytical tools from the Tools menu", () => {
     render(<I18nProvider><App /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: "시뮬레이터" }));
     expect(screen.getByTestId("v3-simulator-view")).toBeInTheDocument();
     expect(screen.queryByTestId("v3-tree-view")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "비교" }));
+    fireEvent.click(screen.getByRole("button", { name: /도구/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "비교" }));
     expect(screen.getByTestId("v3-compare-view")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "다이스 트리" }));
     expect(screen.getByTestId("v3-tree-view")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "구매 효율" }));
+    fireEvent.click(screen.getByRole("button", { name: /도구/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "구매 효율" }));
     expect(screen.getByTestId("v41-purchase-efficiency")).toBeInTheDocument();
     expect(screen.getByTestId("v41-top-pick")).toHaveTextContent("몰래 빼돌린 재설계 보따리");
     expect(screen.getByTestId("v41-purchase-source")).toHaveTextContent("게임 내 상품 구성");

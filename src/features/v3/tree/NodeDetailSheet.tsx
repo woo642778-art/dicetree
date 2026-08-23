@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import type { CanonicalGameData, DiceTreeNodeV3, PassiveDefinitionV3, RuneDefinitionV3 } from "../../../game-data/types";
 import { formatGameText, type GameTextValue } from "../../../game-data/formatGameText";
 import { nextRankCost } from "../../../planner-v3/costs";
@@ -142,6 +143,8 @@ export function NodeDetailSheet({
   onSetSimulatedRank,
   onClose,
 }: NodeDetailSheetProps) {
+  const [snap, setSnap] = useState<25 | 55 | 90>(55);
+  const dragStartY = useRef<number | undefined>(undefined);
   const ownedRank = state.ownedRanks[node.id] ?? 0;
   const rank = effectiveRankV3(state, node.id);
   const cost = nextRankCost(node, rank);
@@ -177,7 +180,24 @@ export function NodeDetailSheet({
     };
   });
 
-  return <aside className="v3-node-detail-sheet" data-testid="v3-node-detail-sheet" aria-label={name}>
+  const finishSheetDrag = (clientY: number) => {
+    if (dragStartY.current === undefined) return;
+    const delta = clientY - dragStartY.current;
+    dragStartY.current = undefined;
+    if (delta > 90 && snap === 25) onClose?.();
+    else if (delta > 55) setSnap(snap === 90 ? 55 : 25);
+    else if (delta < -55) setSnap(snap === 25 ? 55 : 90);
+  };
+
+  return <aside className="v3-node-detail-sheet" data-snap={snap} data-testid="v3-node-detail-sheet" aria-label={name}>
+    <div className="v53-detail-handle" onPointerDown={(event) => {
+      if ((event.target as HTMLElement).closest("button")) return;
+      dragStartY.current = event.clientY;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }} onPointerUp={(event) => finishSheetDrag(event.clientY)}>
+      <span aria-hidden="true" />
+      <div aria-label={locale === "ko" ? "상세 높이" : "Detail height"}>{([25, 55, 90] as const).map((value) => <button key={value} type="button" className={snap === value ? "is-active" : ""} onClick={() => setSnap(value)}>{value}%</button>)}</div>
+    </div>
     <header>
       {node.kind === "dice" && node.targetId && <DiceIcon diceId={node.targetId} label={name} className="v42-detail-dice" loading="eager" />}
       <div>

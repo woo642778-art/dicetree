@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import type { DiceFamilyV3 } from "../../../game-data/types";
 import { gameDataV3 } from "../../../game-data/load";
 import { playableDiceV3 } from "../../../game-data/playableDice";
@@ -36,6 +37,37 @@ import { TierMakerView } from "../tier/TierMakerView";
 import type { ScreenshotAccountDraftV52 } from "../../../account/screenshotImportV52";
 
 type Tab = "account" | "tree" | "simulator" | "decks" | "tier" | "compare" | "shop" | "updates";
+type TreeViewCommandV53 = { id: number; type: "zoomIn" | "zoomOut" | "fit" | "selected" };
+
+const PRIMARY_TABS: Tab[] = ["account", "tree", "simulator", "decks"];
+const TOOL_TABS: Tab[] = ["tier", "compare", "shop", "updates"];
+
+function tabLabel(tab: Tab, locale: "ko" | "en") {
+  const labels: Record<Tab, { ko: string; en: string }> = {
+    account: { ko: "내 계정", en: "My Account" },
+    tree: { ko: "다이스 트리", en: "Dice Tree" },
+    simulator: { ko: "시뮬레이터", en: "Simulator" },
+    decks: { ko: "덱 연구소", en: "Deck Lab" },
+    tier: { ko: "티어 메이커", en: "Tier Maker" },
+    compare: { ko: "비교", en: "Compare" },
+    shop: { ko: "구매 효율", en: "Purchase Value" },
+    updates: { ko: "업데이트", en: "Updates" },
+  };
+  return labels[tab][locale];
+}
+
+function useMobileLayoutV53() {
+  const [mobile, setMobile] = useState(() => typeof window.matchMedia === "function" && window.matchMedia("(max-width: 980px)").matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(max-width: 980px)");
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  return mobile;
+}
 
 const STARTER_OWNED_RANKS = starterOwnedRanksV3(gameDataV3.tree);
 const limits = {
@@ -108,6 +140,7 @@ function simulationInput(state: PlannerStateV3, overrides: Partial<SimulationInp
 
 export function V3Shell() {
   const { locale, setLocale } = useI18n();
+  const mobileLayout = useMobileLayoutV53();
   const [accountSeed] = useState(loadAccountTwin);
   const [tab, setTab] = useState<Tab>("tree");
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
@@ -125,6 +158,14 @@ export function V3Shell() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [treeResetOpen, setTreeResetOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [treeToolsOpen, setTreeToolsOpen] = useState(false);
+  const [resourceEditorOpen, setResourceEditorOpen] = useState(false);
+  const [continueOpen, setContinueOpen] = useState(false);
+  const [treeViewCommand, setTreeViewCommand] = useState<TreeViewCommandV53>();
+  const desktopTreeSearchRef = useRef<HTMLInputElement>(null);
+  const mobileTreeSearchRef = useRef<HTMLInputElement>(null);
   const [shareTitle, setShareTitle] = useState(locale === "ko" ? "내 다이스 트리 빌드" : "My Dice Tree Build");
   const [shareNote, setShareNote] = useState("");
   const [sharedResult, setSharedResult] = useState<SharedResultV47 | null>(() => {
@@ -158,11 +199,36 @@ export function V3Shell() {
         event.preventDefault();
         setCommandOpen((open) => !open);
       }
-      if (event.key === "Escape") setCommandOpen(false);
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        dispatch({ type: event.shiftKey ? "redo" : "undo" });
+      }
+      if (event.key === "/" && tab === "tree") {
+        event.preventDefault();
+        if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 980px)").matches) {
+          setTreeToolsOpen(true);
+          window.setTimeout(() => mobileTreeSearchRef.current?.focus(), 0);
+        } else desktopTreeSearchRef.current?.focus();
+      }
+      if (event.key.toLowerCase() === "f" && tab === "tree" && !(event.metaKey || event.ctrlKey || event.altKey)) {
+        const target = event.target as HTMLElement | null;
+        if (target?.matches("input, textarea, select, [contenteditable=true]")) return;
+        event.preventDefault();
+        setTreeViewCommand({ id: Date.now(), type: "fit" });
+      }
+      if (event.key === "Escape") {
+        setCommandOpen(false);
+        setMoreOpen(false);
+        setHeaderMenuOpen(false);
+        setTreeToolsOpen(false);
+        setResourceEditorOpen(false);
+        setContinueOpen(false);
+        setSelectedNodeId(undefined);
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [tab]);
 
   const spent = useMemo(() => simulatedInvestmentCost(gameDataV3.tree, state), [state]);
   const resources = useMemo(() => projectResources(state.inventory, spent), [spent, state.inventory]);
@@ -236,6 +302,17 @@ export function V3Shell() {
     } catch {
       setShareNotice(url);
     }
+  };
+
+  const continuationUrl = useMemo(() => {
+    const encoded = encodeV3(state);
+    return `${window.location.origin}${window.location.pathname}#b=${encodeURIComponent(encoded)}`;
+  }, [state]);
+
+  const openTab = (nextTab: Tab) => {
+    setTab(nextTab);
+    setMoreOpen(false);
+    setHeaderMenuOpen(false);
   };
 
   const createResultShare = async () => {
@@ -363,20 +440,31 @@ export function V3Shell() {
         <span className="v3-brand-mark"><b>RD</b><i>2</i></span>
         <span><strong>RANDOM DICE 2</strong><small>{locale === "ko" ? "다이스 트리 연구소" : "Dice Tree Lab"}</small></span>
       </button>
-      <nav className="v3-nav" aria-label={locale === "ko" ? "주요 화면" : "Primary views"}>
-        {(["account", "tree", "simulator", "decks", "tier", "compare", "shop", "updates"] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>
-          {item === "account" ? (locale === "ko" ? "내 계정" : "My Account") : item === "tree" ? (locale === "ko" ? "다이스 트리" : "Dice Tree") : item === "simulator" ? (locale === "ko" ? "시뮬레이터" : "Simulator") : item === "decks" ? (locale === "ko" ? "덱 연구소" : "Deck Lab") : item === "tier" ? (locale === "ko" ? "티어 메이커" : "Tier Maker") : item === "compare" ? (locale === "ko" ? "비교" : "Compare") : item === "shop" ? (locale === "ko" ? "구매 효율" : "Purchase Value") : (locale === "ko" ? "업데이트" : "Updates")}
-        </button>)}
+      <nav className="v3-nav v53-desktop-nav" aria-label={locale === "ko" ? "주요 화면" : "Primary views"}>
+        {PRIMARY_TABS.map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => openTab(item)}>{tabLabel(item, locale)}</button>)}
+        <div className="v53-tools-menu">
+          <button type="button" className={TOOL_TABS.includes(tab) ? "is-active" : ""} aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}>{locale === "ko" ? "도구" : "Tools"} ▾</button>
+          {moreOpen && <div role="menu">{TOOL_TABS.map((item) => <button role="menuitem" key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => openTab(item)}>{tabLabel(item, locale)}</button>)}</div>}
+        </div>
       </nav>
       <div className="v3-header-actions">
-        <span className="v41-creator-credit">{locale === "ko" ? "제작자 모님" : "Created by Monim"}</span>
+        <span className="v53-desktop-credit">{locale === "ko" ? "제작자 모님" : "Created by Monim"}</span>
         <button className="v48-command-open" type="button" onClick={() => setCommandOpen(true)} aria-label={locale === "ko" ? "통합 검색" : "Universal search"}>⌕ <span>⌘K</span></button>
         <button className="v47-profile-button" type="button" onClick={() => setProfileOpen(true)}>{locale === "ko" ? "내 프로필" : "Profiles"}</button>
-        <button className="v47-result-button" type="button" onClick={() => setShareComposerOpen(true)}>{locale === "ko" ? "결과 카드" : "Result card"}</button>
-        <button className="v47-state-share-button" type="button" data-short-label={locale === "ko" ? "공유" : "Share"} aria-label={locale === "ko" ? "공유" : "Share"} onClick={share}>{locale === "ko" ? "상태 공유" : "State link"}</button>
-        <button className="v47-locale-button" type="button" onClick={() => setLocale(locale === "ko" ? "en" : "ko")}>{locale === "ko" ? "EN" : "KO"}</button>
+        <button className="v47-result-button v53-desktop-action" type="button" onClick={() => setShareComposerOpen(true)}>{locale === "ko" ? "결과 카드" : "Result card"}</button>
+        <button className="v47-state-share-button v53-desktop-action" type="button" aria-label={locale === "ko" ? "공유" : "Share"} onClick={share}>{locale === "ko" ? "상태 공유" : "State link"}</button>
+        <button className="v47-locale-button v53-desktop-action" type="button" onClick={() => setLocale(locale === "ko" ? "en" : "ko")}>{locale === "ko" ? "EN" : "KO"}</button>
+        <button className="v53-header-menu-button" type="button" aria-label={locale === "ko" ? "더 많은 작업" : "More actions"} aria-expanded={headerMenuOpen} onClick={() => setHeaderMenuOpen((open) => !open)}>•••</button>
       </div>
     </header>
+
+    {headerMenuOpen && <div className="v53-header-menu" role="menu">
+      <button role="menuitem" type="button" onClick={() => { setHeaderMenuOpen(false); setShareComposerOpen(true); }}>{locale === "ko" ? "결과 카드 만들기" : "Create result card"}</button>
+      <button role="menuitem" type="button" onClick={() => { setHeaderMenuOpen(false); void share(); }}>{locale === "ko" ? "상태 링크 복사" : "Copy state link"}</button>
+      <button role="menuitem" type="button" onClick={() => { setHeaderMenuOpen(false); setContinueOpen(true); }}>{locale === "ko" ? "다른 기기에서 계속" : "Continue on another device"}</button>
+      <button role="menuitem" type="button" onClick={() => { setLocale(locale === "ko" ? "en" : "ko"); setHeaderMenuOpen(false); }}>{locale === "ko" ? "English로 전환" : "한국어로 전환"}</button>
+      <small>{locale === "ko" ? "제작자 모님" : "Created by Monim"}</small>
+    </div>}
 
     <section className="v3-resource-rail" aria-label={locale === "ko" ? "다이스 트리 재화" : "Dice Tree resources"}>
       <div className="v3-resource-item gold"><span className="v3-resource-icon">●</span><label>{locale === "ko" ? "남은 골드" : "Remaining Gold"}<input aria-label={locale === "ko" ? "남은 골드" : "Remaining Gold"} type="number" min="0" value={Math.max(0, resources.remaining.gold)} onChange={(event) => dispatch({ type: "setInventory", inventory: { gold: Math.max(0, Number(event.target.value) || 0) + spent.gold } })} /></label><small>{locale === "ko" ? "사용" : "Spent"} {spent.gold.toLocaleString()}</small></div>
@@ -385,7 +473,16 @@ export function V3Shell() {
       <div className="v3-history-actions"><button type="button" onClick={() => dispatch({ type: "clearSimulatedRanks" })} disabled={!Object.keys(state.simulatedRanks).length}>{locale === "ko" ? "전체 계획 취소" : "Clear plan"}</button><button className="v49-tree-reset-open" type="button" onClick={() => setTreeResetOpen(true)} disabled={!hasResettableTreeProgress}>{locale === "ko" ? "트리 전체 초기화" : "Reset full tree"}</button><button type="button" onClick={() => dispatch({ type: "undo" })} disabled={!history.past.length}>{locale === "ko" ? "실행 취소" : "Undo"}</button><button type="button" onClick={() => dispatch({ type: "redo" })} disabled={!history.future.length}>{locale === "ko" ? "다시 실행" : "Redo"}</button></div>
     </section>
 
+    <button className={`v53-resource-hud ${resources.affordable ? "is-ok" : "is-short"}`} type="button" onClick={() => setResourceEditorOpen(true)} aria-label={locale === "ko" ? "재화 편집" : "Edit resources"}>
+      <span><small>{locale === "ko" ? "골드" : "Gold"}</small><strong>{Math.max(0, resources.remaining.gold).toLocaleString()}</strong></span>
+      <span><small>{locale === "ko" ? "코어" : "Core"}</small><strong>{Math.max(0, resources.remaining.stone).toLocaleString()}</strong></span>
+      <span><small>{locale === "ko" ? "계획 비용" : "Plan"}</small><strong>{spent.gold.toLocaleString()} G · {spent.stone.toLocaleString()} C</strong></span>
+      {!resources.affordable && <span className="v53-shortage"><small>{locale === "ko" ? "부족" : "Need"}</small><strong>{resources.shortage.gold.toLocaleString()} G · {resources.shortage.stone.toLocaleString()} C</strong></span>}
+    </button>
+
     {shareNotice && <div className="v3-notice" role="status"><span>{shareNotice}</span><button type="button" onClick={() => setShareNotice(undefined)}>×</button></div>}
+    {resourceEditorOpen && <div className="v53-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResourceEditorOpen(false); }}><section className="v53-action-sheet v53-resource-editor" role="dialog" aria-modal="true" aria-label={locale === "ko" ? "재화 편집" : "Edit resources"}><div className="v53-sheet-handle" /><header><div><small>{locale === "ko" ? "현재 보유 재화" : "Current resources"}</small><h2>{locale === "ko" ? "남은 재화를 바로 입력하세요" : "Enter remaining resources"}</h2></div><button type="button" onClick={() => setResourceEditorOpen(false)}>×</button></header><label>{locale === "ko" ? "남은 골드" : "Remaining Gold"}<input autoFocus type="number" min="0" value={Math.max(0, resources.remaining.gold)} onChange={(event) => dispatch({ type: "setInventory", inventory: { gold: Math.max(0, Number(event.target.value) || 0) + spent.gold } })} /></label><label>{locale === "ko" ? "남은 다이스 코어" : "Remaining Dice Core"}<input type="number" min="0" value={Math.max(0, resources.remaining.stone)} onChange={(event) => dispatch({ type: "setInventory", inventory: { stone: Math.max(0, Number(event.target.value) || 0) + spent.stone } })} /></label><p>{locale === "ko" ? `가상 계획 비용 ${spent.gold.toLocaleString()} 골드 · ${spent.stone.toLocaleString()} 코어가 자동 차감된 잔액입니다.` : `The remaining balance already subtracts ${spent.gold.toLocaleString()} Gold and ${spent.stone.toLocaleString()} Core in the virtual plan.`}</p><button className="is-primary" type="button" onClick={() => setResourceEditorOpen(false)}>{locale === "ko" ? "완료" : "Done"}</button></section></div>}
+    {continueOpen && <div className="v53-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setContinueOpen(false); }}><section className="v53-action-sheet v53-continue-sheet" role="dialog" aria-modal="true" aria-label={locale === "ko" ? "다른 기기에서 계속" : "Continue on another device"}><div className="v53-sheet-handle" /><header><div><small>{locale === "ko" ? "기기 간 이어하기" : "CONTINUE ON ANOTHER DEVICE"}</small><h2>{locale === "ko" ? "QR 코드를 스캔하세요" : "Scan this QR code"}</h2></div><button type="button" onClick={() => setContinueOpen(false)}>×</button></header><div className="v53-qr"><QRCodeSVG value={continuationUrl} size={196} level="M" marginSize={2} /></div><p>{locale === "ko" ? "현재 트리, 보유 재화, 선택 주사위와 시뮬레이션 입력이 링크에 함께 저장됩니다." : "The link carries the current tree, resources, selected dice, and simulator inputs."}</p><button className="is-primary" type="button" onClick={() => void share()}>{locale === "ko" ? "링크 복사" : "Copy link"}</button></section></div>}
     {treeResetOpen && <div className="v49-reset-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setTreeResetOpen(false); }}><section className="v49-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="v49-reset-title"><small>{locale === "ko" ? "되돌릴 수 있는 초기화" : "UNDOABLE RESET"}</small><h2 id="v49-reset-title">{locale === "ko" ? "다이스 트리를 전부 초기화할까요?" : "Reset the entire Dice Tree?"}</h2><p>{locale === "ko" ? "실제로 찍은 랭크와 가상 계획을 초기화하고, 게임에서 처음 열려 있는 기본 주사위 5개는 유지합니다. 입력한 골드·코어와 시뮬레이터 설정은 유지되며 실행 취소로 복원할 수 있습니다." : "Owned ranks and simulated plans return to the starter unlocks. Gold, Core, and simulator settings are preserved, and Undo can restore the tree."}</p><div><button type="button" onClick={() => setTreeResetOpen(false)}>{locale === "ko" ? "취소" : "Cancel"}</button><button type="button" className="is-danger" onClick={resetTree}>{locale === "ko" ? "트리 전체 초기화" : "Reset full tree"}</button></div></section></div>}
     {commandOpen && <div className="v48-command-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCommandOpen(false); }}><section className="v48-command-palette" role="dialog" aria-modal="true" aria-label={locale === "ko" ? "통합 검색" : "Universal search"}><header><input autoFocus aria-label={locale === "ko" ? "통합 검색어" : "Universal search query"} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commandResults[0]) openCommandResult(commandResults[0]); }} placeholder={locale === "ko" ? "화면, 주사위, 노드, 효과 검색" : "Search views, dice, nodes, effects"} /><kbd>ESC</kbd></header><div>{commandResults.map((entry) => <button key={entry.id} type="button" onClick={() => openCommandResult(entry)}><span>{entry.kind === "tab" ? (locale === "ko" ? "화면" : "View") : entry.kind === "dice" ? (locale === "ko" ? "주사위" : "Dice") : (locale === "ko" ? "노드" : "Node")}</span><b>{entry.label}</b>{"effect" in entry && entry.effect ? <small>{entry.effect}</small> : null}</button>)}</div><footer>{locale === "ko" ? "Enter로 이동 · Esc로 닫기" : "Enter to open · Esc to close"}</footer></section></div>}
     {profileOpen && <ProfileManagerV3 locale={locale} state={state} activeDeckIds={activeDeckIds} deckGoal={deckGoal} spendProfile={spendProfile} digitalTwin={currentTwin} onLoad={loadProfile} onClose={() => setProfileOpen(false)} />}
@@ -416,7 +513,7 @@ export function V3Shell() {
             <button type="button" className={familyFilter === "all" ? "is-active" : ""} onClick={() => setFamilyFilter("all")}>{locale === "ko" ? "전체" : "All"}</button>
             {(["nature", "chaos", "order", "engineering", "magic"] as DiceFamilyV3[]).map((family) => <button key={family} type="button" className={familyFilter === family ? `is-active family-${family}` : `family-${family}`} onClick={() => setFamilyFilter(family)}>{FAMILY_NAMES[family][locale]}</button>)}
           </div>
-          <input aria-label={locale === "ko" ? "트리 검색" : "Tree search"} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={locale === "ko" ? "노드·효과 검색" : "Search node or effect"} />
+          <input ref={desktopTreeSearchRef} aria-label={locale === "ko" ? "트리 검색" : "Tree search"} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={locale === "ko" ? "노드·효과 검색" : "Search node or effect"} />
           <select className="v47-heatmap-select" aria-label={locale === "ko" ? "효율 히트맵" : "Efficiency heatmap"} value={heatmapMode} onChange={(event) => setHeatmapMode(event.target.value as TreeHeatmapModeV3)}><option value="none">{locale === "ko" ? "히트맵 끄기" : "Heatmap off"}</option><option value="gold">{locale === "ko" ? "골드 1만당" : "Per 10k Gold"}</option><option value="stone">{locale === "ko" ? "코어 1개당" : "Per Core"}</option><option value="path">{locale === "ko" ? "선행 경로 포함" : "Including path"}</option></select>
           <button className="v45-guided-route-open" type="button" onClick={() => { setSelectedNodeId(undefined); setGuidedRouteOpen(true); }}>{locale === "ko" ? "맞춤 전체 루트" : "Guided full route"}</button>
         </div>
@@ -440,9 +537,11 @@ export function V3Shell() {
           query={query}
           locale={locale}
           onSelect={setSelectedNodeId}
+          command={treeViewCommand}
         />
       </section>
-      {selectedNode && <NodeDetailSheet
+      <aside className={`v53-tree-inspector ${selectedNode || guidedRouteOpen ? "has-content" : "is-empty"}`}>
+      {selectedNode ? <NodeDetailSheet
         node={selectedNode}
         data={gameDataV3}
         state={state}
@@ -457,8 +556,7 @@ export function V3Shell() {
         onSetOwnedRank={(nodeId, rank) => dispatch({ type: "setOwnedRank", nodeId, rank })}
         onSetSimulatedRank={(nodeId, rank) => dispatch({ type: "setSimulatedRank", nodeId, rank })}
         onClose={() => setSelectedNodeId(undefined)}
-      />}
-      {guidedRouteOpen && <GuidedRoutePlanner
+      /> : guidedRouteOpen ? <GuidedRoutePlanner
         data={gameDataV3}
         locale={locale}
         selectedDiceId={state.scenario.diceId}
@@ -467,7 +565,16 @@ export function V3Shell() {
         onApply={(ranks) => dispatch({ type: "applyRoute", ranks })}
         onSelectNode={(nodeId) => { setGuidedRouteOpen(false); setSelectedNodeId(nodeId); }}
         onClose={() => setGuidedRouteOpen(false)}
-      />}
+      /> : <div className="v53-inspector-empty"><small>{locale === "ko" ? "노드 인스펙터" : "NODE INSPECTOR"}</small><strong>{locale === "ko" ? "노드를 선택하세요" : "Select a node"}</strong><p>{locale === "ko" ? "트리 위치는 유지한 채 효과, 비용, 선행 경로와 투자 근거를 확인할 수 있습니다." : "Inspect effects, costs, prerequisites, and investment evidence without shifting the tree."}</p></div>}
+      </aside>
+      {!selectedNode && !guidedRouteOpen && <nav className="v53-tree-dock" aria-label={locale === "ko" ? "트리 빠른 조작" : "Quick tree controls"}>
+        <button type="button" onClick={() => setTreeToolsOpen(true)}>{locale === "ko" ? "필터" : "Filter"}</button>
+        <button type="button" onClick={() => { setTreeToolsOpen(true); window.setTimeout(() => mobileTreeSearchRef.current?.focus(), 0); }}>{locale === "ko" ? "검색" : "Search"}</button>
+        <button type="button" aria-label={locale === "ko" ? "축소" : "Zoom out"} onClick={() => setTreeViewCommand({ id: Date.now(), type: "zoomOut" })}>−</button>
+        <button type="button" onClick={() => setTreeViewCommand({ id: Date.now(), type: "fit" })}>Fit</button>
+        <button type="button" aria-label={locale === "ko" ? "확대" : "Zoom in"} onClick={() => setTreeViewCommand({ id: Date.now(), type: "zoomIn" })}>+</button>
+      </nav>}
+      {treeToolsOpen && <div className="v53-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setTreeToolsOpen(false); }}><section className="v53-action-sheet v53-tree-tools" role="dialog" aria-modal="true" aria-label={locale === "ko" ? "트리 도구" : "Tree tools"}><div className="v53-sheet-handle" /><header><div><small>{locale === "ko" ? "트리 도구" : "TREE TOOLS"}</small><h2>{locale === "ko" ? "찾고 분석하고 이동하세요" : "Find, analyze, and navigate"}</h2></div><button type="button" onClick={() => setTreeToolsOpen(false)}>×</button></header><input ref={mobileTreeSearchRef} aria-label={locale === "ko" ? "모바일 트리 검색" : "Mobile tree search"} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={locale === "ko" ? "노드 이름 또는 효과 검색" : "Search node name or effect"} /><div className="v53-family-grid"><button type="button" className={familyFilter === "all" ? "is-active" : ""} onClick={() => setFamilyFilter("all")}>{locale === "ko" ? "전체" : "All"}</button>{(["nature", "chaos", "order", "engineering", "magic"] as DiceFamilyV3[]).map((family) => <button key={family} type="button" className={familyFilter === family ? "is-active" : ""} onClick={() => setFamilyFilter(family)}>{FAMILY_NAMES[family][locale]}</button>)}</div><label>{locale === "ko" ? "효율 히트맵" : "Efficiency heatmap"}<select value={heatmapMode} onChange={(event) => setHeatmapMode(event.target.value as TreeHeatmapModeV3)}><option value="none">{locale === "ko" ? "끄기" : "Off"}</option><option value="gold">{locale === "ko" ? "골드 1만당" : "Per 10k Gold"}</option><option value="stone">{locale === "ko" ? "코어 1개당" : "Per Core"}</option><option value="path">{locale === "ko" ? "선행 경로 포함" : "Including path"}</option></select></label><div className="v53-sheet-actions"><button type="button" disabled={!selectedNodeId} onClick={() => { setTreeViewCommand({ id: Date.now(), type: "selected" }); setTreeToolsOpen(false); }}>{locale === "ko" ? "선택 노드로 이동" : "Return to selected"}</button><button className="is-primary" type="button" onClick={() => { setSelectedNodeId(undefined); setGuidedRouteOpen(true); setTreeToolsOpen(false); }}>{locale === "ko" ? "맞춤 전체 루트" : "Guided full route"}</button></div></section></div>}
     </main>}
 
     {tab === "simulator" && <SimulatorView data={gameDataV3} state={state} locale={locale} onScenarioChange={(patch) => dispatch({ type: "setScenario", scenario: patch })} />}
@@ -493,5 +600,11 @@ export function V3Shell() {
 
     {tab === "shop" && <PurchaseEfficiencyView locale={locale} />}
     {tab === "updates" && <UpdateCenterView data={gameDataV3} locale={locale} activeDeckIds={activeDeckIds} state={state} />}
+
+    {mobileLayout && <nav className="v53-mobile-nav" aria-label={locale === "ko" ? "모바일 주요 화면" : "Mobile primary views"}>
+      {(["account", "tree", "simulator"] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => openTab(item)}><span aria-hidden="true">{item === "account" ? "●" : item === "tree" ? "◇" : "▶"}</span>{tabLabel(item, locale)}</button>)}
+      <button type="button" className={TOOL_TABS.includes(tab) || tab === "decks" ? "is-active" : ""} aria-expanded={moreOpen} onClick={() => setMoreOpen(true)}><span aria-hidden="true">•••</span>{locale === "ko" ? "더보기" : "More"}</button>
+    </nav>}
+    {mobileLayout && moreOpen && <div className="v53-sheet-backdrop v53-more-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setMoreOpen(false); }}><section className="v53-action-sheet v53-more-sheet" role="dialog" aria-modal="true" aria-label={locale === "ko" ? "더보기" : "More"}><div className="v53-sheet-handle" /><header><div><small>{locale === "ko" ? "더보기" : "MORE"}</small><h2>{locale === "ko" ? "분석 도구" : "Analysis tools"}</h2></div><button type="button" onClick={() => setMoreOpen(false)}>×</button></header><div className="v53-more-grid">{(["decks", ...TOOL_TABS] as Tab[]).map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => openTab(item)}><strong>{tabLabel(item, locale)}</strong><small>{item === "decks" ? (locale === "ko" ? "덱 진단과 추천" : "Deck diagnosis") : item === "tier" ? (locale === "ko" ? "나만의 등급표" : "Custom rankings") : item === "compare" ? (locale === "ko" ? "두 설정 비교" : "Compare builds") : item === "shop" ? (locale === "ko" ? "예산 최적화" : "Budget optimizer") : (locale === "ko" ? "패치와 메타" : "Patches and meta")}</small></button>)}</div><footer><button type="button" onClick={() => { setMoreOpen(false); setContinueOpen(true); }}>{locale === "ko" ? "다른 기기에서 계속" : "Continue on another device"}</button><span>{locale === "ko" ? "제작자 모님" : "Created by Monim"}</span></footer></section></div>}
   </div>;
 }

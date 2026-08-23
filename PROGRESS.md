@@ -1,17 +1,15 @@
-# Progress: DiceTree account optimizer suite and mobile tree rendering fix
+# Progress: DiceTree mobile and PC responsive UX improvements from attached specification
 
 - Status: completed
-- Milestone: 8/8 (100%)
-- Updated: 2026-08-22T22:13:27
-- Current work: V5.2 optimizer suite and mobile rendering fix are verified and live.
+- Milestone: 6/6 (100%)
+- Updated: 2026-08-22T23:17:34
+- Current work: Implementation and local verification complete; ready for commit, pull request, merge, and live deployment.
 
 ## Log
-- 2026-08-22T21:39:33 | 1/8 | Mapped repository and established clean baseline at main. Added focused regression coverage for mobile maximum zoom and new optimizer helpers.
-- 2026-08-22T21:39:33 | 2/8 | Implemented mobile-safe SVG rendering: viewport culling above 1.45x zoom, edge culling, SVG filter shutdown on coarse-pointer/mobile devices, dark containment fallback. Targeted rendering tests pass.
-- 2026-08-22T21:39:33 | 3/8 | Implemented legal prerequisite-aware beam search for 1/5/10/20 investments with budget, target DPS, cumulative costs, confidence and roadmap checkpoints.
-- 2026-08-22T21:39:33 | 4/8 | Integrated account-wide Pareto actions already present with new Rune Lab, wave reverse solver, performance-target spending link, and bottleneck dashboard.
-- 2026-08-22T21:39:33 | 5/8 | Added node-only versus prerequisite-inclusive ROI detail and truthful Pareto explanation for AND-only prerequisite topology.
-- 2026-08-22T21:39:33 | 6/8 | Added local multi-image OCR import with review gate, 7/14/30-day actionable roadmap, and local build time-machine snapshots.
-- 2026-08-22T21:39:33 | 7/8 | Added shared-build comparison with DPS confidence, deck scores, and exact tree-rank catch-up cost. Existing patch center remains the verified diff source.
-- 2026-08-22T22:13:19 | 8/8 | PR #19 merged to main. Main workflow 32619431405 passed static extraction, tests, build, desktop/mobile E2E, visual QA, and Pages deployment after rerunning a runner-level Chromium SIGSEGV. Live mobile checks confirmed 4.5x dark tree rendering and a 10-step optimizer route.
-- 2026-08-22T22:13:27 | 8/8 | V5.2 optimizer suite and mobile rendering fix are verified and live.
+- 2026-08-22T22:31:31 | 1/6 | Mapped V3Shell, TreeCanvasV3, NodeDetailSheet, SimulatorView, reducer history, and responsive CSS. Baseline has undo/redo and tree fit controls, but navigation is still eight items and mobile actions are crowded.
+- 2026-08-22T22:47:13 | 2/6 | Implemented four-item mobile navigation, More tools sheet, simplified mobile header overflow, compact resource HUD/editor, safe-area-aware sheets, and creator credit placement.
+- 2026-08-22T22:47:13 | 3/6 | Implemented five-control mobile tree dock, advanced search/filter/heatmap sheet, selected-node return, one-time gesture hint, external zoom/fit commands, and 25/55/90 percent draggable node detail sheet.
+- 2026-08-22T22:47:13 | 4/6 | Implemented desktop Primary versus Tools navigation, reserved 380px node inspector, keyboard shortcuts, and collapsible simulator dice sidebar below 1200px.
+- 2026-08-22T23:05:36 | 5/6 | Added regression coverage for the responsive navigation, mobile resource editor, tree search and zoom, 25/55/90 detail snapping, guided-route application above the safe-area navigation, and real state restoration. Desktop E2E passed 23 tests with 2 skips; mobile E2E passed 20 tests with 5 intended skips.
+- 2026-08-22T23:17:34 | 6/6 | Completed adversarial diff and visual review. Confirmed the mobile tree remains dark at 4.50x zoom, profile/search/overflow controls remain visible, the detail dock no longer shows through modal content, fixed node inspector prevents desktop layout shifts, and QR continuation renders from the encoded state URL. Final checks: 232 unit tests passed, production build passed, full Playwright matrix passed 43 tests with 7 intended skips, and current mobile regression reruns passed.
+- 2026-08-22T23:17:34 | 6/6 | Implementation and local verification complete; ready for commit, pull request, merge, and live deployment.

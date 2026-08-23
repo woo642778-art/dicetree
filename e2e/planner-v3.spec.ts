@@ -15,6 +15,59 @@ async function selectDiceByInternalId(page: Page, diceId: string) {
   await option.click();
 }
 
+async function openShellTab(page: Page, label: string) {
+  const candidates = page.getByRole("button", { name: label, exact: true });
+  for (let index = 0; index < await candidates.count(); index += 1) {
+    const candidate = candidates.nth(index);
+    if (await candidate.isVisible()) {
+      await candidate.click();
+      return;
+    }
+  }
+  if ((page.viewportSize()?.width ?? 1000) <= 760) {
+    const mobileNavigation = page.getByRole("navigation", { name: /모바일 주요 화면|Mobile primary views/ });
+    await expect(mobileNavigation).toBeVisible();
+    await mobileNavigation.getByRole("button", { name: /더보기|More/ }).click();
+    const dialog = page.getByRole("dialog", { name: /더보기|More/ });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button").filter({ hasText: label }).click();
+    return;
+  }
+  await page.getByRole("button", { name: /도구|Tools/ }).click();
+  await page.getByRole("menuitem", { name: label, exact: true }).click();
+}
+
+async function setTreeResources(page: Page, gold: string, core: string) {
+  const desktopGold = page.getByRole("spinbutton", { name: "남은 골드" });
+  if (!await desktopGold.isVisible()) await page.getByRole("button", { name: "재화 편집" }).click();
+  await page.getByRole("spinbutton", { name: "남은 골드" }).filter({ visible: true }).fill(gold);
+  await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).filter({ visible: true }).fill(core);
+  const done = page.getByRole("button", { name: "완료", exact: true });
+  if (await done.isVisible().catch(() => false)) await done.click();
+}
+
+async function readTreeResources(page: Page) {
+  const desktopGold = page.getByRole("spinbutton", { name: "남은 골드" });
+  if (await desktopGold.isVisible()) return {
+    gold: await desktopGold.inputValue(),
+    core: await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).inputValue(),
+  };
+  const values = page.getByRole("button", { name: "재화 편집" }).locator("strong");
+  return {
+    gold: (await values.nth(0).textContent() ?? "0").replaceAll(",", ""),
+    core: (await values.nth(1).textContent() ?? "0").replaceAll(",", ""),
+  };
+}
+
+async function shareState(page: Page) {
+  const direct = page.getByRole("button", { name: "공유", exact: true });
+  if (await direct.isVisible().catch(() => false)) await direct.click();
+  else {
+    await page.getByRole("button", { name: "더 많은 작업" }).click();
+    await page.getByRole("menuitem", { name: "상태 링크 복사" }).click();
+  }
+}
+
 async function investTreeNode(page: Page, nodeId: string) {
   const node = page.getByTestId(`v3-node-${nodeId}`);
   await expect(node).toBeVisible();
@@ -35,7 +88,11 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await expect(page.getByTestId("v3-tree-canvas")).toBeVisible();
   await expect(page.getByLabel("다이스 트리 재화")).toContainText("골드");
   await expect(page.getByLabel("다이스 트리 재화")).toContainText("다이스 코어");
-  await expect(page.getByText(/제작자 모님/)).toBeVisible();
+  if (isMobile) {
+    await page.getByRole("button", { name: "더보기" }).click();
+    await expect(page.getByRole("dialog", { name: "더보기" }).getByText(/제작자 모님/)).toBeVisible();
+    await page.keyboard.press("Escape");
+  } else await expect(page.getByText(/제작자 모님/)).toBeVisible();
   await expect(page.locator('[data-testid^="v41-cost-"]').first()).toBeAttached();
   await expect(page.locator(".v3-tree-wrap")).not.toHaveCSS("background-image", "none");
   await expect(page.locator("body")).not.toContainText("파란 재화");
@@ -45,10 +102,7 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await expect(page.locator('image[data-dice-id]').first()).toBeAttached();
   await page.screenshot({ path: `test-results/qa-v3-tree-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
 
-  const remainingGold = page.getByRole("spinbutton", { name: "남은 골드" });
-  const remainingCore = page.getByRole("spinbutton", { name: "남은 다이스 코어" });
-  await remainingGold.fill("9999999");
-  await remainingCore.fill("9999");
+  await setTreeResources(page, "9999999", "9999");
   const selectedNode = page.getByTestId("v3-node-1205");
   await expect(selectedNode).toBeVisible();
   await expect(selectedNode).toHaveAttribute("data-can-increment", "false");
@@ -61,13 +115,12 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await expect(increment).toBeEnabled();
   await increment.click();
   await expect(selectedNode).toHaveAttribute("data-simulated-rank", String(beforeSimulatedRank + 1));
-  await expect.poll(async () => Number(await remainingGold.inputValue())).toBeLessThan(9999999);
+  await expect.poll(async () => Number((await readTreeResources(page)).gold)).toBeLessThan(9999999);
   const simulatedRank = await selectedNode.getAttribute("data-simulated-rank");
-  const sharedGold = await remainingGold.inputValue();
-  const sharedCore = await remainingCore.inputValue();
+  const { gold: sharedGold, core: sharedCore } = await readTreeResources(page);
   expect(simulatedRank).not.toBeNull();
 
-  await page.getByRole("button", { name: "공유" }).click();
+  await shareState(page);
   await expect.poll(() => page.url()).toContain("#b=v3.");
   const sharedUrl = page.url();
 
@@ -75,8 +128,8 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   const shared = await context.newPage();
   const sharedErrors = captureBrowserErrors(shared);
   await shared.goto(sharedUrl);
-  await expect(shared.getByRole("spinbutton", { name: "남은 골드" })).toHaveValue(sharedGold);
-  await expect(shared.getByRole("spinbutton", { name: "남은 다이스 코어" })).toHaveValue(sharedCore);
+  await expect.poll(async () => (await readTreeResources(shared)).gold).toBe(sharedGold);
+  await expect.poll(async () => (await readTreeResources(shared)).core).toBe(sharedCore);
   await expect(shared.getByTestId(nodeTestId!)).toHaveAttribute("data-simulated-rank", simulatedRank!);
   expect(errors).toEqual([]);
   expect(sharedErrors).toEqual([]);
@@ -86,11 +139,10 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
 test("V4.8 account intelligence exposes optimizer, encyclopedia, meta clusters and install manifest", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await openShellTab(page, "시뮬레이터");
   await selectDiceByInternalId(page, "wind");
-  await page.getByRole("spinbutton", { name: "남은 골드" }).fill("300000");
-  await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("60");
-  await page.getByRole("button", { name: "내 계정" }).click();
+  await setTreeResources(page, "300000", "60");
+  await openShellTab(page, "내 계정");
   await expect(page.getByTestId("v48-account-intelligence")).toBeVisible();
   await expect(page.getByText("빌드 건강도")).toBeVisible();
   await page.screenshot({ path: `test-results/qa-v48-account-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
@@ -135,8 +187,7 @@ test("V4.6 center hub mirrors family investment levels and uses the full Terror 
   await expect(nature).toHaveAttribute("data-level", "1");
   await expect(page.locator('image[data-dice-id="fear"]')).toHaveAttribute("href", "/dicetree/dice-icons/fear.webp");
 
-  await page.getByRole("spinbutton", { name: "남은 골드" }).fill("9999999");
-  await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("9999");
+  await setTreeResources(page, "9999999", "9999");
   await investTreeNode(page, "1005");
   await expect(nature).toHaveAttribute("data-level", "2");
   await page.screenshot({ path: `test-results/qa-v46-tree-core-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
@@ -150,10 +201,7 @@ test("V4.6 center hub mirrors family investment levels and uses the full Terror 
 test("V4.8.1 starts with base dice unlocked, buys the next nodes and deducts the live balance", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  const gold = page.getByRole("spinbutton", { name: "남은 골드" });
-  const core = page.getByRole("spinbutton", { name: "남은 다이스 코어" });
-  await gold.fill("3000");
-  await core.fill("10");
+  await setTreeResources(page, "3000", "10");
 
   await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-owned-rank", "1");
   await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-can-increment", "false");
@@ -161,13 +209,13 @@ test("V4.8.1 starts with base dice unlocked, buys the next nodes and deducts the
   await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-can-increment", "true");
   await page.getByTestId("v3-node-1005").click();
   await page.getByRole("button", { name: "이 노드 가상 구매" }).click();
-  await expect(core).toHaveValue("5");
+  await expect.poll(async () => (await readTreeResources(page)).core).toBe("5");
   await page.getByRole("button", { name: "닫기" }).click();
 
   await expect(page.getByTestId("v3-node-1205")).toHaveAttribute("data-can-increment", "true");
   await page.getByTestId("v3-node-1205").click();
   await page.getByRole("button", { name: "이 노드 가상 구매" }).click();
-  await expect(gold).toHaveValue("1000");
+  await expect.poll(async () => (await readTreeResources(page)).gold).toBe("1000");
   await page.screenshot({ path: `test-results/qa-v481-direct-purchase-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
   expect(errors).toEqual([]);
 });
@@ -175,15 +223,14 @@ test("V4.8.1 starts with base dice unlocked, buys the next nodes and deducts the
 test("V4.8.1 protects starter ownership and unlocks its child without spending resources", async ({ page }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  const core = page.getByRole("spinbutton", { name: "남은 다이스 코어" });
-  await core.fill("10");
+  await setTreeResources(page, "0", "10");
 
   await expect(page.getByTestId("v3-node-1001")).toHaveAttribute("data-owned-rank", "1");
   await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-can-increment", "true");
   await page.getByTestId("v3-node-1001").click();
   await expect(page.getByRole("button", { name: "보유 랭크 내리기" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "보유 랭크 올리기" })).toBeDisabled();
-  await expect(core).toHaveValue("10");
+  await expect.poll(async () => (await readTreeResources(page)).core).toBe("10");
   expect(errors).toEqual([]);
 });
 
@@ -201,24 +248,24 @@ test("V5 virtual routes work at zero balance and nickname accounts reload outsid
   await expect(page.getByTestId("v3-node-1005")).toHaveAttribute("data-simulated-rank", "1");
   await expect(page.getByLabel("다이스 트리 재화")).toContainText("추가 필요 0 G · 5 C");
 
-  await page.getByRole("button", { name: "내 계정" }).click();
+  await openShellTab(page, "내 계정");
   await page.getByLabel("내 계정 닉네임").fill("랭킹밖테스트유저");
   await page.getByRole("button", { name: "불러오기·만들기" }).click();
   await expect(page.locator(".v49-import-message")).toContainText("현재 입력으로 만들었습니다");
 
-  await page.getByRole("button", { name: "다이스 트리" }).click();
+  await openShellTab(page, "다이스 트리");
   await page.getByRole("spinbutton", { name: "남은 골드" }).fill("12345");
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem("dicetree.profiles.v3") ?? "[]")[0]?.state?.inventory?.gold)).toBe(12345);
   await page.evaluate(() => localStorage.removeItem("dicetree:v49:account"));
   await page.reload();
-  await page.getByRole("button", { name: "내 계정" }).click();
+  await openShellTab(page, "내 계정");
   await page.getByLabel("내 계정 닉네임").fill("랭킹밖테스트유저");
   await page.getByRole("button", { name: "불러오기·만들기" }).click();
   await expect(page.locator(".v49-import-message")).toContainText("저장된 트리·덱·재화를 불러왔습니다");
-  await page.getByRole("button", { name: "다이스 트리" }).click();
+  await openShellTab(page, "다이스 트리");
   await expect(page.getByRole("spinbutton", { name: "남은 골드" })).toHaveValue("12345");
 
-  await page.getByRole("button", { name: "구매 효율" }).click();
+  await openShellTab(page, "구매 효율");
   await expect(page.getByTestId("v50-popup-VIP_HOTDEAL")).toContainText("₩29,000");
   await page.getByLabel("VIP_HOTDEAL core").fill("100");
   await expect(page.getByTestId("v47-budget-optimizer")).toContainText("VIP 핫딜");
@@ -228,7 +275,7 @@ test("V5 virtual routes work at zero balance and nickname accounts reload outsid
 test("V5.1 purchase planner combines daily farming with the cheapest deadline package", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "구매 효율" }).click();
+  await openShellTab(page, "구매 효율");
   const planner = page.getByTestId("v51-time-cash-planner");
   await planner.scrollIntoViewIfNeeded();
   await expect(planner).toBeVisible();
@@ -316,13 +363,15 @@ test("V5 mobile tree search indexes effect synonyms and remains visible at maxim
   test.skip(!isMobile, "Mobile Safari-style compositing guard is the target of this regression test");
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  const search = page.getByRole("textbox", { name: "트리 검색" });
+  await page.getByRole("button", { name: "검색", exact: true }).click();
+  const search = page.getByRole("textbox", { name: "모바일 트리 검색" });
   await search.fill("공속");
   await expect(page.getByTestId("v44-tree-search-status")).toContainText(/^[1-9]\d*개 검색 결과/);
   await search.fill("");
+  await page.keyboard.press("Escape");
   const canvas = page.getByTestId("v3-tree-canvas");
-  const zoomIn = page.getByRole("button", { name: "Zoom in" });
-  for (let index = 0; index < 30 && !(await zoomIn.isDisabled()); index += 1) await zoomIn.click();
+  const zoomIn = page.getByRole("button", { name: "확대", exact: true });
+  for (let index = 0; index < 30 && Number(await canvas.getAttribute("data-scale")) < 4.5; index += 1) await zoomIn.click();
   await expect(canvas).toHaveAttribute("data-scale", "4.50");
   await expect(canvas).toHaveAttribute("data-render-profile", "mobile-safe");
   await expect.poll(async () => Number(await canvas.getAttribute("data-rendered-nodes"))).toBeLessThan(239);
@@ -335,7 +384,7 @@ test("V5 mobile tree search indexes effect synonyms and remains visible at maxim
 test("V5 account import, current-state draft and local persistence work end to end", async ({ page }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "내 계정" }).click();
+  await openShellTab(page, "내 계정");
   await page.getByLabel("공개 랭킹 닉네임 또는 순위").fill("#8");
   await page.getByRole("button", { name: "랭킹 참고 찾기" }).click();
   await expect(page.getByText(/#8 · #8 관측 계정/)).toBeVisible();
@@ -344,7 +393,7 @@ test("V5 account import, current-state draft and local persistence work end to e
   await page.getByRole("button", { name: "현재 입력으로 초안 만들기" }).click();
   await expect(page.getByLabel("계정 스냅샷 JSON")).toHaveValue(/"schemaVersion": 1/);
   await page.reload();
-  await page.getByRole("button", { name: "내 계정" }).click();
+  await openShellTab(page, "내 계정");
   await expect(page.getByText("#8 관측 계정").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -352,7 +401,7 @@ test("V5 account import, current-state draft and local persistence work end to e
 test("V5 tier maker filters, assigns and restores a local 41-dice draft", async ({ page }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "티어 메이커" }).click();
+  await openShellTab(page, "티어 메이커");
   await expect(page.getByTestId("v50-tier-maker")).toBeVisible();
   await page.getByLabel("티어 주사위 검색").fill("원자");
   const atom = page.locator(".v50-tier-pool button").filter({ hasText: "원자" });
@@ -360,7 +409,7 @@ test("V5 tier maker filters, assigns and restores a local 41-dice draft", async 
   await atom.click();
   await expect(page.locator(".v50-tier-board article").first()).toContainText("원자");
   await page.reload();
-  await page.getByRole("button", { name: "티어 메이커" }).click();
+  await openShellTab(page, "티어 메이커");
   await expect(page.locator(".v50-tier-board article").first()).toContainText("원자");
   expect(errors).toEqual([]);
 });
@@ -368,7 +417,7 @@ test("V5 tier maker filters, assigns and restores a local 41-dice draft", async 
 test("V3 Simulator exposes dice-specific conditions and partial-safe Predator output", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await openShellTab(page, "시뮬레이터");
   await expect(page.getByTestId("v3-simulator-view")).toBeVisible();
   await expect(page.getByTestId("v3-condition-controls")).toBeVisible();
   await expect(page.getByTestId("v3-condition-controls")).toContainText("포식 스택");
@@ -389,7 +438,7 @@ test("V3 Simulator exposes dice-specific conditions and partial-safe Predator ou
 test("V3 client-table projection reacts to permanent level and battle upgrade without claiming exact DPS", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await openShellTab(page, "시뮬레이터");
   await selectDiceByInternalId(page, "wind");
 
   await expect(page.getByTestId("stat-attack")).toContainText("100");
@@ -412,7 +461,7 @@ test("V3 client-table projection reacts to permanent level and battle upgrade wi
 test("V3 custom enemy HP changes kill time through the shared scenario engine", async ({ page }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await openShellTab(page, "시뮬레이터");
   await selectDiceByInternalId(page, "wind");
 
   await page.getByRole("spinbutton", { name: "적 HP" }).fill("1000");
@@ -430,14 +479,14 @@ test("V3 real Wind Dice Tree path changes the selected dice tree stat without fa
   await page.getByRole("spinbutton", { name: "남은 골드" }).fill("9999999");
   await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("9999");
 
-  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await openShellTab(page, "시뮬레이터");
   await selectDiceByInternalId(page, "wind");
-  await page.getByRole("button", { name: "다이스 트리" }).click();
+  await openShellTab(page, "다이스 트리");
 
   await investTreeNode(page, "1005");
   await investTreeNode(page, "1205");
 
-  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await openShellTab(page, "시뮬레이터");
   const bullet = page.getByTestId("stat-bulletDamagePercent");
   await expect(bullet).toBeVisible();
   await expect.poll(async () => Number((await bullet.locator("strong").textContent())?.replaceAll(",", "") ?? "0")).toBeGreaterThan(0);
@@ -449,7 +498,7 @@ test("V3 real Wind Dice Tree path changes the selected dice tree stat without fa
 test("V4.3 Deck Lab separates ranked dealer and support decks from forecasts and opens Simulator", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "덱 연구소" }).click();
+  await openShellTab(page, "덱 연구소");
   await expect(page.getByTestId("v4-deck-lab")).toBeVisible();
   await expect(page.getByTestId("v4-meta-status")).toContainText("2026.08.16 협동 랭킹 스냅샷");
   await expect(page.getByTestId("v43-ranking-snapshot")).toContainText("105개 랭킹 덱");
@@ -472,7 +521,7 @@ test("V4.3 Deck Lab separates ranked dealer and support decks from forecasts and
 test("V4.3 Purchase Value uses won in Korean and dollars in English", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "구매 효율" }).click();
+  await openShellTab(page, "구매 효율");
   await expect(page.getByTestId("v41-purchase-efficiency")).toBeVisible();
   await expect(page.getByTestId("v41-purchase-source")).toContainText("게임 내 상품 구성");
   await expect(page.locator("body")).not.toContainText(/IPA/i);
@@ -491,7 +540,10 @@ test("V4.3 Purchase Value uses won in Korean and dollars in English", async ({ p
   await expect(page.getByTestId("v41-intro-offer")).toContainText("₩3,300");
   await expect(page.getByTestId("v41-purchase-efficiency")).not.toContainText("$");
   await page.screenshot({ path: `test-results/qa-v43-purchase-value-ko-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
-  await page.getByRole("button", { name: "EN" }).click();
+  if (isMobile) {
+    await page.getByRole("button", { name: "더 많은 작업" }).click();
+    await page.getByRole("menuitem", { name: "English로 전환" }).click();
+  } else await page.getByRole("button", { name: "EN" }).click();
   await expect(page.locator(".v41-price strong").first()).toContainText("$");
   await expect(page.getByTestId("v41-purchase-efficiency")).not.toContainText("₩");
   await page.screenshot({ path: `test-results/qa-v43-purchase-value-en-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
@@ -502,7 +554,7 @@ test("V4.5 Simulator, Compare and Purchase Value allow document scrolling", asyn
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
   for (const label of ["시뮬레이터", "비교", "구매 효율"]) {
-    await page.getByRole("button", { name: label }).click();
+    await openShellTab(page, label);
     await page.evaluate(() => window.scrollTo(0, 0));
     const dimensions = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, viewport: innerHeight }));
     expect(dimensions.height).toBeGreaterThan(dimensions.viewport);
@@ -516,7 +568,7 @@ test("V4.5 Simulator, Compare and Purchase Value allow document scrolling", asyn
 test("V3 Compare uses the shared engine and stays confidence-aware", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "비교" }).click();
+  await openShellTab(page, "비교");
   await expect(page.getByTestId("v3-compare-view")).toBeVisible();
   await expect(page.getByTestId("compare-left")).toBeVisible();
   await expect(page.getByTestId("compare-right")).toBeVisible();
@@ -538,8 +590,8 @@ test("V3 Compare uses the shared engine and stays confidence-aware", async ({ pa
 test("V4.5 guided route provides a complete justified affordable plan and applies it", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("spinbutton", { name: "남은 골드" }).fill("9999999");
-  await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).fill("999");
+  await setTreeResources(page, "9999999", "999");
+  if (isMobile) await page.getByRole("button", { name: "필터", exact: true }).click();
   await page.getByRole("button", { name: "맞춤 전체 루트" }).click();
   await expect(page.getByTestId("v45-guided-route")).toBeVisible();
   await page.getByLabel("중심 주사위").selectOption("element");
@@ -554,9 +606,9 @@ test("V4.5 guided route provides a complete justified affordable plan and applie
   await expect(summary).toContainText("예산 이내");
   await expect(summary).toContainText("도달");
   await expect(page.getByTestId("v45-route-steps").locator("li").first()).toBeVisible();
-  const beforeGold = Number(await page.getByRole("spinbutton", { name: "남은 골드" }).inputValue());
+  const beforeGold = Number((await readTreeResources(page)).gold);
   await page.getByRole("button", { name: "전체 경로 가상 적용" }).click();
-  await expect.poll(async () => Number(await page.getByRole("spinbutton", { name: "남은 골드" }).inputValue())).toBeLessThan(beforeGold);
+  await expect.poll(async () => Number((await readTreeResources(page)).gold)).toBeLessThan(beforeGold);
   await page.screenshot({ path: `test-results/qa-v45-guided-route-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
   expect(errors).toEqual([]);
 });
@@ -573,6 +625,7 @@ test("mobile V3 tree supports touch pan and bottom-sheet node details", async ({
   test.skip(!isMobile, "mobile project only");
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
+  await expect(page.getByRole("button", { name: "내 프로필" })).toBeVisible();
   const canvas = page.getByTestId("v3-tree-canvas");
   const transform = page.getByTestId("v3-tree-transform");
   const before = await transform.getAttribute("transform");
@@ -594,23 +647,41 @@ test("mobile V3 tree supports touch pan and bottom-sheet node details", async ({
   const widths = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
   expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
 
-  const nav = await page.getByRole("navigation", { name: "주요 화면" }).boundingBox();
+  const navigation = page.getByRole("navigation", { name: "모바일 주요 화면" });
+  const nav = await navigation.boundingBox();
   const viewport = page.viewportSize();
   expect(nav).not.toBeNull();
   expect(viewport).not.toBeNull();
   expect(nav!.y).toBeGreaterThan(viewport!.height / 2);
   expect(nav!.y + nav!.height).toBeLessThanOrEqual(viewport!.height);
-  const navButtons = await page.getByRole("navigation", { name: "주요 화면" }).getByRole("button").evaluateAll((buttons) => (
-    buttons.map((button) => ({ height: button.getBoundingClientRect().height, lines: button.getClientRects().length }))
+  const navButtons = await navigation.getByRole("button").evaluateAll((buttons) => (
+    buttons.map((button) => ({ height: button.getBoundingClientRect().height, label: button.textContent?.trim() }))
   ));
-  expect(navButtons.every(({ height, lines }) => height <= 48 && lines === 1)).toBe(true);
+  expect(navButtons).toHaveLength(4);
+  expect(navButtons.every(({ height }) => height >= 44)).toBe(true);
+  expect(navButtons.map(({ label }) => label)).toEqual(["●내 계정", "◇다이스 트리", "▶시뮬레이터", "•••더보기"]);
+
+  await page.getByRole("button", { name: "90%" }).click();
+  await expect(page.getByTestId("v3-node-detail-sheet")).toHaveAttribute("data-snap", "90");
+  await page.keyboard.press("Escape");
+
+  const scaleBefore = Number(await canvas.getAttribute("data-scale"));
+  await page.getByRole("button", { name: "확대", exact: true }).click();
+  await expect.poll(async () => Number(await canvas.getAttribute("data-scale"))).toBeGreaterThan(scaleBefore);
+  const background = await canvas.evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(background).not.toBe("rgb(255, 255, 255)");
+
+  await page.getByRole("button", { name: "검색", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "트리 도구" })).toBeVisible();
+  await page.getByRole("textbox", { name: "모바일 트리 검색" }).fill("공격 속도");
+  await expect(page.getByTestId("v44-tree-search-status")).toContainText(/^[1-9]\d*개 검색 결과/);
   expect(errors).toEqual([]);
 });
 
 test("V4.7 filters non-dice records and exposes scenario sweeps, deck analysis and updates", async ({ page, isMobile }) => {
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
-  await page.getByRole("button", { name: "시뮬레이터" }).click();
+  await openShellTab(page, "시뮬레이터");
   await expect(page.getByTestId("v47-scenario-sweep")).toBeVisible();
   const diceList = page.getByRole("listbox", { name: "주사위 목록" });
   await expect(diceList.locator('[data-dice-id="spgemstone"]')).toHaveCount(0);
@@ -618,12 +689,12 @@ test("V4.7 filters non-dice records and exposes scenario sweeps, deck analysis a
   await expect(diceList.locator('[data-dice-id="bomb"]')).toHaveCount(0);
   await page.screenshot({ path: `test-results/qa-v47-scenario-sweep-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
 
-  await page.getByRole("button", { name: "비교" }).click();
+  await openShellTab(page, "비교");
   await expect(page.getByTestId("v47-compare-sweep")).toBeVisible();
-  await page.getByRole("button", { name: "덱 연구소" }).click();
+  await openShellTab(page, "덱 연구소");
   await expect(page.getByTestId("v47-my-deck-analyzer")).toBeVisible();
   await page.screenshot({ path: `test-results/qa-v47-deck-analyzer-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
-  await page.getByRole("button", { name: "업데이트" }).click();
+  await openShellTab(page, "업데이트");
   await expect(page.getByTestId("v47-update-center")).toBeVisible();
   await expect(page.getByTestId("v47-update-center")).toContainText("1.0.1");
   await page.screenshot({ path: `test-results/qa-v47-updates-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
