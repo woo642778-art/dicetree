@@ -48,6 +48,17 @@ describe("V3 planner shell", () => {
     expect(document.body).not.toHaveTextContent(/IPA/i);
   });
 
+  it("opens the creator and site information panel", () => {
+    render(<I18nProvider><App /></I18nProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "제작자 모님" }));
+    const dialog = screen.getByRole("dialog", { name: "제작자 모님" });
+    expect(dialog).toHaveTextContent("비공식 팬 도구");
+    expect(dialog).toHaveTextContent("검증된 계산, 부분 검증, 추정");
+    expect(screen.getByRole("link", { name: "GitHub에서 DiceTree 보기" })).toHaveAttribute("href", "https://github.com/woo642778-art/dicetree");
+    fireEvent.click(screen.getByRole("button", { name: "사이트 정보 닫기" }));
+    expect(screen.queryByRole("dialog", { name: "제작자 모님" })).not.toBeInTheDocument();
+  });
+
   it("opens account intelligence, encyclopedia, meta clusters, and universal search", () => {
     render(<I18nProvider><App /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: "내 계정" }));

@@ -89,10 +89,15 @@ test("V3 Dice Tree invests, shares and restores Gold/Dice Core state", async ({ 
   await expect(page.getByLabel("다이스 트리 재화")).toContainText("골드");
   await expect(page.getByLabel("다이스 트리 재화")).toContainText("다이스 코어");
   if (isMobile) {
+    await expect(page.locator(".v53-desktop-credit")).toBeHidden();
     await page.getByRole("button", { name: "더보기" }).click();
-    await expect(page.getByRole("dialog", { name: "더보기" }).getByText(/제작자 모님/)).toBeVisible();
-    await page.keyboard.press("Escape");
-  } else await expect(page.getByText(/제작자 모님/)).toBeVisible();
+    await page.getByRole("dialog", { name: "더보기" }).getByRole("button", { name: "제작자 모님" }).click();
+  } else await page.getByRole("button", { name: "제작자 모님" }).click();
+  const about = page.getByRole("dialog", { name: "제작자 모님" });
+  await expect(about).toContainText("비공식 팬 도구");
+  await expect(about.getByRole("link", { name: "GitHub에서 DiceTree 보기" })).toHaveAttribute("href", "https://github.com/woo642778-art/dicetree");
+  await page.screenshot({ path: `test-results/qa-v54-about-${isMobile ? "mobile" : "desktop"}.png`, fullPage: false });
+  await about.getByRole("button", { name: "사이트 정보 닫기" }).click();
   await expect(page.locator('[data-testid^="v41-cost-"]').first()).toBeAttached();
   await expect(page.locator(".v3-tree-wrap")).not.toHaveCSS("background-image", "none");
   await expect(page.locator("body")).not.toContainText("파란 재화");
