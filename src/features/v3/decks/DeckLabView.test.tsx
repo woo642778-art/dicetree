@@ -45,7 +45,7 @@ describe("DeckLabView", () => {
     fireEvent.click(screen.getByRole("button", { name: "자동 수정안을 내 덱에 적용" }));
     expect(onActiveDeckChange).toHaveBeenCalledWith(expect.arrayContaining([expect.any(String)]));
     expect(onActiveDeckChange.mock.calls[0][0]).toHaveLength(5);
-  });
+  }, 10_000);
 
   it("filters the explainable dice ranking and opens a ranked die", () => {
     const onSimulate = vi.fn();

@@ -21,6 +21,7 @@ export interface TreeCanvasV3Props {
   query?: string;
   locale: "ko" | "en";
   onSelect: (nodeId: string) => void;
+  command?: { id: number; type: "zoomIn" | "zoomOut" | "fit" | "selected" };
 }
 
 const FAMILY_LABEL: Record<DiceFamilyV3, { ko: string; en: string }> = {
@@ -270,8 +271,13 @@ export function TreeCanvasV3({
   query = "",
   locale,
   onSelect,
+  command,
 }: TreeCanvasV3Props) {
   const { view, setView, resetView, consumePointerClick, bind } = usePanZoom(INITIAL_VIEW);
+  const [gestureHintVisible, setGestureHintVisible] = useState(() => {
+    try { return window.localStorage.getItem("dicetree:v53:tree-gesture-seen") !== "1"; }
+    catch { return true; }
+  });
   const mobileSafeRendering = useMobileSafeTreeRenderingV52();
   const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const bounds = useMemo(() => boundsOf(nodes), [nodes]);
@@ -341,6 +347,24 @@ export function TreeCanvasV3({
     ...current,
     scale: clampTreeScale(current.scale + delta),
   }));
+
+  useEffect(() => {
+    if (!command) return;
+    if (command.type === "fit") resetView();
+    if (command.type === "zoomIn") zoomBy(0.3);
+    if (command.type === "zoomOut") zoomBy(-0.25);
+    if (command.type === "selected" && selectedNodeId) {
+      const target = byId.get(selectedNodeId);
+      if (target) jumpToNodes([target], 2.8);
+    }
+  // command.id is the explicit event nonce; helper identities are stable enough for one-shot controls.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [command?.id]);
+
+  const dismissGestureHint = () => {
+    setGestureHintVisible(false);
+    try { window.localStorage.setItem("dicetree:v53:tree-gesture-seen", "1"); } catch { /* Optional preference. */ }
+  };
 
   const selectFromPointer = (nodeId: string) => {
     if (!consumePointerClick()) onSelect(nodeId);
@@ -429,6 +453,8 @@ export function TreeCanvasV3({
     </div>}
 
     {heatmapMode !== "none" && <div className="v47-heat-legend" data-testid="v47-heat-legend"><strong>{heatmapMode === "gold" ? (locale === "ko" ? "골드 1만당 효과" : "Effect per 10k Gold") : heatmapMode === "stone" ? (locale === "ko" ? "코어 1개당 효과" : "Effect per Core") : (locale === "ko" ? "경로 포함 ROI" : "Path-inclusive ROI")}</strong><span><i className="is-s">S</i><i className="is-a">A</i><i className="is-b">B</i><i className="is-c">C</i><i className="is-unknown">?</i></span><small>{heatmapMode === "path" ? (locale === "ko" ? "대미지 증가·골드·코어를 동시에 비교한 파레토 등급" : "Pareto grade across gain, Gold, and Core") : (locale === "ko" ? "검증된 기본 DPS 증가 후보 내 상대 등급" : "Relative grade among verified basic-DPS gains")}</small></div>}
+
+    {!selectedNodeId && gestureHintVisible && <button className="v53-tree-gesture-hint" type="button" onClick={dismissGestureHint}><strong>{locale === "ko" ? "한 손가락으로 이동 · 두 손가락으로 확대" : "Drag to move · pinch to zoom"}</strong><small>{locale === "ko" ? "한 번 누르면 안내를 닫습니다" : "Tap once to dismiss"}</small></button>}
 
     <div className="v3-tree-family-jumps" aria-label={locale === "ko" ? "계열로 이동" : "Jump to family"}>
       {FAMILY_ORDER.map((family) => <button key={family} type="button" onClick={() => jumpToNodes(nodes.filter((node) => node.family === family))}>

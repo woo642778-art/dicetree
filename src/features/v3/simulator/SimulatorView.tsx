@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { CanonicalGameData } from "../../../game-data/types";
 import { effectiveRankV3 } from "../../../planner-v3/reducer";
 import type { PlannerStateV3, SimulationScenarioState } from "../../../planner-v3/types";
@@ -32,6 +32,7 @@ function localized(data: CanonicalGameData, key: string | undefined, locale: "ko
 }
 
 export function SimulatorView({ data, state, locale, onScenarioChange }: SimulatorViewProps) {
+  const [diceListCollapsed, setDiceListCollapsed] = useState(false);
   const ranks = useMemo(() => effectiveRanks(state, data), [data, state]);
   const scenario = state.scenario;
   const conditions = useMemo(
@@ -59,6 +60,7 @@ export function SimulatorView({ data, state, locale, onScenarioChange }: Simulat
       mechanicConditionDefinitionsV3(diceId, data, ranks).map((condition) => [condition.key, condition.defaultValue]),
     );
     onScenarioChange({ diceId, conditionValues: defaults });
+    if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 1200px)").matches) setDiceListCollapsed(true);
   };
 
   const resetScenario = () => {
@@ -81,8 +83,9 @@ export function SimulatorView({ data, state, locale, onScenarioChange }: Simulat
       ? (locale === "ko" ? "현재 검증 범위에서는 트리와 고유 효과를 제외한 기본 공격 예상치입니다." : "An estimated basic-attack result excluding tree and special mechanics under current evidence.")
       : (locale === "ko" ? "고유 효과를 제외하고 검증 가능한 기본 공격 범위만 계산합니다." : "Uses the verifiable basic-attack scope and excludes special mechanics.");
 
-  return <main className="v3-simulator-view" data-testid="v3-simulator-view">
+  return <main className="v3-simulator-view" data-dice-list={diceListCollapsed ? "collapsed" : "open"} data-testid="v3-simulator-view">
     <aside className="v3-simulator-sidebar">
+      <button className="v53-simulator-sidebar-toggle" type="button" aria-expanded={!diceListCollapsed} onClick={() => setDiceListCollapsed((collapsed) => !collapsed)}>{diceListCollapsed ? (locale === "ko" ? "주사위 목록 열기" : "Open dice list") : (locale === "ko" ? "주사위 목록 접기" : "Collapse dice list")}</button>
       <DiceSelector data={data} locale={locale} selectedDiceId={scenario.diceId} onSelect={selectDice} />
     </aside>
 

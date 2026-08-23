@@ -19,6 +19,7 @@ import "./app/v49-rival-account.css";
 import "./app/v50-tier-maker.css";
 import "./app/v52-account-optimizer.css";
 import "./app/accessibility.css";
+import "./app/v53-responsive-ux.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
