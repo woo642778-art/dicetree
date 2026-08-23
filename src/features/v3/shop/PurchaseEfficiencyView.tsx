@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { OFFICIAL_APP_STORE_KR_URL, purchaseDisplayPrice, REFERENCE_KRW_PER_USD, type PurchaseGoal, type PurchaseProduct, type PurchaseProfile } from "../../../purchase-efficiency/products";
+import { OFFICIAL_APP_STORE_KR_URL, PURCHASE_PRODUCTS_V41, purchaseDisplayPrice, REFERENCE_KRW_PER_USD, type PurchaseGoal, type PurchaseProduct, type PurchaseProfile, type PurchaseRewards } from "../../../purchase-efficiency/products";
 import { findIntroOffer, recommendPurchasesV41 } from "../../../purchase-efficiency/recommend";
 import { optimizePurchaseBudgetV47 } from "../../../purchase-efficiency/optimizeBudget";
 
@@ -10,6 +10,7 @@ function rewardText(product: PurchaseProduct, locale: "ko" | "en") {
   if (rewards.core) values.push(`${locale === "ko" ? "코어" : "Core"} ${rewards.core.toLocaleString()}`);
   if (rewards.redesignItem) values.push(`${locale === "ko" ? "재설계 아이템" : "Redesign item"} ${rewards.redesignItem}`);
   if (rewards.diceSkin) values.push(`${locale === "ko" ? "주사위 스킨" : "Dice skin"} ${rewards.diceSkin}`);
+  if (rewards.tickets) values.push(`${locale === "ko" ? "티켓" : "Tickets"} ${rewards.tickets}`);
   if (rewards.other) values.push(`${locale === "ko" ? "추가 보상" : "Other reward"} ${rewards.other}`);
   return values;
 }
@@ -29,11 +30,23 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
   const [budgets, setBudgets] = useState({ ko: 30_000, en: 30 });
   const [currentCore, setCurrentCore] = useState(420);
   const [targetCore, setTargetCore] = useState(500);
-  const ranking = useMemo(() => recommendPurchasesV41(profile, goal), [goal, profile]);
-  const intro = findIntroOffer();
+  const [popupRewards, setPopupRewards] = useState<Record<string, PurchaseRewards>>({});
+  const effectiveProducts = useMemo(() => PURCHASE_PRODUCTS_V41.map((product) => {
+    const override = popupRewards[product.id];
+    const hasOverride = override && Object.values(override).some((value) => (value ?? 0) > 0);
+    return hasOverride ? { ...product, rewards: { ...product.rewards, ...override }, rewardEvidence: "verified" as const } : product;
+  }), [popupRewards]);
+  const optimizerProducts = useMemo(() => effectiveProducts.filter((product) => product.rewardEvidence !== "price-only"), [effectiveProducts]);
+  const storefrontProducts = useMemo(() => effectiveProducts.filter((product) => ["trigger", "popup", "pass", "ticket"].includes(product.category)), [effectiveProducts]);
+  const ranking = useMemo(() => recommendPurchasesV41(profile, goal, effectiveProducts), [effectiveProducts, goal, profile]);
+  const intro = findIntroOffer(effectiveProducts);
   const top = ranking[0];
-  const optimized = useMemo(() => optimizePurchaseBudgetV47({ locale, budget: budgets[locale], goal, currentCore, targetCore }), [budgets, currentCore, goal, locale, targetCore]);
+  const optimized = useMemo(() => optimizePurchaseBudgetV47({ locale, budget: budgets[locale], goal, currentCore, targetCore }, optimizerProducts), [budgets, currentCore, goal, locale, optimizerProducts, targetCore]);
   const money = (value: number) => locale === "ko" ? `₩${value.toLocaleString("ko-KR")}` : `$${value.toFixed(2)}`;
+  const updatePopupReward = (productId: string, field: keyof PurchaseRewards, value: number) => setPopupRewards((current) => ({
+    ...current,
+    [productId]: { ...current[productId], [field]: Math.max(0, Math.floor(value || 0)) },
+  }));
 
   return <main className="v41-shop" data-testid="v41-purchase-efficiency">
     <header className="v41-shop-hero">
@@ -66,6 +79,23 @@ export function PurchaseEfficiencyView({ locale }: { locale: "ko" | "en" }) {
         </select>
       </label>
       <p>{locale === "ko" ? "효율 수치는 게임 내부의 패키지 효율 지표이며 할인율이나 수익률을 뜻하지 않습니다." : "The value is an in-game package-efficiency metric, not a discount or financial return."}</p>
+    </section>
+
+    <section className="v50-popup-catalog" data-testid="v50-popup-catalog">
+      <header><div><small>{locale === "ko" ? "현재 App Store 노출 상품" : "CURRENT APP STORE LISTINGS"}</small><h2>{locale === "ko" ? "팝업·패스·티켓 상품" : "Popup, pass and ticket products"}</h2><p>{locale === "ko" ? "가격은 현재 목록을 반영했습니다. 보상 구성이 확인되지 않은 팝업은 게임에 보이는 수량을 입력해야 효율 계산에 포함됩니다." : "Current listed prices are included. Enter the visible in-game rewards for price-only popups before they enter the optimizer."}</p></div><a href={OFFICIAL_APP_STORE_KR_URL} target="_blank" rel="noreferrer">{locale === "ko" ? "가격 원문" : "Price source"}</a></header>
+      <div className="v50-popup-grid">
+        {storefrontProducts.map((product) => {
+          const configurable = PURCHASE_PRODUCTS_V41.find((candidate) => candidate.id === product.id)?.rewardEvidence === "price-only";
+          return <article key={product.id} data-testid={`v50-popup-${product.id}`}>
+            <div className="v50-popup-title"><span>{product.category.toUpperCase()}</span><h3>{product.nameKo}</h3><code>{product.id}</code></div>
+            <Price product={product} locale={locale} />
+            {configurable ? <fieldset><legend>{locale === "ko" ? "게임에 표시된 보상 입력" : "Enter visible in-game rewards"}</legend>
+              {(["gold", "core", "redesignItem", "other"] as const).map((field) => <label key={field}>{field === "gold" ? (locale === "ko" ? "골드" : "Gold") : field === "core" ? (locale === "ko" ? "코어" : "Core") : field === "redesignItem" ? (locale === "ko" ? "재설계" : "Redesign") : (locale === "ko" ? "기타 가치" : "Other value")}<input aria-label={`${product.id} ${field}`} type="number" min="0" value={popupRewards[product.id]?.[field] ?? 0} onChange={(event) => updatePopupReward(product.id, field, Number(event.target.value))} /></label>)}
+              <small>{locale === "ko" ? "보상 1개 이상 입력 시 예산 최적화에 자동 포함" : "Automatically included once any reward is entered"}</small>
+            </fieldset> : <div className="v41-rewards">{rewardText(product, locale).map((reward) => <span key={reward}>{reward}</span>)}</div>}
+          </article>;
+        })}
+      </div>
     </section>
 
     <section className="v47-budget-optimizer" data-testid="v47-budget-optimizer">

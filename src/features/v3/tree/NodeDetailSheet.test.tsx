@@ -89,7 +89,7 @@ describe("NodeDetailSheet", () => {
     expect(screen.getByTestId("v3-node-impact")).toHaveTextContent("부분 검증");
   });
 
-  it("shows and applies the complete prerequisite purchase route", () => {
+  it("allows a complete virtual prerequisite route while exposing the resource shortfall", () => {
     const applyRoute = vi.fn();
     const route = planNextRankRouteV3(data.tree, { root: 1 }, "child");
     render(<NodeDetailSheet
@@ -99,10 +99,11 @@ describe("NodeDetailSheet", () => {
     expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("모든 주사위 대미지Lv.1 → 2");
     expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("포식 강화Lv.0 → 1");
     expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("3,200 골드 · 3 다이스 코어");
-    expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("현재 남은 재화가 부족");
+    expect(screen.getByTestId("v4-route-plan")).toHaveTextContent("재화가 부족해도 가상 계획은 적용");
     expect(screen.getAllByRole("button", { name: "선행 노드 포함 가상 구매" })).toHaveLength(2);
-    for (const button of screen.getAllByRole("button", { name: "선행 노드 포함 가상 구매" })) expect(button).toBeDisabled();
-    expect(applyRoute).not.toHaveBeenCalled();
+    for (const button of screen.getAllByRole("button", { name: "선행 노드 포함 가상 구매" })) expect(button).toBeEnabled();
+    fireEvent.click(screen.getAllByRole("button", { name: "선행 노드 포함 가상 구매" })[0]);
+    expect(applyRoute).toHaveBeenCalledWith({ root: 2, child: 1 });
   });
 
   it("buys a target and every prerequisite as one affordable transaction", () => {

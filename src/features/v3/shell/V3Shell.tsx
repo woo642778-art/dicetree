@@ -18,7 +18,7 @@ import type { SimulationInputV3 } from "../../../simulation/engine/types";
 import { evaluateNodeV3 } from "../../../simulation/marginal/evaluateNode";
 import { decodeV3FromHash, encodeV3 } from "../../../share/codecV3";
 import { decodeSharedResultFromHashV47, encodeSharedResultV47, type SharedResultV47 } from "../../../share/resultCodecV47";
-import type { StoredProfileV3 } from "../../../storage/profileStorageV3";
+import { findProfileByNameV3, saveProfileV3, type StoredProfileV3 } from "../../../storage/profileStorageV3";
 import { CompareWorkspace } from "../compare/CompareWorkspace";
 import { DeckLabView } from "../decks/DeckLabView";
 import { PurchaseEfficiencyView } from "../shop/PurchaseEfficiencyView";
@@ -174,6 +174,18 @@ export function V3Shell() {
   useEffect(() => {
     try { window.localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(currentTwin)); } catch { /* Storage can be unavailable in private mode. */ }
   }, [currentTwin]);
+  useEffect(() => {
+    if (currentTwin.identity?.source !== "local-profile") return;
+    const existing = findProfileByNameV3(currentTwin.identity.nickname);
+    saveProfileV3({
+      name: currentTwin.identity.nickname,
+      state,
+      activeDeckIds,
+      deckGoal,
+      spendProfile,
+      digitalTwin: currentTwin,
+    }, existing?.id);
+  }, [activeDeckIds, currentTwin, deckGoal, spendProfile, state]);
   const selectedRoute = useMemo(() => {
     if (!selectedNodeId) return undefined;
     try { return planNextRankRouteV3(gameDataV3.tree, currentRanks, selectedNodeId); } catch { return undefined; }
@@ -244,6 +256,24 @@ export function V3Shell() {
     setDigitalTwin(digitalTwinFromProfileV48(profile));
     setProfileOpen(false);
     setShareNotice(locale === "ko" ? `${profile.name} 프로필을 불러왔습니다.` : `Loaded ${profile.name}.`);
+  };
+
+  const openLocalAccount = (nickname: string): "loaded" | "created" => {
+    const existing = findProfileByNameV3(nickname);
+    if (existing) {
+      loadProfile(existing);
+      return "loaded";
+    }
+    const now = new Date().toISOString();
+    const twin: UserDigitalTwinV48 = {
+      ...currentTwin,
+      identity: { nickname, source: "local-profile", importedAt: now },
+      decks: currentTwin.decks.map((deck) => deck.id === currentTwin.primaryDeckId ? { ...deck, name: nickname } : deck),
+    };
+    setDigitalTwin(twin);
+    saveProfileV3({ name: nickname, state, activeDeckIds, deckGoal, spendProfile, digitalTwin: twin });
+    setShareNotice(locale === "ko" ? `${nickname} 계정을 현재 상태로 만들고 이 브라우저에 저장했습니다.` : `Created ${nickname} from the current state and saved it in this browser.`);
+    return "created";
   };
 
   const importObservedAccount = (account: ObservedAccountV49) => {
@@ -321,7 +351,7 @@ export function V3Shell() {
     <section className="v3-resource-rail" aria-label={locale === "ko" ? "다이스 트리 재화" : "Dice Tree resources"}>
       <div className="v3-resource-item gold"><span className="v3-resource-icon">●</span><label>{locale === "ko" ? "남은 골드" : "Remaining Gold"}<input aria-label={locale === "ko" ? "남은 골드" : "Remaining Gold"} type="number" min="0" value={Math.max(0, resources.remaining.gold)} onChange={(event) => dispatch({ type: "setInventory", inventory: { gold: Math.max(0, Number(event.target.value) || 0) + spent.gold } })} /></label><small>{locale === "ko" ? "사용" : "Spent"} {spent.gold.toLocaleString()}</small></div>
       <div className="v3-resource-item stone"><span className="v3-resource-icon">◆</span><label>{locale === "ko" ? "남은 다이스 코어" : "Remaining Dice Core"}<input aria-label={locale === "ko" ? "남은 다이스 코어" : "Remaining Dice Core"} type="number" min="0" value={Math.max(0, resources.remaining.stone)} onChange={(event) => dispatch({ type: "setInventory", inventory: { stone: Math.max(0, Number(event.target.value) || 0) + spent.stone } })} /></label><small>{locale === "ko" ? "사용" : "Spent"} {spent.stone.toLocaleString()}</small></div>
-      <div className={`v3-resource-status ${resources.affordable ? "is-ok" : "is-short"}`}><strong>{resources.affordable ? (locale === "ko" ? "투자 가능" : "Affordable") : (locale === "ko" ? "재화 부족" : "Shortfall")}</strong><span>{locale === "ko" ? "가상 투자 비용" : "Simulated cost"}: {spent.gold.toLocaleString()} G · {spent.stone.toLocaleString()} C</span></div>
+      <div className={`v3-resource-status ${resources.affordable ? "is-ok" : "is-short"}`}><strong>{resources.affordable ? (locale === "ko" ? "투자 가능" : "Affordable") : (locale === "ko" ? "재화 부족" : "Shortfall")}</strong><span>{locale === "ko" ? "가상 투자 비용" : "Simulated cost"}: {spent.gold.toLocaleString()} G · {spent.stone.toLocaleString()} C</span>{!resources.affordable && <small>{locale === "ko" ? "추가 필요" : "Need"} {resources.shortage.gold.toLocaleString()} G · {resources.shortage.stone.toLocaleString()} C</small>}</div>
       <div className="v3-history-actions"><button type="button" onClick={() => dispatch({ type: "clearSimulatedRanks" })} disabled={!Object.keys(state.simulatedRanks).length}>{locale === "ko" ? "전체 계획 취소" : "Clear plan"}</button><button className="v49-tree-reset-open" type="button" onClick={() => setTreeResetOpen(true)} disabled={!hasResettableTreeProgress}>{locale === "ko" ? "트리 전체 초기화" : "Reset full tree"}</button><button type="button" onClick={() => dispatch({ type: "undo" })} disabled={!history.past.length}>{locale === "ko" ? "실행 취소" : "Undo"}</button><button type="button" onClick={() => dispatch({ type: "redo" })} disabled={!history.future.length}>{locale === "ko" ? "다시 실행" : "Redo"}</button></div>
     </section>
 
@@ -341,6 +371,7 @@ export function V3Shell() {
       onTwinChange={setDigitalTwin}
       onApplyRanks={(ranks) => dispatch({ type: "applyRoute", ranks })}
       onDeckChange={setActiveDeckIds}
+      onLocalAccount={openLocalAccount}
       onObservedAccountImport={importObservedAccount}
       onFullAccountImport={importFullAccount}
       onOpenTree={() => setTab("tree")}

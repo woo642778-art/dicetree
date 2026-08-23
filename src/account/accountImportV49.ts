@@ -5,7 +5,7 @@ import { starterOwnedRanksV3 } from "../planner-v3/starterRanks";
 import type { OwnedDiceV48 } from "./digitalTwinV48";
 import { CO_OP_RANKING_SNAPSHOT, CO_OP_RANKING_SNAPSHOT_DATE } from "../deck-lab/coOpRankingSnapshot";
 
-export type ImportedAccountSourceV49 = "verified-import" | "observed-ranking";
+export type ImportedAccountSourceV49 = "verified-import" | "observed-ranking" | "local-profile";
 
 export interface AccountIdentityV49 {
   nickname: string;
