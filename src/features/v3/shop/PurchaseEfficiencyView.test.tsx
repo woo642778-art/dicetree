@@ -32,4 +32,38 @@ describe("PurchaseEfficiencyView currency locale", () => {
     expect(screen.getByTestId("v47-budget-optimizer")).toHaveTextContent("VIP 핫딜");
     expect(screen.getByLabelText("VIP_HOTDEAL core")).toHaveValue(100);
   });
+
+  it("combines farming time and cash while requiring both resource targets", () => {
+    render(<PurchaseEfficiencyView locale="ko" />);
+    fireEvent.change(screen.getByLabelText("현재 골드"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("목표 골드"), { target: { value: "1000" } });
+    fireEvent.change(screen.getByLabelText("현재 다이스 코어"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("목표 다이스 코어"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("하루 획득 골드"), { target: { value: "100" } });
+    fireEvent.change(screen.getByLabelText("하루 획득 코어"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("투자 가능 일수"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("최대 현금 예산"), { target: { value: "10000" } });
+    fireEvent.change(screen.getByLabelText("최적화 기준"), { target: { value: "min-spend" } });
+
+    const planner = screen.getByTestId("v51-time-cash-planner");
+    expect(planner).toHaveTextContent("₩0 + 10일");
+    expect(planner).toHaveTextContent("결제하지 않고 파밍으로 진행");
+
+    fireEvent.change(screen.getByLabelText("투자 가능 일수"), { target: { value: "5" } });
+    expect(planner).toHaveTextContent("₩3,300 + 2일");
+    expect(planner).toHaveTextContent("첫 구매 패키지");
+  });
+
+  it("shows exact Gold and Core shortfalls when neither play nor budget can finish the goal", () => {
+    render(<PurchaseEfficiencyView locale="ko" />);
+    fireEvent.change(screen.getByLabelText("현재 골드"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("목표 골드"), { target: { value: "1000" } });
+    fireEvent.change(screen.getByLabelText("현재 다이스 코어"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("목표 다이스 코어"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("하루 획득 골드"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("하루 획득 코어"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("최대 현금 예산"), { target: { value: "0" } });
+
+    expect(screen.getByTestId("v51-time-cash-planner")).toHaveTextContent("골드 1,000 · 코어 10 추가 필요");
+  });
 });
