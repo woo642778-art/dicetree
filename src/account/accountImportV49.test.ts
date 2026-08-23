@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { gameDataV3 } from "../game-data/load";
 import type { PlannerStateV3 } from "../planner-v3/types";
 import { lookupObservedAccountV49, parseFullAccountSnapshotV49 } from "./accountImportV49";
+import { starterOwnedRanksV3 } from "../planner-v3/starterRanks";
 
 const baseState: PlannerStateV3 = {
   schemaVersion: 3,
@@ -20,6 +21,10 @@ describe("account import V4.9", () => {
     expect(result?.pid).toBeUndefined();
   });
 
+  it("looks up every captured top-105 rank even when the nickname was not transcribed", () => {
+    expect(lookupObservedAccountV49("#8")).toMatchObject({ rank: 8, completeness: "rank-and-deck-only" });
+  });
+
   it("imports a valid full snapshot into planner, roster and identity state", () => {
     const result = parseFullAccountSnapshotV49(JSON.stringify({
       schemaVersion: 1,
@@ -36,7 +41,7 @@ describe("account import V4.9", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.account.identity).toMatchObject({ nickname: "모님", pid: "RD2-1234", source: "verified-import" });
-    expect(result.account.planner.ownedRanks).toEqual({ "1001": 1 });
+    expect(result.account.planner.ownedRanks).toEqual(starterOwnedRanksV3(gameDataV3.tree));
     expect(result.account.planner.simulatedRanks).toEqual({});
     expect(result.account.planner.inventory).toEqual({ gold: 300000, stone: 1200 });
     expect(result.account.roster.predator).toEqual({ owned: true, level: 8 });

@@ -47,4 +47,6 @@ export interface PlannerNodeLimitsV3 {
   validNodeIds: ReadonlySet<string>;
   maxRanks: ReadonlyMap<string, number>;
   prerequisites?: ReadonlyMap<string, readonly { nodeId: string; minRank: number }[]>;
+  /** Ranks granted by the game before the player spends any tree currency. */
+  minimumOwnedRanks?: ReadonlyMap<string, number>;
 }

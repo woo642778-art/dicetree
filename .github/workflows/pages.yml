@@ -27,7 +27,7 @@ jobs:
       - name: Validate static IPA extractor
         run: python3 -m unittest discover tools/rd2-extract/tests -p 'test_*.py'
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Unit and component tests
         run: npm test
       - name: Production build

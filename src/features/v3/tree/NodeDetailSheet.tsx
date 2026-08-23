@@ -150,7 +150,8 @@ export function NodeDetailSheet({
   const canDecrement = rank > ownedRank;
   const canIncrementOwned = ownedRank < node.maxRank
     && prerequisitesSatisfiedV3(node, state.ownedRanks, {});
-  const canDecrementOwned = ownedRank > 0 && !data.tree.some((candidate) => (
+  const minimumOwnedRank = node.kind === "dice" && node.prerequisites.length === 0 ? 1 : 0;
+  const canDecrementOwned = ownedRank > minimumOwnedRank && !data.tree.some((candidate) => (
     (state.ownedRanks[candidate.id] ?? 0) > 0
     && candidate.prerequisites.some((prerequisite) => (
       prerequisite.nodeId === node.id && prerequisite.minRank > ownedRank - 1

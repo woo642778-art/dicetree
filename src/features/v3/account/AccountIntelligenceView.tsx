@@ -86,7 +86,7 @@ export function AccountIntelligenceView({ data, locale, state, input, deckIds, t
     </nav>
 
     {section === "overview" && <div className="v48-overview-grid">
-      <AccountImportPanelV49 data={data} locale={locale} state={state} onObservedImport={onObservedAccountImport} onFullImport={onFullAccountImport} />
+      <AccountImportPanelV49 data={data} locale={locale} state={state} deckIds={deckIds} onObservedImport={onObservedAccountImport} onFullImport={onFullAccountImport} />
       <section className="v48-command-card is-primary">
         <header><small>{locale === "ko" ? "지금 할 일" : "NEXT DECISION"}</small><Confidence value={topAction?.confidence ?? "unavailable"} locale={locale} /></header>
         <h2>{topAction?.title[locale] ?? (locale === "ko" ? "계정 데이터를 더 입력하세요" : "Add more account data")}</h2>

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo } from "react";
-import type { DiceFamilyV3, DiceTreeNodeV3 } from "../../../game-data/types";
+import type { CanonicalGameData, DiceFamilyV3, DiceTreeNodeV3 } from "../../../game-data/types";
 import { localizeGameKey } from "../../../game-data/load";
+import { formatGameText } from "../../../game-data/formatGameText";
 import { nextRankCost } from "../../../planner-v3/costs";
-import { usePanZoom } from "../../tree/usePanZoom";
+import { clampTreeScale, MAX_TREE_SCALE, usePanZoom } from "../../tree/usePanZoom";
 import { TreeNodeV3 } from "./TreeNodeV3";
 import type { TreeHeatmapEntryV3, TreeHeatmapModeV3 } from "../../../optimizer/treeHeatmapV3";
 
 export interface TreeCanvasV3Props {
+  data: CanonicalGameData;
   nodes: readonly DiceTreeNodeV3[];
   ownedRanks: Record<string, number>;
   simulatedRanks: Record<string, number>;
@@ -161,7 +163,55 @@ export function normalizeTreeSearchText(value: string) {
     .replace(/[\s·_.:/+%()-]+/g, "");
 }
 
+const SEARCH_SYNONYM_GROUPS = [
+  ["공격속도", "공속", "attack speed", "attack interval"],
+  ["공격력", "대미지", "데미지", "damage", "attack"],
+  ["치명타", "크리티컬", "critical", "crit"],
+  ["보스", "boss"],
+  ["골드", "gold"],
+  ["다이스코어", "코어", "stone", "dice core"],
+  ["소환", "sp", "summon"],
+  ["합성", "merge"],
+  ["감속", "slow"],
+  ["기절", "stun"],
+] as const;
+
+function linkedValues(data: CanonicalGameData, node: DiceTreeNodeV3): Array<number | string | null | undefined> {
+  if (node.passiveOrRuneRef?.startsWith("passive:")) {
+    const passive = data.passives.find((entry) => entry.id === node.passiveOrRuneRef?.slice(8));
+    return passive ? [passive.baseValue, passive.valuePerRank] : [];
+  }
+  if (node.passiveOrRuneRef?.startsWith("rune:")) {
+    const rune = data.runes.find((entry) => entry.id === node.passiveOrRuneRef?.slice(5));
+    return rune ? Object.values(rune.values).map((value) => typeof value === "boolean" ? String(value) : value) : [];
+  }
+  return [];
+}
+
+export function treeNodeSearchTextV3(data: CanonicalGameData, node: DiceTreeNodeV3, locale: "ko" | "en") {
+  const name = localizeGameKey(node.nameKey ?? undefined, locale, node.id);
+  const rawDescription = localizeGameKey(node.descriptionKey ?? undefined, locale, "");
+  const linked = node.passiveOrRuneRef?.startsWith("passive:")
+    ? data.passives.find((entry) => entry.id === node.passiveOrRuneRef?.slice(8))
+    : node.passiveOrRuneRef?.startsWith("rune:")
+      ? data.runes.find((entry) => entry.id === node.passiveOrRuneRef?.slice(5))
+      : undefined;
+  const linkedName = linked?.nameKey ? localizeGameKey(linked.nameKey, locale, "") : "";
+  const linkedDescription = linked?.descriptionKey ? localizeGameKey(linked.descriptionKey, locale, "") : "";
+  const formatted = formatGameText(`${rawDescription} ${linkedDescription}`, locale, linkedValues(data, node));
+  const semanticFields = linked && "values" in linked
+    ? `${linked.kind ?? ""} ${linked.grade ?? ""} ${Object.keys(linked.values).join(" ")}`
+    : linked ? `${linked.scope} ${linked.valueType ?? ""} ${linked.statKey ?? ""}` : "";
+  const base = [name, rawDescription, formatted, linkedName, semanticFields, node.id, node.targetId, node.passiveOrRuneRef, node.kind, node.family].filter(Boolean).join(" ");
+  const normalizedBase = normalizeTreeSearchText(base);
+  const synonyms = SEARCH_SYNONYM_GROUPS
+    .filter((group) => group.some((term) => normalizedBase.includes(normalizeTreeSearchText(term))))
+    .flat();
+  return normalizeTreeSearchText(`${base} ${synonyms.join(" ")}`);
+}
+
 export function TreeCanvasV3({
+  data,
   nodes,
   ownedRanks,
   simulatedRanks,
@@ -194,24 +244,14 @@ export function TreeCanvasV3({
     const matches: DiceTreeNodeV3[] = [];
     for (const node of nodes) {
       const familyMatches = familyFilter === "all" || node.family === "core" || node.family === familyFilter;
-      const name = localizeGameKey(node.nameKey ?? undefined, locale, node.id);
-      const description = localizeGameKey(node.descriptionKey ?? undefined, locale, "");
       const family = node.family === "core" ? "core" : `${node.family} ${FAMILY_LABEL[node.family][locale]}`;
-      const searchableText = normalizeTreeSearchText([
-        name,
-        description,
-        node.id,
-        node.targetId,
-        node.passiveOrRuneRef,
-        node.kind,
-        family,
-      ].filter(Boolean).join(" "));
+      const searchableText = `${treeNodeSearchTextV3(data, node, locale)}${normalizeTreeSearchText(family)}`;
       const queryMatches = !normalizedQuery
         || searchableText.includes(normalizedQuery);
       if (familyMatches && queryMatches) matches.push(node);
     }
     return matches;
-  }, [familyFilter, locale, nodes, normalizedQuery]);
+  }, [data, familyFilter, locale, nodes, normalizedQuery]);
 
   const visibleIds = useMemo(() => new Set(matchingNodes.map((node) => node.id)), [matchingNodes]);
 
@@ -231,7 +271,7 @@ export function TreeCanvasV3({
 
   useEffect(() => {
     if (!normalizedQuery || matchingNodes.length === 0) return;
-    jumpToNodes(matchingNodes, 2.5);
+    jumpToNodes(matchingNodes, 2.8);
   }, [jumpToNodes, matchingNodes, normalizedQuery]);
 
   const selectedDiceNodes = selectedDiceId
@@ -240,7 +280,7 @@ export function TreeCanvasV3({
 
   const zoomBy = (delta: number) => setView((current) => ({
     ...current,
-    scale: Math.min(2.5, Math.max(0.35, current.scale + delta)),
+    scale: clampTreeScale(current.scale + delta),
   }));
 
   const selectFromPointer = (nodeId: string) => {
@@ -251,6 +291,7 @@ export function TreeCanvasV3({
     <svg
       className="v3-tree-canvas"
       data-testid="v3-tree-canvas"
+      data-scale={view.scale.toFixed(2)}
       viewBox={viewBox}
       role="tree"
       aria-label={locale === "ko" ? "랜덤다이스2 인게임 다이스 트리" : "Random Dice 2 in-game Dice Tree"}
@@ -265,6 +306,14 @@ export function TreeCanvasV3({
           <stop offset="1" stopColor="#e7b34e" />
         </linearGradient>
       </defs>
+      <rect
+        className="v3-tree-background"
+        x={bounds.minX - margin}
+        y={bounds.minY - margin}
+        width={bounds.width + margin * 2}
+        height={bounds.height + margin * 2}
+        aria-hidden="true"
+      />
       <g data-testid="v3-tree-transform" transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
         {nodes.flatMap((node) => node.prerequisites.map((prerequisite) => {
           const parent = byId.get(prerequisite.nodeId);
@@ -332,7 +381,7 @@ export function TreeCanvasV3({
     <div className="v3-tree-zoom-controls" aria-label={locale === "ko" ? "트리 보기 조절" : "Tree view controls"}>
       <button type="button" aria-label="Zoom out" onClick={() => zoomBy(-0.15)}>−</button>
       <button type="button" data-testid="v3-fit-tree" onClick={resetView}>{locale === "ko" ? "전체" : "Fit"}</button>
-      <button type="button" aria-label="Zoom in" onClick={() => zoomBy(0.15)}>+</button>
+      <button type="button" aria-label="Zoom in" onClick={() => zoomBy(0.2)} disabled={view.scale >= MAX_TREE_SCALE}>+</button>
     </div>
   </div>;
 }

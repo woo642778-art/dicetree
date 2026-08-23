@@ -10,8 +10,27 @@ export interface OfficialPatchRecordV47 {
 export const RANDOM_DICE_2_APP_STORE_URL = "https://apps.apple.com/kr/app/%EB%9E%9C%EB%8D%A4-%EB%8B%A4%EC%9D%B4%EC%8A%A4-2/id6748432502?platform=ipad";
 export const RANDOM_DICE_2_GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.percent.aos.randomdice2";
 
-/** Official store release notes checked on 2026-08-16. */
+/** Official App Store version history checked on 2026-08-22. */
 export const OFFICIAL_PATCH_HISTORY_V47: readonly OfficialPatchRecordV47[] = [
+  {
+    version: "1.0.3",
+    releasedOn: "2026-08-21",
+    title: { ko: "협동 모드·전술 효과 개선", en: "Co-op mode and tactical-effect improvements" },
+    notes: {
+      ko: ["협동 모드와 전술 효과 개선", "튜토리얼 개선 및 신고 기능 추가", "기타 개선과 버그 수정"],
+      en: ["Co-op mode and tactical-effect improvements", "Tutorial improvements and report feature added", "Other improvements and bug fixes"],
+    },
+    specificity: "specific",
+    sources: [{ label: "Korean App Store", url: RANDOM_DICE_2_APP_STORE_URL, checkedOn: "2026-08-22" }],
+  },
+  {
+    version: "1.0.2",
+    releasedOn: "2026-08-20",
+    title: { ko: "오류 수정 및 최적화", en: "Error fixes and optimization" },
+    notes: { ko: ["공식 기록에는 개별 밸런스 수치가 공개되지 않았습니다."], en: ["No individual balance values are published in the official record."] },
+    specificity: "generic",
+    sources: [{ label: "Korean App Store", url: RANDOM_DICE_2_APP_STORE_URL, checkedOn: "2026-08-22" }],
+  },
   {
     version: "1.0.1",
     releasedOn: "2026-08-14",
@@ -19,8 +38,8 @@ export const OFFICIAL_PATCH_HISTORY_V47: readonly OfficialPatchRecordV47[] = [
     notes: { ko: ["공식 스토어 설명에는 개별 주사위나 트리 수치 변경이 명시되지 않았습니다."], en: ["The official store note does not identify individual dice or tree balance changes."] },
     specificity: "generic",
     sources: [
-      { label: "Korean App Store", url: RANDOM_DICE_2_APP_STORE_URL, checkedOn: "2026-08-16" },
-      { label: "Google Play", url: RANDOM_DICE_2_GOOGLE_PLAY_URL, checkedOn: "2026-08-16" },
+      { label: "Korean App Store", url: RANDOM_DICE_2_APP_STORE_URL, checkedOn: "2026-08-22" },
+      { label: "Google Play", url: RANDOM_DICE_2_GOOGLE_PLAY_URL, checkedOn: "2026-08-22" },
     ],
   },
   {
