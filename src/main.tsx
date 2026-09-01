@@ -20,6 +20,7 @@ import "./app/v50-tier-maker.css";
 import "./app/v52-account-optimizer.css";
 import "./app/accessibility.css";
 import "./app/v53-responsive-ux.css";
+import "./app/polish-v55.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
