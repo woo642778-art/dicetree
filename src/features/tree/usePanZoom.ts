@@ -111,6 +111,8 @@ export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 })
   const onPointerMove = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
     if (!pointers.current.has(event.pointerId)) return;
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const currentView = () => queuedView.current ?? view;
+
     if (pointers.current.size === 1 && lastPan.current) {
       const dx = event.clientX - lastPan.current.x;
       const dy = event.clientY - lastPan.current.y;
@@ -123,7 +125,8 @@ export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 })
       }
       lastPan.current = { x: event.clientX, y: event.clientY };
       const delta = screenDeltaToSvgUnits({ x: dx, y: dy }, viewportMetrics(event.currentTarget));
-      queueView({ ...view, x: view.x + delta.x, y: view.y + delta.y });
+      const base = currentView();
+      queueView({ ...base, x: base.x + delta.x, y: base.y + delta.y });
     } else if (pointers.current.size === 2) {
       if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -131,14 +134,15 @@ export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 })
       const [a, b] = [...pointers.current.values()];
       const distance = Math.hypot(a.x - b.x, a.y - b.y);
       const midpoint = clientPointToSvg(event.currentTarget, (a.x + b.x) / 2, (a.y + b.y) / 2);
-      if (lastPinch.current && lastPinch.current.distance > 0) {
-        const ratio = distance / lastPinch.current.distance;
-        const current = queuedView.current ?? view;
-        const nextScale = clampTreeScale(current.scale * ratio);
-        const appliedRatio = nextScale / current.scale;
+      const previous = lastPinch.current;
+      if (previous && previous.distance > 0) {
+        const ratio = distance / previous.distance;
+        const base = currentView();
+        const nextScale = clampTreeScale(base.scale * ratio);
+        const appliedRatio = nextScale / base.scale;
         queueView({
-          x: midpoint.x - (lastPinch.current.midpoint.x - current.x) * appliedRatio,
-          y: midpoint.y - (lastPinch.current.midpoint.y - current.y) * appliedRatio,
+          x: midpoint.x - (previous.midpoint.x - base.x) * appliedRatio,
+          y: midpoint.y - (previous.midpoint.y - base.y) * appliedRatio,
           scale: nextScale,
         });
       }
