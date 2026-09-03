@@ -8,6 +8,7 @@ afterEach(cleanup);
 describe("V3 planner shell", () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem("dicetree:v55:creator-welcome-seen", "1");
     window.history.replaceState(null, "", "/dicetree/");
   });
 
@@ -57,6 +58,28 @@ describe("V3 planner shell", () => {
     expect(screen.getByRole("link", { name: "GitHub에서 DiceTree 보기" })).toHaveAttribute("href", "https://github.com/woo642778-art/dicetree");
     fireEvent.click(screen.getByRole("button", { name: "사이트 정보 닫기" }));
     expect(screen.queryByRole("dialog", { name: "제작자 모님" })).not.toBeInTheDocument();
+  });
+
+  it("shows the creator introduction once on first visit and remembers dismissal", () => {
+    localStorage.removeItem("dicetree:v55:creator-welcome-seen");
+    render(<I18nProvider><App /></I18nProvider>);
+    expect(screen.getByRole("dialog", { name: "제작자 모님" })).toHaveTextContent("WELCOME TO DICETREE");
+    fireEvent.click(screen.getByRole("button", { name: "사이트 정보 닫기" }));
+    expect(localStorage.getItem("dicetree:v55:creator-welcome-seen")).toBe("1");
+    cleanup();
+    render(<I18nProvider><App /></I18nProvider>);
+    expect(screen.queryByRole("dialog", { name: "제작자 모님" })).not.toBeInTheDocument();
+  });
+
+  it("edits post-plan resources with formatted quick amounts", () => {
+    render(<I18nProvider><App /></I18nProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "재화 편집" }));
+    fireEvent.click(screen.getByRole("button", { name: /^\+10,000$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^\+50$/ }));
+    expect(screen.getByRole("spinbutton", { name: "계획 후 남은 골드" })).toHaveValue(10000);
+    expect(screen.getByRole("spinbutton", { name: "계획 후 남은 다이스 코어" })).toHaveValue(50);
+    expect(screen.getByText("10,000 G")).toBeInTheDocument();
+    expect(screen.getByText("50 C")).toBeInTheDocument();
   });
 
   it("opens account intelligence, encyclopedia, meta clusters, and universal search", () => {

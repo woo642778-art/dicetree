@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CanonicalGameData, DiceFamilyV3, DiceTreeNodeV3 } from "../../../game-data/types";
 import { localizeGameKey } from "../../../game-data/load";
 import { formatGameText } from "../../../game-data/formatGameText";
 import { nextRankCost } from "../../../planner-v3/costs";
-import { clampTreeScale, MAX_TREE_SCALE, usePanZoom } from "../../tree/usePanZoom";
+import { bindNativeTreeGestureGuardV55, clampTreeScale, MAX_TREE_SCALE, usePanZoom } from "../../tree/usePanZoom";
 import { TreeNodeV3 } from "./TreeNodeV3";
 import type { TreeHeatmapEntryV3, TreeHeatmapModeV3 } from "../../../optimizer/treeHeatmapV3";
 
@@ -274,11 +274,17 @@ export function TreeCanvasV3({
   command,
 }: TreeCanvasV3Props) {
   const { view, setView, resetView, consumePointerClick, bind } = usePanZoom(INITIAL_VIEW);
+  const canvasRef = useRef<SVGSVGElement>(null);
   const [gestureHintVisible, setGestureHintVisible] = useState(() => {
     try { return window.localStorage.getItem("dicetree:v53:tree-gesture-seen") !== "1"; }
     catch { return true; }
   });
   const mobileSafeRendering = useMobileSafeTreeRenderingV52();
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    return bindNativeTreeGestureGuardV55(canvas);
+  }, []);
   const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const bounds = useMemo(() => boundsOf(nodes), [nodes]);
   const margin = Math.max(260, Math.max(bounds.width, bounds.height) * 0.05);
@@ -308,7 +314,7 @@ export function TreeCanvasV3({
 
   const visibleIds = useMemo(() => new Set(matchingNodes.map((node) => node.id)), [matchingNodes]);
   const renderIds = useMemo(() => {
-    if (!mobileSafeRendering || view.scale < 1.45) return new Set(nodes.map((node) => node.id));
+    if (!mobileSafeRendering || view.scale < 1.15) return new Set(nodes.map((node) => node.id));
     const keepIds = new Set<string>([...recommendedIds, ...visibleIds]);
     if (!normalizedQuery) keepIds.clear();
     if (selectedNodeId) keepIds.add(selectedNodeId);
@@ -372,6 +378,7 @@ export function TreeCanvasV3({
 
   return <div className="v3-tree-wrap">
     <svg
+      ref={canvasRef}
       className="v3-tree-canvas"
       data-testid="v3-tree-canvas"
       data-scale={view.scale.toFixed(2)}
@@ -383,9 +390,9 @@ export function TreeCanvasV3({
       {...bind}
     >
       <defs>
-        <filter id="v3-node-shadow" x="-70%" y="-70%" width="240%" height="240%">
+        {!mobileSafeRendering && <filter id="v3-node-shadow" x="-70%" y="-70%" width="240%" height="240%">
           <feDropShadow dx="0" dy="16" stdDeviation="18" floodColor="#302855" floodOpacity=".15" />
-        </filter>
+        </filter>}
         <linearGradient id="v3-recommend-edge" x1="0" x2="1">
           <stop offset="0" stopColor="#765ce9" />
           <stop offset="1" stopColor="#e7b34e" />

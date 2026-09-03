@@ -1,0 +1,41 @@
+name: DiceTree data correction or ranking snapshot
+description: Submit evidence for a data correction, patch note, or ranking snapshot.
+title: "[Data] "
+labels: ["data-review"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Submission type
+      options:
+        - Data correction
+        - Ranking snapshot
+        - Patch note
+    validations:
+      required: true
+  - type: input
+    id: observed_on
+    attributes:
+      label: Observed date
+      placeholder: YYYY-MM-DD
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source URL
+      description: Use an official or public source when available.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and observed difference
+      description: Explain the observation and attach screenshots when available.
+    validations:
+      required: true
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: Verification
+      options:
+        - label: I understand this is community evidence and must be verified before it changes calculation data.
+          required: true

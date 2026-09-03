@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { deleteProfileV3, findProfileByNameV3, listProfilesV3, saveProfileV3 } from "./profileStorageV3";
+import { createProfileBackupV55, deleteProfileV3, findProfileByNameV3, importProfileBackupV55, listProfilesV3, saveProfileV3 } from "./profileStorageV3";
 
 const state = {
   schemaVersion: 3 as const, dataVersion: "test", ownedRanks: {}, simulatedRanks: {}, inventory: { gold: 1, stone: 2 },
@@ -26,5 +26,22 @@ describe("profileStorageV3", () => {
     saveProfileV3({ name: "  Ａsmo  ", state, activeDeckIds: ["plain"], deckGoal: "dealer", spendProfile: "light" });
     expect(findProfileByNameV3("asmo")?.name).toBe("Ａsmo");
     expect(findProfileByNameV3("unknown")).toBeUndefined();
+  });
+
+  it("exports and restores portable profiles without replacing a newer local copy", () => {
+    saveProfileV3({ name: "본계정", state, activeDeckIds: ["plain"], deckGoal: "dealer", spendProfile: "light" }, "main");
+    const backup = createProfileBackupV55();
+    localStorage.clear();
+    const restored = importProfileBackupV55(JSON.stringify(backup));
+    expect(restored.imported).toBe(1);
+    expect(listProfilesV3()[0].name).toBe("본계정");
+
+    saveProfileV3({ name: "더 최신 본계정", state, activeDeckIds: ["plain"], deckGoal: "dealer", spendProfile: "light" }, "main");
+    expect(importProfileBackupV55(JSON.stringify(backup)).skipped).toBe(1);
+    expect(listProfilesV3()[0].name).toBe("더 최신 본계정");
+  });
+
+  it("rejects malformed backups", () => {
+    expect(() => importProfileBackupV55("{bad json")).toThrow("INVALID_PROFILE_BACKUP");
   });
 });

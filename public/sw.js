@@ -1,8 +1,12 @@
-const CACHE = "dicetree-v48-shell";
+const CACHE = "dicetree-v55-shell";
 const SHELL = ["/dicetree/", "/dicetree/manifest.webmanifest", "/dicetree/app-icon.svg"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
