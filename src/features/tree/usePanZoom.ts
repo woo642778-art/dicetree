@@ -1,8 +1,8 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface ViewTransform { x: number; y: number; scale: number }
 export const MIN_TREE_SCALE = 0.35;
-export const MAX_TREE_SCALE = 4.5;
+export const MAX_TREE_SCALE = 6;
 
 export function clampTreeScale(scale: number) {
   return Math.min(MAX_TREE_SCALE, Math.max(MIN_TREE_SCALE, scale));
@@ -21,6 +21,18 @@ export function screenDeltaToSvgUnits(
     x: delta.x / Math.max(Number.EPSILON, metrics.screenScaleX),
     y: delta.y / Math.max(Number.EPSILON, metrics.screenScaleY),
   };
+}
+
+/**
+ * iOS WebKit still emits proprietary gesture events for a two-finger pinch on
+ * some SVG roots, even when touch-action is none. Cancelling those events keeps
+ * the browser from page-zooming and rebuilding the large SVG compositing layer.
+ */
+export function bindNativeTreeGestureGuardV55(element: SVGSVGElement) {
+  const preventNativeZoom = (event: Event) => event.preventDefault();
+  const eventNames = ["gesturestart", "gesturechange", "gestureend"] as const;
+  eventNames.forEach((name) => element.addEventListener(name, preventNativeZoom, { passive: false }));
+  return () => eventNames.forEach((name) => element.removeEventListener(name, preventNativeZoom));
 }
 
 function viewportMetrics(svg: SVGSVGElement): SvgViewportMetrics {
@@ -183,6 +195,11 @@ export function usePanZoom(initial: ViewTransform = { x: 0, y: 0, scale: 0.95 })
     queuedView.current = null;
     setView(initial);
   }, [initial.x, initial.y, initial.scale]);
+
+  useEffect(() => () => {
+    if (updateFrame.current !== null) window.cancelAnimationFrame(updateFrame.current);
+    if (suppressionTimer.current) clearTimeout(suppressionTimer.current);
+  }, []);
 
   return {
     view,

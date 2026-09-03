@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() => {
+    if (!window.location.search.includes("welcome-test=1")) window.localStorage.setItem("dicetree:v55:creator-welcome-seen", "1");
+  });
+});
+
 function captureBrowserErrors(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -42,7 +48,7 @@ async function setTreeResources(page: Page, gold: string, core: string) {
   if (!await desktopGold.isVisible()) await page.getByRole("button", { name: "재화 편집" }).click();
   await page.getByRole("spinbutton", { name: "남은 골드" }).filter({ visible: true }).fill(gold);
   await page.getByRole("spinbutton", { name: "남은 다이스 코어" }).filter({ visible: true }).fill(core);
-  const done = page.getByRole("button", { name: "완료", exact: true });
+  const done = page.getByRole("button", { name: /완료|적용하고 닫기/, exact: true });
   if (await done.isVisible().catch(() => false)) await done.click();
 }
 
@@ -364,7 +370,7 @@ test("V4.4 Tree search focuses normalized effect terms and drag distance follows
   expect(errors).toEqual([]);
 });
 
-test("V5 mobile tree search indexes effect synonyms and remains visible at maximum zoom", async ({ page, isMobile }) => {
+test("V5.5 mobile tree search remains dark, populated and usable at 6x zoom", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Mobile Safari-style compositing guard is the target of this regression test");
   const errors = captureBrowserErrors(page);
   await page.goto("/dicetree/");
@@ -376,14 +382,27 @@ test("V5 mobile tree search indexes effect synonyms and remains visible at maxim
   await page.keyboard.press("Escape");
   const canvas = page.getByTestId("v3-tree-canvas");
   const zoomIn = page.getByRole("button", { name: "확대", exact: true });
-  for (let index = 0; index < 30 && Number(await canvas.getAttribute("data-scale")) < 4.5; index += 1) await zoomIn.click();
-  await expect(canvas).toHaveAttribute("data-scale", "4.50");
+  for (let index = 0; index < 40 && Number(await canvas.getAttribute("data-scale")) < 6; index += 1) await zoomIn.click();
+  await expect(canvas).toHaveAttribute("data-scale", "6.00");
   await expect(canvas).toHaveAttribute("data-render-profile", "mobile-safe");
   await expect.poll(async () => Number(await canvas.getAttribute("data-rendered-nodes"))).toBeLessThan(239);
+  await expect.poll(async () => Number(await canvas.getAttribute("data-rendered-nodes"))).toBeGreaterThan(0);
   await expect(page.locator(".v3-tree-background")).toHaveCSS("fill", "rgb(44, 38, 63)");
+  await expect(page.locator(".v3-tree-wrap")).toHaveCSS("background-color", "rgb(8, 18, 31)");
   await expect(page.locator(".v3-node-shell").first()).toHaveCSS("filter", "none");
   await page.screenshot({ path: "test-results/qa-v5-mobile-max-zoom.png", fullPage: false });
   expect(errors).toEqual([]);
+});
+
+test("V5.5 first visit introduces creator Monim and persists dismissal", async ({ page }) => {
+  await page.goto("/dicetree/?welcome-test=1");
+  const dialog = page.getByRole("dialog", { name: "제작자 모님" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("WELCOME TO DICETREE");
+  await expect(dialog.getByRole("link", { name: "GitHub에서 DiceTree 보기" })).toHaveAttribute("href", "https://github.com/woo642778-art/dicetree");
+  await dialog.getByRole("button", { name: "사이트 정보 닫기" }).click();
+  await page.reload();
+  await expect(dialog).toHaveCount(0);
 });
 
 test("V5 account import, current-state draft and local persistence work end to end", async ({ page }) => {
