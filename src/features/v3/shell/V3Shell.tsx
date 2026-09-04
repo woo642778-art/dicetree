@@ -550,6 +550,17 @@ export function V3Shell() {
 
     {tab === "tree" && <main className={`v3-tree-view ${selectedNode || guidedRouteOpen ? "has-detail" : ""}`} data-testid="v3-tree-view">
       <section className="v3-tree-main">
+        <header className="v56-tree-context" aria-label={locale === "ko" ? "다이스 트리 관제 상태" : "Dice Tree control status"}>
+          <div>
+            <small>{locale === "ko" ? "BUILD CONTROL · 경로 관제" : "BUILD CONTROL · PATH INTELLIGENCE"}</small>
+            <strong>{locale === "ko" ? "다이스 트리 투자 지도" : "Dice Tree investment map"}</strong>
+          </div>
+          <dl>
+            <div><dt>{locale === "ko" ? "데이터" : "Data"}</dt><dd>v{gameDataV3.manifest.clientVersion}</dd></div>
+            <div><dt>{locale === "ko" ? "계획 노드" : "Plan nodes"}</dt><dd>{Object.keys(state.simulatedRanks).length}</dd></div>
+            <div><dt>{locale === "ko" ? "검증 추천" : "Verified"}</dt><dd>{recommendations.verified.length}</dd></div>
+          </dl>
+        </header>
         <div className="v3-tree-toolbar">
           <div className="v3-family-filter">
             <button type="button" className={familyFilter === "all" ? "is-active" : ""} onClick={() => setFamilyFilter("all")}>{locale === "ko" ? "전체" : "All"}</button>
@@ -581,6 +592,24 @@ export function V3Shell() {
           onSelect={setSelectedNodeId}
           command={treeViewCommand}
         />
+        <section className={`v56-analysis-dock ${selectedNode ? "has-selection" : ""} ${resources.affordable ? "is-affordable" : "is-short"}`} data-testid="v56-analysis-dock" aria-label={locale === "ko" ? "트리 분석 도크" : "Tree analysis dock"}>
+          <div className="v56-dock-signal" aria-hidden="true"><i /><i /><i /></div>
+          <div className="v56-dock-focus">
+            <small>{selectedNode ? (locale === "ko" ? "현재 선택" : "CURRENT FOCUS") : (locale === "ko" ? "경로 대기" : "ROUTE STANDBY")}</small>
+            <strong>{selectedNode
+              ? (selectedNode.nameKey ? gameDataV3.localization[locale][selectedNode.nameKey] ?? selectedNode.id : selectedNode.id)
+              : (locale === "ko" ? "노드를 선택해 투자 근거를 확인하세요" : "Select a node to inspect investment evidence")}</strong>
+          </div>
+          <dl className="v56-dock-metrics">
+            <div><dt>{locale === "ko" ? "사용" : "Spent"}</dt><dd>{spent.gold.toLocaleString()} G <span>·</span> {spent.stone.toLocaleString()} C</dd></div>
+            <div><dt>{locale === "ko" ? "잔여" : "Remaining"}</dt><dd>{Math.max(0, resources.remaining.gold).toLocaleString()} G <span>·</span> {Math.max(0, resources.remaining.stone).toLocaleString()} C</dd></div>
+          </dl>
+          <div className="v56-dock-actions">
+            <button type="button" onClick={() => setResourceEditorOpen(true)}>{locale === "ko" ? "재화 조정" : "Resources"}</button>
+            {selectedNode && <button type="button" onClick={() => setTreeViewCommand({ id: Date.now(), type: "selected" })}>{locale === "ko" ? "선택으로 이동" : "Focus node"}</button>}
+            <button className="is-primary" type="button" onClick={() => { setSelectedNodeId(undefined); setGuidedRouteOpen(true); }}>{locale === "ko" ? "최적 경로 설계" : "Design optimal route"}</button>
+          </div>
+        </section>
       </section>
       <aside className={`v53-tree-inspector ${selectedNode || guidedRouteOpen ? "has-content" : "is-empty"}`}>
       {selectedNode ? <NodeDetailSheet

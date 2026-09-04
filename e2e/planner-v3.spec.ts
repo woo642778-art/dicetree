@@ -387,7 +387,7 @@ test("V5.5 mobile tree search remains dark, populated and usable at 6x zoom", as
   await expect(canvas).toHaveAttribute("data-render-profile", "mobile-safe");
   await expect.poll(async () => Number(await canvas.getAttribute("data-rendered-nodes"))).toBeLessThan(239);
   await expect.poll(async () => Number(await canvas.getAttribute("data-rendered-nodes"))).toBeGreaterThan(0);
-  await expect(page.locator(".v3-tree-background")).toHaveCSS("fill", "rgb(44, 38, 63)");
+  await expect(page.locator(".v3-tree-background")).toHaveCSS("fill", "rgb(7, 17, 15)");
   await expect(page.locator(".v3-tree-wrap")).toHaveCSS("background-color", "rgb(8, 18, 31)");
   await expect(page.locator(".v3-node-shell").first()).toHaveCSS("filter", "none");
   await page.screenshot({ path: "test-results/qa-v5-mobile-max-zoom.png", fullPage: false });

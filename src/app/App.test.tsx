@@ -28,6 +28,16 @@ describe("V3 planner shell", () => {
     expect(container.querySelector(".v2-app")).toBeNull();
   });
 
+  it("keeps the control dock connected to live plan resources", () => {
+    render(<I18nProvider><App /></I18nProvider>);
+    const dock = screen.getByTestId("v56-analysis-dock");
+    expect(dock).toHaveTextContent("경로 대기");
+    expect(dock).toHaveTextContent("0 G");
+    expect(dock).toHaveTextContent("0 C");
+    fireEvent.click(screen.getByRole("button", { name: "최적 경로 설계" }));
+    expect(screen.getByRole("heading", { name: "맞춤 트리 루트" })).toBeInTheDocument();
+  });
+
   it("switches primary views directly and opens analytical tools from the Tools menu", () => {
     render(<I18nProvider><App /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: "시뮬레이터" }));
