@@ -1,12 +1,13 @@
-# Progress: DiceTree reliability, progression, and PWA improvement release
+# Progress: DiceTree Control graph dashboard redesign and mobile-safe motion
 
 - Status: active
-- Milestone: 4/6 (67%)
-- Updated: 2026-09-03T01:07:14
-- Current work: Merged concurrent main-branch gesture work without duplicating the creator dialog; retained RAF gesture batching while overriding iOS-hostile compositing, then re-passed 242 unit and 45 E2E checks.
+- Milestone: 5/6 (83%)
+- Updated: 2026-09-04T03:44:10
+- Current work: Final diff reviewed for accidental changes and mobile rendering hazards. No SVG filters or transformed scroll roots remain on mobile; static IPA extractor tests and diff checks pass.
 
 ## Log
-- 2026-08-23T04:41:04 | 1/6 | Mapped existing V3 data, profile, patch, and PWA contracts; implementing usable local-first reliability features.
-- 2026-09-03T00:45:38 | 2/6 | Implemented first-visit creator modal, resource controls, portable profiles, update trust/community flow, PWA prompt, performance diagnostics, and the iOS SVG gesture/compositing guard; targeted tests and production build pass.
-- 2026-09-03T01:00:51 | 3/6 | Full regression passed: 242 unit tests, 45 browser tests with 7 expected platform skips, production build, data validation, and mobile 6x zoom dark-surface checks.
-- 2026-09-03T01:07:14 | 4/6 | Merged concurrent main-branch gesture work without duplicating the creator dialog; retained RAF gesture batching while overriding iOS-hostile compositing, then re-passed 242 unit and 45 E2E checks.
+- 2026-09-04T03:15:28 | 1/6 | Dribbble reference and attached video analyzed; DiceTree shell, graph, mobile gesture safeguards, and live data surfaces mapped.
+- 2026-09-04T03:25:06 | 2/6 | Implemented the Control Graph design system, live tree analysis dock, dark observatory graph surface, unified application theming, and motion with reduced-motion/mobile fallbacks.
+- 2026-09-04T03:43:03 | 3/6 | Desktop and mobile renders inspected across Tree, Simulator, Compare, Account, and Purchase Value; corrected overlap, legacy bright cards, and immediate-scroll regression.
+- 2026-09-04T03:43:03 | 4/6 | Verification passed: 243 unit tests, production build, and 45 Playwright scenarios passed with 7 intentionally skipped. Mobile 6x zoom and dark-canvas regression are covered.
+- 2026-09-04T03:44:10 | 5/6 | Final diff reviewed for accidental changes and mobile rendering hazards. No SVG filters or transformed scroll roots remain on mobile; static IPA extractor tests and diff checks pass.
